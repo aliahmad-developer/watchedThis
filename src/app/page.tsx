@@ -1,18 +1,14 @@
-"use client"; // Add this at the top to make it a Client Component
-
 import Toggle from "./components/toggle";
-import { useTheme } from "next-themes";
+import Navbar from "./components/navbar/page";
 import "./globals.css";
-
 export default function Home() {
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
-
   return (
     <>
       <div>
+        <Navbar />
         <Toggle />
       </div>
+    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Quaerat, atque voluptatum magni magnam beatae consectetur est facilis fuga temporibus doloremque. Non cumque dicta ad id accusantium consequatur eum, dolorem facilis.</p>
     </>
   );
 }

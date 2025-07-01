@@ -32,23 +32,12 @@
 }
 @layer base {
   li {
-    @apply font-bold font-medium cursor-pointer;
-    @apply text-green-800;
+    @apply px-4 py-2 text-light-nav hover:text-light-btn-hover-bg cursor-pointer font-medium dark:text-dark-card;
   }
-}
-.light{
---color-light-bg: #f8f9fa;
-  --color-light-card: #e9ecef;
-  --color-light-border: #dee2e6;
-  --color-light-disabled: #ced4da;
-  --color-light-accent: #ad858d;
-  --color-light-secondary-text: #6c757d;
-  --color-light-body-text: #495057;
-  --color-light-header: #343a40;
-  --color-light-nav: #212529;
-
-  --color-light-btn-bg: #ad858d;
-  --color-light-btn-text: #ffffff;
-  --color-light-btn-hover-bg: #966e77;
-  --color-light-btn-hover-text: #ffffff;
+  button{
+    @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text;
+  }
+  p{
+    @apply text-light-body-text dark:text-dark-body-text;
+  }
 }
