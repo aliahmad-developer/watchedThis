@@ -18,7 +18,7 @@
 
   --color-dark-bg: #1a1a1a;
   --color-dark-card: #282828;
-  --color-dark-border: #444444;
+  --color-dark-border:rgb(49, 49, 49);
   --color-dark-disabled: #8a8a8a;
   --color-dark-accent: #d4a373;
   --color-dark-secondary-text: #9e9e9e;
@@ -32,7 +32,7 @@
 }
 @layer base {
   li {
-    @apply px-4 py-2 text-light-nav hover:text-light-btn-hover-bg cursor-pointer font-medium dark:text-dark-card;
+    @apply px-4 py-2 text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-sm dark:text-white;
   }
   button{
     @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text;
@@ -40,4 +40,11 @@
   p{
     @apply text-light-body-text dark:text-dark-body-text;
   }
+  span{
+    @apply flex flex-col items-center justify-center gap-1 mt-1
+  }
+   * {
+    overflow-x: hidden;
+  }
 }
+

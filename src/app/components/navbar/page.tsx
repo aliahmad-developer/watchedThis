@@ -1,52 +1,52 @@
-import "./page.css";
+// components/Navbar.js
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import Link from "next/link";
+import {
+  faShuffle,
+  faSpinner,
+  faHouse,
+  faMagnifyingGlass,
+} from "@fortawesome/free-solid-svg-icons";
 import Toggle from "../toggle";
-export default function navbar() {
-  return (
-    <main className=" bg-light-nav p-4 dark:bg-dark-nav ">
-      <div className="max-w-4xl mx-auto">
-        <ul className="flex justify-between items-center bg-white shadow-md rounded-lg p-4">
-          <li>Home</li>
-          <li>Find</li>
-          <li>About</li>
-          <li>Spinner</li>
-        </ul>
 
-        <form className="max-w-lg mx-auto">
-          <div className="flex">
-            <div className="relative w-full">
-              <input
-                type="search"
-                id="search-dropdown"
-                className="block p-2.5 w-full z-20 text-sm text-gray-900 bg-gray-50 rounded-e-lg border-s-gray-50 border-s-2 border border-gray-300 dark:bg-gray-700 dark:border-s-gray-700  dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:border-blue-500"
-                placeholder="Search Mockups, Logos, Design Templates..."
-                required
-              />
-              <button
-                type="submit"
-                className="absolute top-0 end-0 p-2.5 text-sm font-medium h-full text-white bg-blue-700 rounded-e-lg border border-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-              >
-                <svg
-                  className="w-4 h-4"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
-                  />
-                </svg>
-                <span className="sr-only">Search</span>
-              </button>
-            </div>
-          </div>
-        </form>
+export default function Navbar() {
+  const navItems = [
+    { icon: faHouse, label: "Home", href: "/" },
+    { icon: faMagnifyingGlass, label: "Find", href: "/find" },
+    { icon: faShuffle, label: "Random", href: "/random" },
+    { icon: faSpinner, label: "Spinner", href: "/spinner" },
+  ];
+
+  return (
+    <nav
+      className="w-full bg-light-nav dark:bg-dark-nav p-2"
+      role="navigation"
+      aria-label="Main navigation"
+    >
+      <div className="flex items-center max-w-2xl mx-auto w-full">
+        <div className="flex-1">
+          <ul className="flex items-center justify-around shadow-md rounded-lg border-2 border-dark-accent dark:bg-dark-border">
+            {navItems.map((item, index) => (
+              <li key={index} className="group">
+                <Link href={item.href} aria-label={item.label}>
+                  <div className="flex flex-col items-center px-3 py-1 sm:px-4 sm:py-2 transition-all duration-200 group-hover:text-dark-accent cursor-pointer">
+                    <FontAwesomeIcon
+                      icon={item.icon}
+                      className="text-dark-accent h-6 mb-1 group-hover:scale-110 transition-transform min-w-[24px]"
+                    />
+                    <span className="text-sm whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="ml-4 min-w-[40px] flex items-center justify-center">
+          <Toggle />
+        </div>
       </div>
-      <Toggle />
-    </main>
+    </nav>
   );
 }

@@ -1,4 +1,13 @@
+// app/layout.tsx
+import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import Navbar from "./components/navbar/page";
+import PushUp from './components/pushUp'
+
+export const metadata = {
+  title: "RandoMovie.com",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -6,10 +15,30 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className=" bg-light-bg dark:bg-dark-bg">
+      <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="/apple-touch-icon.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="32x32"
+        href="/favicon-32x32.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="16x16"
+        href="/favicon-16x16.png"
+      />
+      <link rel="manifest" href="/site.webmanifest"></link>
+      <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Navbar />
           {children}
         </ThemeProvider>
+<PushUp/>
       </body>
     </html>
   );
