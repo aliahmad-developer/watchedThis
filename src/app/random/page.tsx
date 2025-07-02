@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Loading from '../components/utilities/loading'
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlay } from "@fortawesome/free-solid-svg-icons";
@@ -30,7 +31,7 @@ export default function Random() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg text-light-body-text dark:text-dark-body-text">
-        <h1 className="text-xl sm:text-2xl md:text-3xl p-2">Loading...</h1>
+        <Loading/>
       </div>
     );
   }
