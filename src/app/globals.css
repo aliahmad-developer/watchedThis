@@ -32,10 +32,10 @@
 }
 @layer base {
   li {
-    @apply px-4 py-2 text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-sm dark:text-white;
+    @apply text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-sm dark:text-white;
   }
   button{
-    @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text;
+    @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text cursor-pointer;
   }
   p{
     @apply text-light-body-text dark:text-dark-body-text;

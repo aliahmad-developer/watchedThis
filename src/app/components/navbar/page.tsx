@@ -1,52 +1,118 @@
-// components/Navbar.js
+"use client";
+import { usePathname, useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import Link from "next/link";
+import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import {
   faShuffle,
   faSpinner,
   faHouse,
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
-import Toggle from "../toggle";
+import Toggle from "../utilities/toggle";
+import Link from "next/link";
+import SearchButton from "../utilities/searchButton";
+import SearchInput from "../utilities/searchInput";
 
 export default function Navbar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [searchClicked, setSearchClicked] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const navItems = [
     { icon: faHouse, label: "Home", href: "/" },
-    { icon: faMagnifyingGlass, label: "Find", href: "/find" },
     { icon: faShuffle, label: "Random", href: "/random" },
     { icon: faSpinner, label: "Spinner", href: "/spinner" },
+    { icon: faMagnifyingGlass, label: "Find", href: "/find" },
   ];
 
+  const handleSearchClick = () => {
+    setSearchClicked(!searchClicked);
+  };
+
+  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleRandomClick = (e: React.MouseEvent, href: string) => {
+    if (pathname === href) {
+      e.preventDefault();
+      // Force a reload of the random page to get new data
+      router.push(href);
+      router.refresh();
+    }
+    // Otherwise, default Link behavior will handle the navigation
+  };
+
   return (
-    <nav
-      className="w-full bg-light-nav dark:bg-dark-nav p-2"
-      role="navigation"
-      aria-label="Main navigation"
-    >
-      <div className="flex items-center max-w-2xl mx-auto w-full">
-        <div className="flex-1">
-          <ul className="flex items-center justify-around shadow-md rounded-lg border-2 border-dark-accent dark:bg-dark-border">
-            {navItems.map((item, index) => (
-              <li key={index} className="group">
-                <Link href={item.href} aria-label={item.label}>
-                  <div className="flex flex-col items-center px-3 py-1 sm:px-4 sm:py-2 transition-all duration-200 group-hover:text-dark-accent cursor-pointer">
-                    <FontAwesomeIcon
-                      icon={item.icon}
-                      className="text-dark-accent h-6 mb-1 group-hover:scale-110 transition-transform min-w-[24px]"
-                    />
-                    <span className="text-sm whitespace-nowrap">
-                      {item.label}
-                    </span>
-                  </div>
+    <>
+      <nav
+        className="w-full bg-light-nav dark:bg-dark-nav py-3 px-4 shadow-sm z-50"
+        aria-label="Main navigation"
+      >
+        <div className="flex items-center justify-between">
+          {/* First section - empty for now */}
+          <div className="flex-1"></div>
+
+          {/* Middle section - navigation icons with even spacing */}
+          <div className="flex-1 px-4">
+            <div className="w-full bg-light-card dark:bg-dark-card shadow-md rounded-xl border border-light-border dark:border-dark-border min-h-16 flex items-center justify-evenly">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={(e) => item.label === "Random" ? handleRandomClick(e, item.href) : undefined}
+                  aria-current={pathname === item.href ? "page" : undefined}
+                  className={`flex flex-col items-center p-2 transition-all duration-200 focus:outline-none focus-visible:ring-2 ring-light-accent dark:ring-dark-accent rounded-lg ${
+                    pathname === item.href
+                      ? "text-light-accent dark:text-dark-accent"
+                      : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
+                  }`}
+                >
+                  <FontAwesomeIcon
+                    icon={item.icon}
+                    className={`mt-1 h-4 ${pathname === item.href ? "text-light-accent dark:text-dark-accent" : ""}`}
+                  />
+                  <span className="text-xs sm:text-sm mt-1">{item.label}</span>
                 </Link>
-              </li>
-            ))}
-          </ul>
+              ))}
+            </div>
+          </div>
+
+          {/* Last section - search and toggle */}
+          <div className="flex-1 flex items-center justify-end space-x-4">
+            <SearchButton
+              isActive={searchClicked}
+              onClick={handleSearchClick}
+              className="text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-accent"
+            />
+            <div className="min-w-10 flex justify-center">
+              {mounted && <Toggle />}
+            </div>
+          </div>
         </div>
-        <div className="ml-4 min-w-[40px] flex items-center justify-center">
-          <Toggle />
-        </div>
-      </div>
-    </nav>
+      </nav>
+
+      {searchClicked && (
+        <SearchInput
+          searchQuery={searchQuery}
+          onSearchSubmit={handleSearchSubmit}
+          onInputChange={handleInputChange}
+          className="bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text border-light-border dark:border-dark-border"
+        />
+      )}
+    </>
   );
 }
