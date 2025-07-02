@@ -1,5 +1,8 @@
 export default function search(){
     return(
-        <h1 className="flex align-center">Search page</h1>
+        <div>
+            <h1 className="flex align-center">Search page</h1>
+             <div className="p-100"></div>
+        </div>
     );
 }

@@ -27,7 +27,7 @@ export default function SearchInput({
             bg-light-bg dark:bg-dark-bg 
             text-light-body-text dark:text-dark-body-text
             placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text
-            focus:outline-none
+            focus:outline-none 
             transition-colors duration-200
           `}
           placeholder="Search..."
