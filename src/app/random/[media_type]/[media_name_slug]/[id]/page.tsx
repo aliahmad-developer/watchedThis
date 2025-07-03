@@ -118,6 +118,7 @@ export default function SpecificRandomMediaPage({
           <Desc data={data} backdropUrl={`https://image.tmdb.org/t/p/original${data.backdrop_path}`}/>
         </div>
       </div>
+      <div className="p-100"></div>
     </>
   );
 }
