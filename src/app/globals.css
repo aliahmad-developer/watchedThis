@@ -32,7 +32,7 @@
 }
 @layer base {
   li {
-    @apply text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-sm dark:text-white;
+    @apply text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-xs dark:text-white;
   }
   button{
     @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text cursor-pointer;
@@ -40,7 +40,7 @@
   }
   p{
     font-family:helvetica;
-    @apply text-light-body-text dark:text-dark-body-text;
+    @apply text-light-body-text dark:text-dark-body-text text-xs;
   }
   span{
     @apply flex flex-col items-center justify-center gap-1 mt-1
@@ -48,6 +48,10 @@
    * {
     font-family:georgia,serif;
     overflow-x: hidden;
+  }
+  body{
+    @apply bg-light-bg dark:bg-dark-bg;
+
   }
 }
 

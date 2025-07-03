@@ -11,8 +11,8 @@ import {
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 import Toggle from "../utilities/toggle";
-import SearchInput from "../utilities/searchInput";
-import SearchButton from "../utilities/searchButton";
+import SearchInput from "../utilities/search/searchInput";
+import SearchButton from "../utilities/search/searchButton";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -58,7 +58,7 @@ export default function Navbar() {
         <div className="flex justify-between w-full sm:w-auto items-center">
           <Link
             href="/"
-            className="p-1 text-3xl font-bold text-dark-accent whitespace-nowrap"
+            className="p-1 text-2xl font-bold text-dark-accent whitespace-nowrap"
           >
             RandoMovie
           </Link>
@@ -66,7 +66,7 @@ export default function Navbar() {
             <SearchButton
               isActive={searchVisible}
               onClick={handleSearchToggle}
-              className="text-xl text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-accent"
+              className="text-base text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-accent"
             />
             <Toggle />
           </div>
@@ -74,19 +74,19 @@ export default function Navbar() {
 
         {/* Middle: Nav links */}
         <div className="w-full sm:w-[60%] md:w-[40%] min-w-[260px]">
-          <div className="flex justify-evenly items-center gap-x-4 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl py-3 px-4 shadow-sm">
+          <div className="flex justify-evenly items-center gap-x-4 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl py-2 px-3 shadow-sm">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={(e) => item.label === "Random" && handleRandomClick(e)}
-                className={`flex flex-col items-center justify-center text-sm sm:text-base md:text-lg font-medium transition-colors duration-200 px-2 sm:px-3 ${
+                className={`flex flex-col items-center justify-center text-xs sm:text-sm md:text-base font-medium transition-colors duration-200 px-1 sm:px-2 ${
                   pathname === item.href
                     ? "text-light-accent dark:text-dark-accent"
                     : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
                 }`}
               >
-                <FontAwesomeIcon icon={item.icon} className="h-5" />
+                <FontAwesomeIcon icon={item.icon} className="h-4" />
                 {item.label}
               </Link>
             ))}
@@ -98,7 +98,7 @@ export default function Navbar() {
           <SearchButton
             isActive={searchVisible}
             onClick={handleSearchToggle}
-            className="text-xl text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-accent"
+            className="text-lg text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-accent"
           />
           <Toggle />
         </div>
@@ -109,7 +109,7 @@ export default function Navbar() {
         <div
           className={`transition-all transform-gpu duration-300 ease-in-out overflow-hidden origin-top ${
             searchVisible
-              ? "opacity-100 scale-y-100 h-auto py-3"
+              ? "opacity-100 scale-y-100 h-auto py-2"
               : "opacity-0 scale-y-0 h-0 py-0"
           }`}
         >
@@ -117,7 +117,7 @@ export default function Navbar() {
             searchQuery={searchQuery}
             onSearchSubmit={handleSearchSubmit}
             onInputChange={handleInputChange}
-            className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-md text-light-body-text dark:text-dark-body-text"
+            className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-md text-light-body-text dark:text-dark-body-text text-sm"
           />
         </div>
       )}
