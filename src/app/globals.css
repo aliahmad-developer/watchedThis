@@ -36,14 +36,17 @@
   }
   button{
     @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text cursor-pointer;
+    font-family:verdana;
   }
   p{
+    font-family:helvetica;
     @apply text-light-body-text dark:text-dark-body-text;
   }
   span{
     @apply flex flex-col items-center justify-center gap-1 mt-1
   }
    * {
+    font-family:georgia,serif;
     overflow-x: hidden;
   }
 }
