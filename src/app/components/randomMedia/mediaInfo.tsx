@@ -236,7 +236,7 @@ export default function MediaInfo({ data }: MediaInfoProps) {
                 <h4 className="text-sm font-semibold text-light-secondary-text dark:text-dark-secondary-text mb-1">
                   Genres
                 </h4>
-                <div className="flex flex-wrap ">
+                <div className="flex flex-wrap mt-1 mb-1 gap-2">
                   {data.genres?.length ? (
                     data.genres.map((genre) => (
                       <span
