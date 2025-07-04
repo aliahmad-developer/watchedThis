@@ -17,10 +17,11 @@ export default function MediaPoster({ data }: MediaPosterProps) {
   const hasPoster = !!data.poster_path && !hasError;
 
   const getBadgeText = () => {
-    if (data.media_type === "movie") return "Movie";
-    if (data.media_type === "tv") return "TV Series";
-    return "Media";
-  };
+  if (data.media_type === "movie") return "MOVIE";
+  if (data.media_type === "tv") return "SERIES";
+  return "MEDIA";
+};
+
 
   return (
     <div className="relative aspect-[2/3] w-full max-w-xs rounded-2xl overflow-hidden shadow-lg group transition-all duration-300 hover:shadow-xl bg-gray-900">

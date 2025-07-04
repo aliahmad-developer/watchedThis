@@ -1,5 +1,5 @@
 import MediaPoster from "./mediaPoster";
-import MediaInfo from "./mediaInfo";
+import MediaInfo from "../randomMedia/MediaInfo/index";
 import Image from "next/image";
 
 interface DescProps {
@@ -9,8 +9,8 @@ interface DescProps {
 
 export default function Desc({ data, backdropUrl }: DescProps) {
   return (
-    <div className="relative w-full min-h-screen bg-[var(--color-dark-bg)]">
-      {/* Backdrop with blurry gradient overlay */}
+    <div className="relative w-full min-h-screen bg-gray-900"> {/* Fallback dark bg */}
+      {/* Backdrop with enhanced gradients */}
       <div className="absolute inset-0">
         {backdropUrl && (
           <>
@@ -21,37 +21,41 @@ export default function Desc({ data, backdropUrl }: DescProps) {
               className="object-cover"
               quality={80}
               priority
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 75vw, 50vw"
             />
-            {/* Gradient overlay using your color variables */}
-            <div className={`
+            
+            {/* Primary gradient overlay - dark at bottom fading up */}
+            <div className="
               absolute inset-0 
               bg-gradient-to-t 
-              from-dark-bg
-              via-dark-bg/80 
-              to-transparent 
-              backdrop-blur-sm
-            `} />
-            <div className={`
+              from-gray-900 via-gray-900/80 to-transparent
+              backdrop-blur-sm md:backdrop-blur
+            "/>
+            
+            {/* Secondary gradient overlay - accent tint at top */}
+            <div className="
               absolute inset-0 
               bg-gradient-to-b 
-              from-dark-accent/20 
-              via-transparent 
-              to-transparent
-            `} />
+              from-blue-500/10 via-transparent to-transparent
+            "/>
+            
+            {/* Optional: subtle vignette effect */}
+            <div className="
+              absolute inset-0 
+              bg-radial-gradient(ellipse_at_center,transparent_60%,rgba(0,0,0,0.7))
+            "/>
           </>
         )}
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 max-w-6xl mx-auto px-6 py-16">
-        <div className="flex flex-col lg:flex-row gap-12">
-          {/* Poster - taking less width */}
-          <div className="w-full lg:w-1/4">
+      {/* Content container */}
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
+        <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
+          <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto ">
             <MediaPoster data={data} />
           </div>
           
-          {/* Info - more width for better text flow */}
-          <div className="w-full lg:w-3/4">
+          <div className="w-full lg:w-2/3 xl:w-3/4">
             <MediaInfo data={data} />
           </div>
         </div>

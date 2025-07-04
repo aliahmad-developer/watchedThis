@@ -86,7 +86,7 @@ export default function SpecificRandomMediaPage({
     return (
       <>
         <Head>
-          <title>Loading... | Your Site Name</title>
+          <title>Loading... | RandoMovie</title>
         </Head>
         <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg">
           <Loading />

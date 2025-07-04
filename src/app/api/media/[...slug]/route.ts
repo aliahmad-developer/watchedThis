@@ -2,15 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string[] } }
+  { params }: { params: { slug?: string[] } }
 ) {
-  if (!Array.isArray(params.slug)) {
+  const slug = params?.slug || [];
+
+  if (!Array.isArray(slug)) {
     return NextResponse.json(
       { error: "Invalid route parameters" },
       { status: 400 }
     );
   }
-  const [media_type, media_name_slug, id] = params.slug || [];
+
+  if (slug.length < 2) {
+    return NextResponse.json(
+      { error: "Incomplete route parameters" },
+      { status: 400 }
+    );
+  }
+
+  const [media_type, media_name_slug, id] = slug;
 
   if (!media_type || !id) {
     return NextResponse.json(
@@ -35,30 +45,48 @@ export async function GET(
     );
   }
 
-  const url = `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${apiKey}&language=en-US&append_to_response=videos,images`;
+  const url = `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${apiKey}&language=en-US&append_to_response=videos,images,release_dates,content_ratings`;
 
   try {
     const res = await fetch(url);
+    const data = await res.json();
 
     if (!res.ok) {
-      const errorData = await res.json();
       return NextResponse.json(
         {
-          error: `TMDB API error: ${
-            errorData.status_message || res.statusText
-          }`,
+          error: `TMDB API error: ${data.status_message || res.statusText}`,
           code: res.status,
         },
         { status: res.status }
       );
     }
-    
 
-    const data = await res.json();
+    let certification: string | null = null;
+
+    if (media_type === "movie" && data.release_dates?.results) {
+      const usRelease = data.release_dates.results.find(
+        (r: any) => r.iso_3166_1 === "US"
+      );
+      if (usRelease?.release_dates?.length) {
+        const theatrical =
+          usRelease.release_dates.find((d: any) => d.type === 3) ||
+          usRelease.release_dates[0];
+        certification = theatrical?.certification?.trim() || null;
+      }
+    } else if (media_type === "tv" && data.content_ratings?.results) {
+      const usRating = data.content_ratings.results.find(
+        (r: any) => r.iso_3166_1 === "US"
+      );
+      certification = usRating?.rating?.trim() || null;
+    }
 
     const transformedData = {
+      status: data.status,
       id: data.id,
+      tagline: data.tagline,
+      name: data.name,
       title: data.title || data.name,
+      original_title: data.original_title || data.original_name,
       overview: data.overview,
       poster_path: data.poster_path,
       backdrop_path: data.backdrop_path,
@@ -68,6 +96,9 @@ export async function GET(
       vote_average: data.vote_average,
       videos: data.videos?.results,
       images: data.images?.backdrops,
+      media_type,
+      production_companies: data.production_companies,
+      certification,
     };
 
     return NextResponse.json(transformedData);
