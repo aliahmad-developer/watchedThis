@@ -23,7 +23,7 @@ export default function BackToTop() {
   const scrollToTop = () => {
     const scrollDuration = 350; // Duration in milliseconds (1 second)
     const scrollStep = -window.scrollY / (scrollDuration / 15);
-    
+
     const scrollInterval = setInterval(() => {
       if (window.scrollY !== 0) {
         window.scrollBy(0, scrollStep);
@@ -38,12 +38,12 @@ export default function BackToTop() {
       <button
         onClick={scrollToTop}
         aria-label="Back to top"
-        className={`p-3 rounded-full bg-gray-800 text-white shadow-lg hover:bg-gray-700 transition-all duration-300
-                   focus:outline-none dark:bg-gray-600 dark:hover:bg-gray-500
-                   ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-                   transition-opacity duration-300`}
+        className={`p-3 rounded-full bg-gray-800/70 text-white shadow-lg hover:bg-gray-700/80 transition-all duration-300
+            focus:outline-none dark:bg-gray-600/60 dark:hover:bg-gray-500/70
+            ${isVisible ? "opacity-100" : "opacity-0 pointer-events-none"}
+            transition-opacity duration-300`}
       >
-       <FontAwesomeIcon icon={faAngleUp} className="h-5 w-5"/>
+        <FontAwesomeIcon icon={faAngleUp} className="h-5 w-5" />
       </button>
     </div>
   );

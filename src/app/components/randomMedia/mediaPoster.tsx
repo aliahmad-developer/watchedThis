@@ -17,17 +17,16 @@ export default function MediaPoster({ data }: MediaPosterProps) {
   const hasPoster = !!data.poster_path && !hasError;
 
   const getBadgeText = () => {
-  if (data.media_type === "movie") return "MOVIE";
-  if (data.media_type === "tv") return "SERIES";
-  return "MEDIA";
-};
-
+    if (data.media_type === "movie") return "MOVIE";
+    if (data.media_type === "tv") return "SERIES";
+    return "MEDIA";
+  };
 
   return (
     <div className="relative aspect-[2/3] w-full max-w-xs rounded-2xl overflow-hidden shadow-lg group transition-all duration-300 hover:shadow-xl bg-gray-900">
       {/* Fallback background and title if image is missing or broken */}
       {!hasPoster && (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center px-2 text-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center px-2 text-center border-1 border-white rounded-2xl">
           <span className="text-gray-500 text-lg">{displayTitle}</span>
         </div>
       )}
@@ -46,7 +45,7 @@ export default function MediaPoster({ data }: MediaPosterProps) {
       )}
 
       {/* Badge */}
-      <div className="absolute top-3 left-3 bg-light-btn-bg/90 dark:bg-dark-btn-bg/90 text-white px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10">
+      <div className="border-1 border-grey absolute top-3 left-3 bg-transparent text-white px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10">
         {getBadgeText()}
       </div>
     </div>

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Loading from "../../../../components/utilities/loading";
-import Desc from '../../../../components/randomMedia/desc'
+import Desc from "../../../../components/randomMedia/desc";
 export default function SpecificRandomMediaPage({
   params,
 }: {
@@ -14,6 +14,9 @@ export default function SpecificRandomMediaPage({
 
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (!media_type || !id) {
@@ -115,7 +118,10 @@ export default function SpecificRandomMediaPage({
       <div className="py-6 px-4 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-md overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
-          <Desc data={data} backdropUrl={`https://image.tmdb.org/t/p/original${data.backdrop_path}`}/>
+          <Desc
+            data={data}
+            backdropUrl={`https://image.tmdb.org/t/p/original${data.backdrop_path}`}
+          />
         </div>
       </div>
       <div className="p-100"></div>

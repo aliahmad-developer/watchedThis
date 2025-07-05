@@ -1,8 +1,6 @@
 "use client";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
-import SearchInput from "./searchInput";
-
 interface SearchButtonProps {
   isActive: boolean;
   onClick: () => void;
