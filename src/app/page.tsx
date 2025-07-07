@@ -5,6 +5,8 @@ export default function Home() {
     <>
       <div>
         <SpotLight />
+        Trending
+        <div className="p-100"></div>
       </div>
     </>
   );

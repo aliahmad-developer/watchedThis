@@ -137,7 +137,8 @@ export default function PopularSpotlightSlider({
     return `${minutes}m`;
   };
 
-  if (!current || items.length === 0 || (isMobile && !showOnMobile)) return null;
+  if (!current || items.length === 0 || (isMobile && !showOnMobile))
+    return null;
 
   return (
     <div
@@ -158,7 +159,8 @@ export default function PopularSpotlightSlider({
         >
           {displayItems.map((item, i) => {
             const itemTitle = item.title || item.name || "Untitled";
-            const itemDate = item.release_date || item.first_air_date || "Unknown";
+            const itemDate =
+              item.release_date || item.first_air_date || "Unknown";
             const itemMediaType = item.media_type.toLowerCase();
             const itemSlug = slugify(itemTitle);
             const itemLinkHref = `/random/${itemMediaType}/${itemSlug}/${item.id}`;
@@ -208,36 +210,58 @@ export default function PopularSpotlightSlider({
                                 Spotlight
                               </div>
                             )}
-                            <h2 className="text-2xl font-bold text-white">{itemTitle}</h2>
+                            <h2 className="text-2xl font-bold text-white">
+                              {itemTitle}
+                            </h2>
                             <div className="flex flex-wrap items-center gap-3 text-xs text-white/80">
                               <div className="inline-flex items-center gap-1">
-                                <FontAwesomeIcon icon={faCirclePlay} className="w-3 h-3" />
+                                <FontAwesomeIcon
+                                  icon={faCirclePlay}
+                                  className="w-3 h-3"
+                                />
                                 <span>{itemMediaType.toUpperCase()}</span>
                               </div>
                               {itemDuration && (
                                 <div className="inline-flex items-center gap-1">
-                                  <FontAwesomeIcon icon={faClock} className="w-3 h-3" />
+                                  <FontAwesomeIcon
+                                    icon={faClock}
+                                    className="w-3 h-3"
+                                  />
                                   <span>{itemDuration}</span>
                                 </div>
                               )}
                               <div className="inline-flex items-center gap-1">
-                                <FontAwesomeIcon icon={faCalendar} className="w-3 h-3" />
+                                <FontAwesomeIcon
+                                  icon={faCalendar}
+                                  className="w-3 h-3"
+                                />
                                 <span>
-                                  {new Date(itemDate).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })}
+                                  {new Date(itemDate).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    }
+                                  )}
                                 </span>
                               </div>
                             </div>
-                            <p className="text-sm line-clamp-2 text-white/90">{item.overview}</p>
+                            <div className="relative">
+                              <p className="text-sm lg:text-base line-clamp-2 lg:line-clamp-3 opacity-90 text-light-body-text dark:text-dark-body-text relative z-10 bg-gradient-to-r from-light-bg/80 to-transparent dark:from-dark-bg/80 pr-8">
+                                {item.overview}
+                              </p>
+                            </div>
+
                             <div className="flex gap-2 pt-2">
                               <Link
                                 href={itemLinkHref}
                                 className="px-3 py-1.5 text-sm rounded-full font-medium flex items-center gap-1 bg-light-btn-bg hover:bg-light-btn-bg-hover text-light-btn-text dark:bg-dark-btn-bg dark:hover:bg-dark-btn-bg-hover dark:text-dark-btn-text"
                               >
-                                <FontAwesomeIcon icon={faPlay} className="w-4 h-4" />
+                                <FontAwesomeIcon
+                                  icon={faPlay}
+                                  className="w-4 h-4"
+                                />
                                 Watch
                               </Link>
                               <Link
@@ -245,7 +269,10 @@ export default function PopularSpotlightSlider({
                                 className="px-3 py-1.5 text-sm rounded-full font-medium flex items-center gap-1 bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.2)] text-white"
                               >
                                 Details
-                                <FontAwesomeIcon icon={faAngleRight} className="w-3 h-3" />
+                                <FontAwesomeIcon
+                                  icon={faAngleRight}
+                                  className="w-3 h-3"
+                                />
                               </Link>
                             </div>
                           </div>
@@ -259,25 +286,35 @@ export default function PopularSpotlightSlider({
                       <div className="space-y-4 lg:space-y-5 max-w-xl">
                         {showSpotlightNumber && (
                           <div className="text-sm font-medium text-light-accent">
-                            #{i === 0 ? items.length : i > items.length ? 1 : i} Spotlight
+                            #{i === 0 ? items.length : i > items.length ? 1 : i}{" "}
+                            Spotlight
                           </div>
                         )}
-                        <h2 className="text-3xl lg:text-4xl font-bold text-light-header dark:text-dark-header p-1">
+                        <h2 className="text-3xl lg:text-4xl font-bold text-light-header dark:text-white p-1">
                           {itemTitle}
                         </h2>
                         <div className="flex flex-wrap items-center gap-3 lg:gap-6 text-sm text-light-secondary-text dark:text-dark-secondary-text">
                           <div className="inline-flex items-center gap-2">
-                            <FontAwesomeIcon icon={faCirclePlay} className="w-4 h-4" />
+                            <FontAwesomeIcon
+                              icon={faCirclePlay}
+                              className="w-4 h-4"
+                            />
                             <span>{itemMediaType.toUpperCase()}</span>
                           </div>
                           {itemDuration && (
                             <div className="inline-flex items-center gap-2">
-                              <FontAwesomeIcon icon={faClock} className="w-4 h-4" />
+                              <FontAwesomeIcon
+                                icon={faClock}
+                                className="w-4 h-4"
+                              />
                               <span>{itemDuration}</span>
                             </div>
                           )}
                           <div className="inline-flex items-center gap-2">
-                            <FontAwesomeIcon icon={faCalendar} className="w-4 h-4" />
+                            <FontAwesomeIcon
+                              icon={faCalendar}
+                              className="w-4 h-4"
+                            />
                             <span>
                               {new Date(itemDate).toLocaleDateString("en-US", {
                                 month: "short",
@@ -287,7 +324,7 @@ export default function PopularSpotlightSlider({
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm lg:text-base line-clamp-2 lg:line-clamp-3 opacity-90 text-light-body-text dark:text-dark-body-text">
+                        <p className="text-sm lg:text-base line-clamp-2 lg:line-clamp-2 opacity-90 text-light-body-text dark:text-dark-body-text">
                           {item.overview}
                         </p>
                         <div className="flex flex-wrap gap-3 pt-2">
@@ -295,7 +332,10 @@ export default function PopularSpotlightSlider({
                             href={itemLinkHref}
                             className="px-4 py-2 text-sm lg:text-base rounded-full font-medium flex items-center gap-2 transition bg-light-btn-bg hover:bg-light-btn-bg-hover text-light-btn-text dark:bg-dark-btn-bg dark:hover:bg-dark-btn-bg-hover dark:text-dark-btn-text"
                           >
-                            <FontAwesomeIcon icon={faPlay} className="w-4 lg:w-5 h-4 lg:h-5" />
+                            <FontAwesomeIcon
+                              icon={faPlay}
+                              className="w-4 lg:w-5 h-4 lg:h-5"
+                            />
                             Watch Now
                           </Link>
                           <Link
@@ -303,13 +343,16 @@ export default function PopularSpotlightSlider({
                             className="px-4 py-2 text-sm lg:text-base rounded-full font-medium transition bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.2)] text-light-body-text dark:text-dark-body-text flex items-center gap-2"
                           >
                             Details
-                            <FontAwesomeIcon icon={faAngleRight} className="w-3 lg:w-4 h-3 lg:h-4" />
+                            <FontAwesomeIcon
+                              icon={faAngleRight}
+                              className="w-3 lg:w-4 h-3 lg:h-4"
+                            />
                           </Link>
                         </div>
                       </div>
                     </div>
 
-                    <div className="hidden md:block relative w-1/2 h-full">
+                    <div className="hidden md:block relative w-4/5 h-full">
                       {item.backdrop_path && (
                         <>
                           <Image
@@ -317,12 +360,25 @@ export default function PopularSpotlightSlider({
                             alt={itemTitle}
                             fill
                             className={`object-cover object-right transition-opacity duration-700 ${
-                              current.id === item.id ? "opacity-100" : "opacity-0"
+                              current.id === item.id
+                                ? "opacity-100"
+                                : "opacity-0"
                             }`}
                             sizes="50vw"
                             priority={item.id === current.id}
                           />
-                          <div className="absolute inset-0 z-10 bg-gradient-to-l from-[--color-dark-bg] to-transparent dark:from-[--color-dark-bg]" />
+
+                          {/* Left Gradient */}
+                          <div className="absolute inset-y-0 left-0 w-1/5 z-10 pointer-events-none bg-gradient-to-r from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
+
+                          {/* Right Gradient */}
+                          <div className="absolute inset-y-0 right-0 w-1/5 z-10 pointer-events-none bg-gradient-to-l from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
+
+                          {/* Top Gradient */}
+                          <div className="absolute inset-x-0 top-0 h-1/5 z-10 pointer-events-none bg-gradient-to-b from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
+
+                          {/* Bottom Gradient */}
+                          <div className="absolute inset-x-0 bottom-0 h-1/5 z-10 pointer-events-none bg-gradient-to-t from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
                         </>
                       )}
                     </div>
