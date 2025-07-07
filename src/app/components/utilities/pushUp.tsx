@@ -30,7 +30,7 @@ export default function BackToTop() {
       } else {
         clearInterval(scrollInterval);
       }
-    }, 15);
+    }, 25);
   };
 
   return (

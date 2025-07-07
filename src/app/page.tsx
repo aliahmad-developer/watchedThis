@@ -1,8 +1,11 @@
 import "./globals.css";
-import Navbar from "./components/navbar/page";
+import SpotLight from "./components/spotlight/spotlightSection";
 export default function Home() {
   return (
     <>
+      <div>
+        <SpotLight />
+      </div>
     </>
   );
 }
