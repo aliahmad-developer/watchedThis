@@ -9,28 +9,14 @@ import {
   faAngleRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useState, useRef } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { MediaItem } from "./types";
 
-interface MediaItem {
-  id: number;
-  title?: string;
-  name?: string;
-  overview: string;
-  media_type: string;
-  backdrop_path: string;
-  poster_path?: string;
-  release_date?: string;
-  first_air_date?: string;
-  runtime?: number;
-  episode_run_time?: number[];
-}
-
-interface PopularSpotlightSliderProps {
-  apiEndpoint?: string;
+interface Props {
+  items: MediaItem[];
   slideDuration?: number;
-  maxItems?: number;
   className?: string;
   height?: number | string;
   showNavigation?: boolean;
@@ -40,63 +26,33 @@ interface PopularSpotlightSliderProps {
 }
 
 function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
+  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
 }
 
-export default function PopularSpotlightSlider({
-  apiEndpoint = "/api/spotLight",
+export default function PopularSpotlightSliderClient({
+  items,
   slideDuration = 5000,
-  maxItems = 10,
   className = "",
   height = "420px",
   showNavigation = true,
   showSpotlightNumber = true,
   autoPlay = true,
   showOnMobile = true,
-}: PopularSpotlightSliderProps) {
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [displayItems, setDisplayItems] = useState<MediaItem[]>([]);
+}: Props) {
   const [index, setIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
 
+  const displayItems = [items[items.length - 1], ...items, items[0]];
+  const current = items[index - 1] || items[0];
+
   useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    const checkIfMobile = () => setIsMobile(window.innerWidth < 768);
     checkIfMobile();
     window.addEventListener("resize", checkIfMobile);
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(apiEndpoint);
-        const data = await response.json();
-        if (data.results && data.results.length > 0) {
-          const limitedResults = data.results.slice(0, maxItems);
-          const clonedItems = [
-            limitedResults[limitedResults.length - 1],
-            ...limitedResults,
-            limitedResults[0],
-          ];
-          setItems(limitedResults);
-          setDisplayItems(clonedItems);
-        }
-      } catch (error) {
-        console.error("Error fetching spotlight data:", error);
-      }
-    };
-    fetchData();
-  }, [apiEndpoint, maxItems]);
-
-  const current = items[index - 1] || items[0];
 
   const next = () => {
     if (isTransitioning || displayItems.length <= 1) return;
@@ -137,12 +93,11 @@ export default function PopularSpotlightSlider({
     return `${minutes}m`;
   };
 
-  if (!current || items.length === 0 || (isMobile && !showOnMobile))
-    return null;
+  if (!current || items.length === 0 || (isMobile && !showOnMobile)) return null;
 
   return (
     <div
-      className={`relative w-full max-w-screen-2xl mx-auto overflow-hidden shadow-xl text-white bg-light-bg dark:bg-dark-bg ${className}`}
+      className={`relative w-full max-w-screen-2xl mx-auto overflow-hidden border-none text-white bg-light-bg dark:bg-dark-bg ${className}`}
       style={{
         height: typeof height === "number" ? `${height}px` : height,
       }}
@@ -196,7 +151,11 @@ export default function PopularSpotlightSlider({
                           sizes="100vw"
                           priority={item.id === current.id}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                        <div className="absolute inset-y-0 left-0 w-1/5 bg-gradient-to-r from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
+                        <div className="absolute inset-y-0 right-0 w-1/5 bg-gradient-to-l from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
+                        <div className="absolute inset-x-0 top-0 h-1/5 bg-gradient-to-b from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
+                        <div className="absolute inset-x-0 bottom-0 h-1/5 bg-gradient-to-t from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
+
                         <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
                           <div className="space-y-3">
                             {showSpotlightNumber && (
@@ -213,46 +172,6 @@ export default function PopularSpotlightSlider({
                             <h2 className="text-2xl font-bold text-white">
                               {itemTitle}
                             </h2>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-white/80">
-                              <div className="inline-flex items-center gap-1">
-                                <FontAwesomeIcon
-                                  icon={faCirclePlay}
-                                  className="w-3 h-3"
-                                />
-                                <span>{itemMediaType.toUpperCase()}</span>
-                              </div>
-                              {itemDuration && (
-                                <div className="inline-flex items-center gap-1">
-                                  <FontAwesomeIcon
-                                    icon={faClock}
-                                    className="w-3 h-3"
-                                  />
-                                  <span>{itemDuration}</span>
-                                </div>
-                              )}
-                              <div className="inline-flex items-center gap-1">
-                                <FontAwesomeIcon
-                                  icon={faCalendar}
-                                  className="w-3 h-3"
-                                />
-                                <span>
-                                  {new Date(itemDate).toLocaleDateString(
-                                    "en-US",
-                                    {
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                    }
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="relative">
-                              <p className="text-sm lg:text-base line-clamp-2 lg:line-clamp-3 opacity-90 text-light-body-text dark:text-dark-body-text relative z-10 bg-gradient-to-r from-light-bg/80 to-transparent dark:from-dark-bg/80 pr-8">
-                                {item.overview}
-                              </p>
-                            </div>
-
                             <div className="flex gap-2 pt-2">
                               <Link
                                 href={itemLinkHref}

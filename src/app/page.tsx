@@ -1,10 +1,10 @@
 import "./globals.css";
-import SpotLight from "./components/spotlight/spotlightSection";
+import SpotLightServer from './components/spotlight/spotLightServer.tsx'
 export default function Home() {
   return (
     <>
       <div>
-        <SpotLight />
+        <SpotLightServer/>
         Trending
         <div className="p-100"></div>
       </div>
