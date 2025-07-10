@@ -9,7 +9,7 @@ export default function BackToTop() {
 
   useEffect(() => {
     const toggleVisibility = () => {
-      if (window.scrollY > 0) {
+      if (window.scrollY > 200) {
         setIsVisible(true);
       } else {
         setIsVisible(false);
@@ -21,7 +21,7 @@ export default function BackToTop() {
   }, []);
 
   const scrollToTop = () => {
-    const scrollDuration = 350; // Duration in milliseconds (1 second)
+    const scrollDuration = 250; // Duration in milliseconds (1 second)
     const scrollStep = -window.scrollY / (scrollDuration / 15);
 
     const scrollInterval = setInterval(() => {

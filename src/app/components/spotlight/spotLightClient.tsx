@@ -8,6 +8,7 @@ import {
   faPlay,
   faAngleRight,
 } from "@fortawesome/free-solid-svg-icons";
+import { useSwipeable } from "react-swipeable";
 import { useEffect, useState, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
@@ -26,7 +27,11 @@ interface Props {
 }
 
 function slugify(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
 }
 
 export default function PopularSpotlightSliderClient({
@@ -45,6 +50,18 @@ export default function PopularSpotlightSliderClient({
 
   const displayItems = [items[items.length - 1], ...items, items[0]];
   const current = items[index - 1] || items[0];
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      next();
+    },
+    onSwipedRight: () => {
+      prev();
+    },
+    delta: 10,
+    trackTouch: true,
+    preventScrollOnSwipe: true,
+  });
 
   const next = () => {
     if (isTransitioning || displayItems.length <= 1) return;
@@ -69,7 +86,6 @@ export default function PopularSpotlightSliderClient({
       }, 500);
     }
   };
-
   useEffect(() => {
     if (!autoPlay) return;
     const timer = setInterval(() => next(), slideDuration);
@@ -90,11 +106,13 @@ export default function PopularSpotlightSliderClient({
   return (
     <div
       className={`relative w-full max-w-screen-2xl mx-auto overflow-hidden border-none text-white bg-light-bg dark:bg-dark-bg ${className}`}
+      {...swipeHandlers}
       style={{
+        touchAction: "pan-y", // ✅ Prevents native swipe-back
         height: typeof height === "number" ? `${height}px` : height,
       }}
     >
-      <div className="relative w-full h-full overflow-hidden">
+      <div className="relative w-full h-full overflow-hidden pointer-none">
         <div
           ref={sliderRef}
           className="flex transition-transform duration-500 ease-in-out h-full"
@@ -134,13 +152,14 @@ export default function PopularSpotlightSliderClient({
                   {item.backdrop_path && (
                     <>
                       <Image
+                        draggable={false}
                         src={`https://image.tmdb.org/t/p/w1280${item.backdrop_path}`}
                         alt={itemTitle}
                         fill
                         className={`object-cover transition-opacity duration-700 ${
                           current.id === item.id ? "opacity-100" : "opacity-0"
                         }`}
-                        sizes="100vw"
+                        sizes="(min-width: 768px) 100vw, 100vw"
                         priority={item.id === current.id}
                       />
                       <div className="absolute inset-y-0 left-0 w-1/5 bg-gradient-to-r from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
@@ -268,13 +287,12 @@ export default function PopularSpotlightSliderClient({
                     {item.backdrop_path && (
                       <>
                         <Image
+                          draggable={false}
                           src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
                           alt={itemTitle}
                           fill
                           className={`object-cover object-right transition-opacity duration-700 ${
-                            current.id === item.id
-                              ? "opacity-100"
-                              : "opacity-0"
+                            current.id === item.id ? "opacity-100" : "opacity-0"
                           }`}
                           sizes="50vw"
                           priority={item.id === current.id}
