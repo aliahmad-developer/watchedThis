@@ -20,6 +20,7 @@ interface Props {
   slideDuration?: number;
   className?: string;
   height?: number | string;
+  mobileHeight?: number | string; // New prop for mobile height
   showNavigation?: boolean;
   showSpotlightNumber?: boolean;
   autoPlay?: boolean;
@@ -39,6 +40,7 @@ export default function PopularSpotlightSliderClient({
   slideDuration = 5000,
   className = "",
   height = "420px",
+  mobileHeight = "280px", // Default mobile height
   showNavigation = true,
   showSpotlightNumber = true,
   autoPlay = true,
@@ -47,6 +49,16 @@ export default function PopularSpotlightSliderClient({
   const [index, setIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const displayItems = [items[items.length - 1], ...items, items[0]];
   const current = items[index - 1] || items[0];
@@ -86,6 +98,7 @@ export default function PopularSpotlightSliderClient({
       }, 500);
     }
   };
+
   useEffect(() => {
     if (!autoPlay) return;
     const timer = setInterval(() => next(), slideDuration);
@@ -108,8 +121,10 @@ export default function PopularSpotlightSliderClient({
       className={`relative w-full max-w-screen-2xl mx-auto overflow-hidden border-none text-white bg-light-bg dark:bg-dark-bg ${className}`}
       {...swipeHandlers}
       style={{
-        touchAction: "pan-y", // ✅ Prevents native swipe-back
-        height: typeof height === "number" ? `${height}px` : height,
+        touchAction: "pan-y",
+        height: isMobile 
+          ? (typeof mobileHeight === "number" ? `${mobileHeight}px` : mobileHeight)
+          : (typeof height === "number" ? `${height}px` : height),
       }}
     >
       <div className="relative w-full h-full overflow-hidden pointer-none">
@@ -167,10 +182,10 @@ export default function PopularSpotlightSliderClient({
                       <div className="absolute inset-x-0 top-0 h-1/5 bg-gradient-to-b from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
                       <div className="absolute inset-x-0 bottom-0 h-1/5 bg-gradient-to-t from-[#f8f9fa] to-transparent dark:from-[#1a1a1a]" />
 
-                      <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-                        <div className="space-y-3">
+                      <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+                        <div className="space-y-2">
                           {showSpotlightNumber && (
-                            <div className="text-sm font-medium text-light-accent">
+                            <div className="text-xs font-medium text-light-accent">
                               #
                               {i === 0
                                 ? items.length
@@ -180,28 +195,28 @@ export default function PopularSpotlightSliderClient({
                               Spotlight
                             </div>
                           )}
-                          <h2 className="text-2xl font-bold text-white">
+                          <h2 className="text-xl font-bold text-white">
                             {itemTitle}
                           </h2>
-                          <div className="flex gap-2 pt-2">
+                          <div className="flex gap-2 pt-1">
                             <Link
                               href={itemLinkHref}
-                              className="px-3 py-1.5 text-sm rounded-full font-medium flex items-center gap-1 bg-light-btn-bg hover:bg-light-btn-bg-hover text-light-btn-text dark:bg-dark-btn-bg dark:hover:bg-dark-btn-bg-hover dark:text-dark-btn-text"
+                              className="px-3 py-1 text-xs rounded-full font-medium flex items-center gap-1 bg-light-btn-bg hover:bg-light-btn-bg-hover text-light-btn-text dark:bg-dark-btn-bg dark:hover:bg-dark-btn-bg-hover dark:text-dark-btn-text"
                             >
                               <FontAwesomeIcon
                                 icon={faPlay}
-                                className="w-4 h-4"
+                                className="w-3 h-3"
                               />
                               Watch
                             </Link>
                             <Link
                               href={itemLinkHref}
-                              className="px-3 py-1.5 text-sm rounded-full font-medium flex items-center gap-1 bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.2)] text-white"
+                              className="px-3 py-1 text-xs rounded-full font-medium flex items-center gap-1 bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.2)] text-white"
                             >
                               Details
                               <FontAwesomeIcon
                                 icon={faAngleRight}
-                                className="w-3 h-3"
+                                className="w-2 h-2"
                               />
                             </Link>
                           </div>
@@ -315,20 +330,20 @@ export default function PopularSpotlightSliderClient({
       {showNavigation && (
         <>
           {/* Mobile Navigation */}
-          <div className="md:hidden absolute bottom-3 right-3 flex flex-row gap-2 z-30">
+          <div className="md:hidden absolute bottom-2 right-2 flex flex-row gap-1 z-30">
             <button
               onClick={prev}
-              className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition"
+              className="bg-white/20 hover:bg-white/30 p-1 rounded-full transition"
               aria-label="Previous slide"
             >
-              <ChevronLeft className="w-4 h-4 text-white" />
+              <ChevronLeft className="w-3 h-3 text-white" />
             </button>
             <button
               onClick={next}
-              className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition"
+              className="bg-white/20 hover:bg-white/30 p-1 rounded-full transition"
               aria-label="Next slide"
             >
-              <ChevronRight className="w-4 h-4 text-white" />
+              <ChevronRight className="w-3 h-3 text-white" />
             </button>
           </div>
 
