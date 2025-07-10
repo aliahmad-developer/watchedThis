@@ -110,7 +110,7 @@ export default function Navbar() {
 
       {/* SEARCH INPUT - Overlay positioned absolutely below navbar */}
       {hasMounted && searchVisible && (
-        <div className="fixed left-0 right-0 top-16 sm:top-[76px] z-40 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-3 border-t border-light-border dark:border-dark-border">
+        <div className="absolute left-0 right-0 top-16 sm:top-[76px] z-40 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-3 border-t border-light-border dark:border-dark-border">
           <SearchInput
             clearInput={() => setSearchQuery("")}
             searchQuery={searchQuery}
