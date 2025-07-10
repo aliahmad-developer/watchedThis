@@ -1,6 +1,7 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import useIsMobile from "../hooks/isMobile";
 import {
   faCalendar,
   faClock,
@@ -44,21 +45,11 @@ export default function PopularSpotlightSliderClient({
   showNavigation = true,
   showSpotlightNumber = true,
   autoPlay = true,
-  showOnMobile = true,
 }: Props) {
   const [index, setIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const isMobile = useIsMobile();
 
   const displayItems = [items[items.length - 1], ...items, items[0]];
   const current = items[index - 1] || items[0];
@@ -122,9 +113,13 @@ export default function PopularSpotlightSliderClient({
       {...swipeHandlers}
       style={{
         touchAction: "pan-y",
-        height: isMobile 
-          ? (typeof mobileHeight === "number" ? `${mobileHeight}px` : mobileHeight)
-          : (typeof height === "number" ? `${height}px` : height),
+        height: isMobile
+          ? typeof mobileHeight === "number"
+            ? `${mobileHeight}px`
+            : mobileHeight
+          : typeof height === "number"
+          ? `${height}px`
+          : height,
       }}
     >
       <div className="relative w-full h-full overflow-hidden pointer-none">
@@ -228,7 +223,7 @@ export default function PopularSpotlightSliderClient({
 
                 {/* Desktop View - hidden on mobile */}
                 <div className="hidden md:flex w-full h-full">
-                  <div className="flex items-center px-8 lg:px-16 w-full md:w-1/2 z-20 relative">
+                  <div className="flex items-center px-8 lg:px-10 w-full md:w-1/2 z-20 relative">
                     <div className="space-y-4 lg:space-y-5 max-w-xl">
                       {showSpotlightNumber && (
                         <div className="text-sm font-medium text-light-accent">

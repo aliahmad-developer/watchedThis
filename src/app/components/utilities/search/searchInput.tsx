@@ -74,7 +74,7 @@ export default function SearchInput({
           type="button"
           onClick={handleClear}
           aria-label="Clear search"
-          className="absolute right-10 md:right-12 p-1 text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text"
+          className="bg-transparent absolute right-10 md:right-12 p-1 text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text"
         >
           <FontAwesomeIcon icon={faTimes} className="text-base" />
         </button>

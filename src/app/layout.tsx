@@ -41,7 +41,7 @@ export default function RootLayout({
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Navbar />
-          <>{children}</>
+          <div>{children}</div>
         </ThemeProvider>
         <PushUp />
       </body>
