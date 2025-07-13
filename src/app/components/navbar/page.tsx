@@ -20,9 +20,22 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [hasMounted, setHasMounted] = useState(false);
 
+  // Reset search state on route changes
+  useEffect(() => {
+    setSearchVisible(false);
+    setSearchQuery("");
+  }, [pathname]);
+
+  // Mount state for conditional rendering
   useEffect(() => {
     setHasMounted(true);
-  }, []);
+    
+    // Prefetch routes for faster navigation
+    router.prefetch("/search");
+    router.prefetch("/random");
+    router.prefetch("/spinner");
+    router.prefetch("/find");
+  }, [router]);
 
   const navItems = [
     { label: "Random", icon: faShuffle, href: "/random" },
@@ -34,9 +47,14 @@ export default function Navbar() {
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    const query = searchQuery.trim();
+    if (query) {
+      // Clear UI state immediately
+      setSearchQuery("");
       setSearchVisible(false);
+      
+      // Navigate without artificial delay
+      router.push(`/search?q=${encodeURIComponent(query)}`);
     }
   };
 
@@ -45,7 +63,8 @@ export default function Navbar() {
 
   const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    window.location.href = "/random";
+    // Use client-side navigation instead of full reload
+    router.push("/random");
   };
 
   return (
@@ -71,7 +90,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Center Navigation - Hidden on small screens when search is visible */}
+          {/* Center Navigation */}
           <div
             className={`hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-[260px]`}
           >
@@ -108,7 +127,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* SEARCH INPUT - Overlay positioned absolutely below navbar */}
+      {/* SEARCH INPUT */}
       {hasMounted && searchVisible && (
         <div className="absolute left-0 right-0 top-16 sm:top-[76px] z-40 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-3 border-t border-light-border dark:border-dark-border">
           <SearchInput

@@ -9,7 +9,7 @@ interface SearchInputProps {
   onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
   className?: string;
   clearInput?: () => void;
-  showClearButton?: boolean; // New prop to control clear button visibility
+  showClearButton?: boolean;
 }
 
 export default function SearchInput({
@@ -18,14 +18,9 @@ export default function SearchInput({
   onInputChange,
   clearInput,
   className = "",
-  showClearButton = true, // Default to true
+  showClearButton = true,
 }: SearchInputProps) {
   const [isFocused, setIsFocused] = useState(false);
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    onSearchSubmit(e);
-  };
 
   const handleClear = () => {
     if (clearInput) {
@@ -35,7 +30,7 @@ export default function SearchInput({
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={onSearchSubmit}  // Use the prop directly
       className={`relative flex items-center w-full ${className}`}
     >
       <div className="relative flex-1 flex items-center">
@@ -57,18 +52,15 @@ export default function SearchInput({
           aria-label="Search input"
           autoFocus
         />
-        
-        {/* Search icon - always visible */}
-        <button 
-          type="submit" 
-          aria-label="Search" 
+        <button
+          type="submit"
+          aria-label="Search"
           className="text-2xl bg-transparent absolute right-3 text-lg text-light-secondary-text dark:text-dark-secondary-text"
         >
           <FontAwesomeIcon icon={faSearch} />
         </button>
       </div>
 
-      {/* Clear button - only visible when there's text and showClearButton is true */}
       {showClearButton && searchQuery && (
         <button
           type="button"
