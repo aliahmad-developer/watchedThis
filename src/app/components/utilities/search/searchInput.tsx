@@ -1,15 +1,34 @@
+/* --- Updated SearchInput.tsx --- */
 "use client";
-import { useState, FormEvent, ChangeEvent } from "react";
+
+import {
+  FormEvent,
+  ChangeEvent,
+} from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
+
+export interface MediaResult {
+  id: number;
+  media_type: string;
+  title?: string;
+  name?: string;
+  original_name?: string;
+  release_date?: string;
+  poster_path?: string;
+  runtime?: number;
+}
 
 interface SearchInputProps {
   searchQuery: string;
   onSearchSubmit: (e: FormEvent<HTMLFormElement>) => void;
   onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  className?: string;
   clearInput?: () => void;
   showClearButton?: boolean;
+  className?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  inputRef?: (el: HTMLInputElement | null) => void;
 }
 
 export default function SearchInput({
@@ -19,43 +38,32 @@ export default function SearchInput({
   clearInput,
   className = "",
   showClearButton = true,
+  onFocus,
+  onBlur,
+  inputRef,
 }: SearchInputProps) {
-  const [isFocused, setIsFocused] = useState(false);
-
-  const handleClear = () => {
-    if (clearInput) {
-      clearInput();
-    }
-  };
-
   return (
     <form
-      onSubmit={onSearchSubmit}  // Use the prop directly
+      onSubmit={onSearchSubmit}
       className={`relative flex items-center w-full ${className}`}
     >
       <div className="relative flex-1 flex items-center">
         <input
+          ref={inputRef || undefined}
           type="text"
           value={searchQuery}
           onChange={onInputChange}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           required
-          className="w-full p-3 md:p-3.5 rounded-lg 
-            border border-light-border dark:border-dark-border 
-            bg-light-bg dark:bg-dark-bg 
-            text-light-body-text dark:text-dark-body-text
-            placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text
-            focus:outline-none
-            pr-10"
+          className="w-full p-3 md:p-3.5 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-body-text dark:text-dark-body-text placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text focus:outline-none pr-10"
           placeholder="Search movies, TV shows..."
           aria-label="Search input"
-          autoFocus
         />
         <button
           type="submit"
           aria-label="Search"
-          className="text-2xl bg-transparent absolute right-3 text-lg text-light-secondary-text dark:text-dark-secondary-text"
+          className="absolute right-3 text-lg text-black  dark:text-white bg-transparent hover:text-light-accent dark:hover:text-dark-accent"
         >
           <FontAwesomeIcon icon={faSearch} />
         </button>
@@ -64,9 +72,9 @@ export default function SearchInput({
       {showClearButton && searchQuery && (
         <button
           type="button"
-          onClick={handleClear}
+          onClick={clearInput}
           aria-label="Clear search"
-          className="bg-transparent absolute right-10 md:right-12 p-1 text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text"
+          className="absolute right-10 md:right-12 p-1 text-black dark:text-white bg-transparent hover:text-gray-400"
         >
           <FontAwesomeIcon icon={faTimes} className="text-base" />
         </button>

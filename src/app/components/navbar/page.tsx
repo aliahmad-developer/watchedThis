@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, FormEvent, ChangeEvent, useRef } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,30 +12,120 @@ import {
 import Toggle from "../utilities/toggle";
 import SearchInput from "../utilities/search/searchInput";
 import SearchButton from "../utilities/search/searchButton";
+import SearchResultsDropdown from "../utilities/search/searchResultsDropdown";
+import { MediaResult } from "../utilities/search/searchInput";
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<MediaResult[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Reset search state on route changes
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Route change reset
   useEffect(() => {
     setSearchVisible(false);
     setSearchQuery("");
+    setSearchResults([]);
   }, [pathname]);
 
-  // Mount state for conditional rendering
+  // Mount + prefetch
   useEffect(() => {
     setHasMounted(true);
-    
-    // Prefetch routes for faster navigation
     router.prefetch("/search");
     router.prefetch("/random");
     router.prefetch("/spinner");
     router.prefetch("/find");
   }, [router]);
+
+  // Debounced search
+  useEffect(() => {
+    const fetchResults = async () => {
+      if (searchQuery.length < 2) {
+        setSearchResults([]);
+        return;
+      }
+
+      setIsSearchLoading(true);
+      try {
+        const res = await fetch(
+          `/api/search?query=${encodeURIComponent(searchQuery)}`
+        );
+        const data = await res.json();
+        const list = Array.isArray(data.results) ? data.results : [];
+        setSearchResults(list.slice(0, 5));
+      } catch (err) {
+        console.error("Search error:", err);
+        setSearchResults([]);
+      } finally {
+        setIsSearchLoading(false);
+      }
+    };
+
+    const delayDebounce = setTimeout(fetchResults, 300);
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsFocused(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearchToggle = () => {
+    setSearchVisible((prev) => !prev);
+    if (!searchVisible) {
+      setSearchQuery("");
+      setSearchResults([]);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  };
+
+  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const query = searchQuery.trim();
+    if (query) {
+      setSearchQuery("");
+      setSearchVisible(false);
+      router.push(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleClearInput = () => {
+    setSearchQuery("");
+    setSearchResults([]);
+    inputRef.current?.focus();
+  };
+
+  const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    router.push("/random");
+  };
+
+  const handleCloseDropdown = () => {
+    setIsFocused(false);
+  };
 
   const navItems = [
     { label: "Random", icon: faShuffle, href: "/random" },
@@ -43,36 +133,10 @@ export default function Navbar() {
     { label: "Find", icon: faMagnifyingGlass, href: "/find" },
   ];
 
-  const handleSearchToggle = () => setSearchVisible((prev) => !prev);
-
-  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    if (query) {
-      // Clear UI state immediately
-      setSearchQuery("");
-      setSearchVisible(false);
-      
-      // Navigate without artificial delay
-      router.push(`/search?q=${encodeURIComponent(query)}`);
-    }
-  };
-
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) =>
-    setSearchQuery(e.target.value);
-
-  const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    // Use client-side navigation instead of full reload
-    router.push("/random");
-  };
-
   return (
     <>
-      {/* NAVBAR */}
       <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-3 sticky top-0 z-50">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Left Section */}
           <div className="flex items-center justify-between w-full sm:w-auto">
             <Link
               href="/"
@@ -84,16 +148,12 @@ export default function Navbar() {
               <SearchButton
                 isActive={searchVisible}
                 onClick={handleSearchToggle}
-                className="text-base text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-accent"
               />
               <Toggle />
             </div>
           </div>
 
-          {/* Center Navigation */}
-          <div
-            className={`hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-[260px]`}
-          >
+          <div className="hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-[260px]">
             <div className="flex justify-evenly items-center gap-4 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl py-2 px-3 shadow-sm text-sm sm:text-base">
               {navItems.map((item) => (
                 <Link
@@ -115,27 +175,48 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Right Section */}
           <div className="hidden sm:flex items-center gap-4">
             <SearchButton
               isActive={searchVisible}
               onClick={handleSearchToggle}
-              className="text-lg text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-accent"
             />
             <Toggle />
           </div>
         </div>
       </nav>
 
-      {/* SEARCH INPUT */}
+      {/* Search Input */}
       {hasMounted && searchVisible && (
         <div className="absolute left-0 right-0 top-16 sm:top-[76px] z-40 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-3 border-t border-light-border dark:border-dark-border">
-          <SearchInput
-            clearInput={() => setSearchQuery("")}
+          <div className="relative w-full">
+            <SearchInput
+              clearInput={handleClearInput}
+              searchQuery={searchQuery}
+              onSearchSubmit={handleSearchSubmit}
+              onInputChange={handleInputChange}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+              className="w-full"
+              inputRef={(el) => {
+                inputRef.current = el;
+                if (el) el.focus();
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Search Results Dropdown */}
+      {searchVisible && isFocused && searchQuery.length >= 2 && (
+        <div 
+          ref={dropdownRef}
+          className="absolute left-0 right-0 top-[120px] sm:top-[140px] z-40 px-4"
+        >
+          <SearchResultsDropdown
+            results={searchResults}
             searchQuery={searchQuery}
-            onSearchSubmit={handleSearchSubmit}
-            onInputChange={handleInputChange}
-            className="w-full"
+            isLoading={isSearchLoading}
+            onClose={handleCloseDropdown}
           />
         </div>
       )}
