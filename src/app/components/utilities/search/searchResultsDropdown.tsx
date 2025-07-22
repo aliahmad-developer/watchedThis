@@ -45,13 +45,12 @@ export default function SearchResultsDropdown({
             Loading...
           </div>
         ) : results.length > 0 ? (
-          results.map((item) => {
+          results.map((item, index) => {
             const title = item.title || item.name || "Untitled";
             const year = item.release_date?.slice(0, 4) ?? "—";
             const slug = createSlug(title);
             const link = `/random/${item.media_type}/${slug}/${item.id}`;
 
-            // Real runtime if available
             const runtime =
               item.runtime && item.runtime > 0
                 ? formatRuntime(item.runtime)
@@ -62,39 +61,45 @@ export default function SearchResultsDropdown({
                 : "";
 
             return (
-              <Link
-                href={link}
-                key={item.id}
-                onClick={onClose}
-                className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
-              >
-                <div className="flex items-center gap-3 px-4 py-3">
-                  {item.poster_path ? (
-                    <img
-                      src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
-                      alt={title}
-                      className="w-10 h-14 rounded object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-10 h-14 bg-light-disabled dark:bg-dark-disabled rounded" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-light-body-text dark:text-dark-body-text text-sm font-medium line-clamp-1">
-                      {title}
-                    </div>
-                    <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1">
-                      {year} • {formatMediaType(item.media_type)}
-                      {runtime && ` • ${runtime}`}
-                    </div>
-                    {item.original_name && (
-                      <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
-                        {item.original_name}
-                      </div>
+              <div key={item.id}>
+                <Link
+                  href={link}
+                  onClick={onClose}
+                  className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
+                >
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    {item.poster_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                        alt={title}
+                        className="w-10 h-14 rounded object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-10 h-14 bg-light-disabled dark:bg-dark-disabled rounded" />
                     )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-light-body-text dark:text-dark-body-text text-sm font-medium line-clamp-1">
+                        {title}
+                      </div>
+                      {item.original_name && (
+                        <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
+                          {item.original_name}
+                        </div>
+                      )}
+                      <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1">
+                        {year} • {formatMediaType(item.media_type)}
+                        {runtime && ` • ${runtime}`}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+
+                {/* Separator line except after the last item */}
+                {index < results.length - 1 && (
+                  <div className="border-t border-light-border dark:border-dark-border mx-4" />
+                )}
+              </div>
             );
           })
         ) : (
@@ -109,7 +114,7 @@ export default function SearchResultsDropdown({
             onClick={onClose}
             className="block text-center px-4 py-3 bg-light-btn-bg text-light-btn-text font-medium hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text transition-colors"
           >
-            View all results →
+            View all results
           </Link>
         )}
       </div>

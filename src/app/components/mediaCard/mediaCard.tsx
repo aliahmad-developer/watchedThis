@@ -1,4 +1,4 @@
-import MediaPoster from "../components/randomMedia/mediaPoster"; // Adjust path if needed
+import MediaPoster from "../randomMedia/mediaPoster"; // Adjust path if needed
 
 interface MediaCardProps {
   item: {

@@ -1,5 +1,5 @@
 import { DetailItem } from "./DetailItem";
-import { GenreTags } from "./GenreTags";
+import  GenreTags from "./GenreTags";
 import { ProductionList } from "./ProductionList";
 
 interface MediaDetailsGridProps {

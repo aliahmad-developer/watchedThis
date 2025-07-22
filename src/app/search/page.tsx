@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Loading from "../components/utilities/loading";
-import MediaCard from "./mediaCard";
+import MediaCard from "../components/mediaCard/mediaCard";
 
 export default function SearchClientPage() {
   const router = useRouter();

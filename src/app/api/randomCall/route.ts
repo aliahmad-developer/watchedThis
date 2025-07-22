@@ -11,7 +11,7 @@ export async function GET() {
 
   while (!data && attempts < 10) {
     const randomId = Math.floor(Math.random() * 100000); // TMDb has valid IDs up to ~100000
-    const url = `https://api.themoviedb.org/3/${media_type}/${randomId}?api_key=${TMDB_API_KEY}&language=en-US`;
+    const url = `https://api.themoviedb.org/3/${media_type}/${randomId}?api_key=${TMDB_API_KEY}&language=en-US}&sort_by=popularity.desc`;
 
     try {
       const res = await fetch(url);
