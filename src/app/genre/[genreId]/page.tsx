@@ -92,8 +92,8 @@ export default function GenrePage() {
           onClick={() => setMediaType("movie")}
           className={`px-6 py-2 rounded-full transition-colors ${
             mediaType === "movie"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+              ? "bg-light-accent text-white dark:bg-dark-accent dark:text-dark-btn-text"
+              : "bg-light-card hover:bg-light-disabled dark:bg-dark-card dark:hover:bg-dark-border text-black dark:text-white"
           }`}
         >
           Movies
@@ -102,8 +102,8 @@ export default function GenrePage() {
           onClick={() => setMediaType("tv")}
           className={`px-6 py-2 rounded-full transition-colors ${
             mediaType === "tv"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+              ? "bg-light-accent text-white dark:bg-dark-accent dark:text-dark-btn-text"
+              : "bg-light-card hover:bg-light-disabled dark:bg-dark-card dark:hover:bg-dark-border text-black dark:text-white"
           }`}
         >
           TV Shows
@@ -131,7 +131,8 @@ export default function GenrePage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2">
         {mediaItems.map((item) => {
-          const title = mediaType === "movie" ? item.title ?? "" : item.name ?? "";
+          const title =
+            mediaType === "movie" ? item.title ?? "" : item.name ?? "";
           const slug = slugify(title, { lower: true, strict: true });
 
           return (
@@ -150,8 +151,11 @@ export default function GenrePage() {
 
       {mediaItems.length === 0 && !loading && !error && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No {mediaType === "movie" ? "movies" : "TV shows"} found in the {genreName} genre.
-          <p className="mt-2 text-sm">Try switching between movies and TV shows.</p>
+          No {mediaType === "movie" ? "movies" : "TV shows"} found in the{" "}
+          {genreName} genre.
+          <p className="mt-2 text-sm">
+            Try switching between movies and TV shows.
+          </p>
         </div>
       )}
     </div>
