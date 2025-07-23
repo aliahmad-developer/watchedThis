@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import slugify from "slugify";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 
 interface MediaItem {
@@ -44,13 +45,21 @@ export default function GenrePage() {
         }
 
         const data = await response.json();
-        setMediaItems(data.results || []);
 
-        // Get genre name from API response
+        // Deduplicate items using a Map
+        const uniqueItemsMap = new Map<string, MediaItem>();
+        for (const item of data.results || []) {
+          const key = `${mediaType}-${item.id}`;
+          if (!uniqueItemsMap.has(key)) {
+            uniqueItemsMap.set(key, item);
+          }
+        }
+
+        setMediaItems(Array.from(uniqueItemsMap.values()));
+
         if (data.genreName) {
           setGenreName(data.genreName);
         } else {
-          // Fallback to slug-derived name if API doesn't provide
           const nameFromSlug = genreId.split("-").slice(1).join("-");
           setGenreName(
             nameFromSlug
@@ -69,19 +78,6 @@ export default function GenrePage() {
 
     fetchMediaByGenre();
   }, [genreId, mediaType]);
-
-
-  // Debug information
-  if (process.env.NODE_ENV === "development") {
-    console.log("Current state:", {
-      genreId,
-      mediaType,
-      loading,
-      error,
-      mediaItems,
-      genreName,
-    });
-  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -134,26 +130,28 @@ export default function GenrePage() {
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2">
-        {mediaItems.map((item) => (
-          <MediaCard
-            key={`${mediaType}-${item.id}`}
-            item={{
-              ...item,
-              media_type: mediaType,
-              title: mediaType === "movie" ? item.title : item.name,
-            }}
-            onClick={() => router.push(`/${mediaType}/${item.id}`)}
-          />
-        ))}
+        {mediaItems.map((item) => {
+          const title = mediaType === "movie" ? item.title ?? "" : item.name ?? "";
+          const slug = slugify(title, { lower: true, strict: true });
+
+          return (
+            <MediaCard
+              key={`${mediaType}-${item.id}`}
+              item={{
+                ...item,
+                media_type: mediaType,
+                title,
+              }}
+              onClick={() => router.push(`/${mediaType}/${slug}/${item.id}`)}
+            />
+          );
+        })}
       </div>
 
       {mediaItems.length === 0 && !loading && !error && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No {mediaType === "movie" ? "movies" : "TV shows"} found in the{" "}
-          {genreName} genre.
-          <p className="mt-2 text-sm">
-            Try switching between movies and TV shows.
-          </p>
+          No {mediaType === "movie" ? "movies" : "TV shows"} found in the {genreName} genre.
+          <p className="mt-2 text-sm">Try switching between movies and TV shows.</p>
         </div>
       )}
     </div>

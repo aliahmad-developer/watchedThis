@@ -30,29 +30,28 @@ export async function GET(
       });
     }
 
-    // Fetch media for this genre
-    const discoverUrl = new URL(`${BASE_URL}/discover/${mediaType}`);
-    discoverUrl.searchParams.set('api_key', API_KEY);
-    discoverUrl.searchParams.set('with_genres', genreId.toString());
-    discoverUrl.searchParams.set('sort_by', 'popularity.desc');
-    discoverUrl.searchParams.set('include_adult', 'false');
-    discoverUrl.searchParams.set('language', 'en-US');
-    discoverUrl.searchParams.set('page', '1');
+    // Fetch first 3 pages of results to increase item count
+    const allResults = [];
+    const maxPages = 3; // adjust as needed for more data
+    for (let page = 1; page <= maxPages; page++) {
+      const discoverUrl = new URL(`${BASE_URL}/discover/${mediaType}`);
+      discoverUrl.searchParams.set('api_key', API_KEY);
+      discoverUrl.searchParams.set('with_genres', genreId.toString());
+      discoverUrl.searchParams.set('sort_by', 'popularity.desc');
+      discoverUrl.searchParams.set('include_adult', 'false');
+      discoverUrl.searchParams.set('language', 'en-US');
+      discoverUrl.searchParams.set('page', page.toString());
 
-    const response = await fetch(discoverUrl.toString());
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.status_message || 'TMDB API request failed');
+      const response = await fetch(discoverUrl.toString());
+      if (!response.ok) break;
+      const pageData = await response.json();
+      allResults.push(...pageData.results);
     }
 
-    const data = await response.json();
-
     return NextResponse.json({
-      ...data,
+      results: allResults,
       genreName: genre.name,
     });
-
   } catch (error) {
     console.error('Genre API error:', error);
     return NextResponse.json(

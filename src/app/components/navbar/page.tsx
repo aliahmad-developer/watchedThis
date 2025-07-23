@@ -118,10 +118,11 @@ export default function Navbar() {
     inputRef.current?.focus();
   };
 
-  const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    router.push("/random");
-  };
+ const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  e.preventDefault();
+  // Always navigate to a fresh random page with timestamp
+  router.push(`/random?ts=${Date.now()}`);
+};
 
   const handleCloseDropdown = () => {
     setIsFocused(false);
@@ -208,7 +209,7 @@ export default function Navbar() {
 
       {/* Search Results Dropdown */}
       {searchVisible && isFocused && searchQuery.length >= 2 && (
-        <div 
+        <div
           ref={dropdownRef}
           className="absolute left-0 right-0 top-[120px] sm:top-[140px] z-40 px-4"
         >

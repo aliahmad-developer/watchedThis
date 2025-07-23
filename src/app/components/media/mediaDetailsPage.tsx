@@ -1,23 +1,26 @@
-//random/[media_type]/[media_name_slug]/[id]/page.tsx
 "use client";
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
-import Loading from "../../../../components/utilities/loading";
-import Desc from "../../../../components/randomMedia/desc";
+import Loading from "../utilities/loading";
+import Desc from "../randomMedia/desc";
 
-export default function SpecificRandomMediaPage({
-  params,
-}: {
-  params: Promise<{ media_type: string; media_name_slug: string; id: string }>;
-}) {
-  const { media_type, media_name_slug, id } = use(params);
+interface MediaDetailPageProps {
+  params: {
+    media_type: string;
+    media_name_slug: string;
+    id: string;
+  };
+  basePath?: string;
+}
+
+export default function MediaDetailPage({ params, basePath = "" }: MediaDetailPageProps) {
   const router = useRouter();
+  const { media_type, media_name_slug, id } = params; // Directly destructure params
 
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
+  
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -27,8 +30,6 @@ export default function SpecificRandomMediaPage({
       setError("Invalid URL parameters");
       return;
     }
-
-    if (isRedirecting) return;
 
     const fetchData = async () => {
       try {
@@ -40,9 +41,8 @@ export default function SpecificRandomMediaPage({
         setData(json);
 
         const expectedSlug = createSlug(json.title || json.name);
-        if (media_name_slug !== expectedSlug && !isRedirecting) {
-          setIsRedirecting(true);
-          router.replace(`/random/${media_type}/${expectedSlug}/${id}`);
+        if (media_name_slug !== expectedSlug) {
+          router.replace(`${basePath}/${media_type}/${expectedSlug}/${id}`);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load media");
@@ -50,7 +50,7 @@ export default function SpecificRandomMediaPage({
     };
 
     fetchData();
-  }, [media_type, media_name_slug, id, router, isRedirecting]);
+  }, [media_type, media_name_slug, id, router, basePath]);
 
   const createSlug = (str: string) =>
     str
@@ -81,10 +81,10 @@ export default function SpecificRandomMediaPage({
               {error}
             </p>
             <button
-              onClick={() => router.push("/random")}
+              onClick={() => router.push(basePath || "/")}
               className="px-6 py-2 bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text rounded-lg hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg transition"
             >
-              Try Another Random
+              {basePath.includes("random") ? "Try Another Random" : "Go Back"}
             </button>
           </div>
         </div>

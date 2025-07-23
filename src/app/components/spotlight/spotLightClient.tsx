@@ -138,7 +138,7 @@ export default function PopularSpotlightSliderClient({
               item.release_date || item.first_air_date || "Unknown";
             const itemMediaType = item.media_type.toLowerCase();
             const itemSlug = slugify(itemTitle);
-            const itemLinkHref = `/random/${itemMediaType}/${itemSlug}/${item.id}`;
+            const itemLinkHref = `/${itemMediaType}/${itemSlug}/${item.id}`;
 
             let itemDuration: string | null = null;
             if (typeof item.runtime === "number" && item.runtime > 0) {

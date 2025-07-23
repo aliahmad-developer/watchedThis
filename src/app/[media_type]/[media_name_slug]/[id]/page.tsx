@@ -1,23 +1,20 @@
-//random/[media_type]/[media_name_slug]/[id]/page.tsx
+//app\[media_type]\[media_name_slug]\[id]\page.tsx
 "use client";
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
-import Loading from "../../../../components/utilities/loading";
-import Desc from "../../../../components/randomMedia/desc";
-
+import Loading from "../../../components/utilities/loading";
+import Desc from "../../../components/randomMedia/desc";
 export default function SpecificRandomMediaPage({
   params,
 }: {
   params: Promise<{ media_type: string; media_name_slug: string; id: string }>;
 }) {
-  const { media_type, media_name_slug, id } = use(params);
   const router = useRouter();
+  const { media_type, media_name_slug, id } = React.use(params);
 
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -27,8 +24,6 @@ export default function SpecificRandomMediaPage({
       setError("Invalid URL parameters");
       return;
     }
-
-    if (isRedirecting) return;
 
     const fetchData = async () => {
       try {
@@ -40,9 +35,8 @@ export default function SpecificRandomMediaPage({
         setData(json);
 
         const expectedSlug = createSlug(json.title || json.name);
-        if (media_name_slug !== expectedSlug && !isRedirecting) {
-          setIsRedirecting(true);
-          router.replace(`/random/${media_type}/${expectedSlug}/${id}`);
+        if (media_name_slug !== expectedSlug) {
+          router.replace(`/${media_type}/${expectedSlug}/${id}`);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load media");
@@ -50,7 +44,7 @@ export default function SpecificRandomMediaPage({
     };
 
     fetchData();
-  }, [media_type, media_name_slug, id, router, isRedirecting]);
+  }, [media_type, media_name_slug, id, router]);
 
   const createSlug = (str: string) =>
     str
@@ -74,20 +68,6 @@ export default function SpecificRandomMediaPage({
             content="An error occurred while loading media details"
           />
         </Head>
-        <div className=" m-100 min-h-screen flex flex-col items-center justify-center p-4 bg-light-bg dark:bg-dark-bg">
-          <div className="max-w-md w-full bg-light-card dark:bg-dark-card p-8 rounded-lg shadow-md text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-            <p className="mb-6 text-light-body-text dark:text-dark-body-text">
-              {error}
-            </p>
-            <button
-              onClick={() => router.push("/random")}
-              className="px-6 py-2 bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text rounded-lg hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg transition"
-            >
-              Try Another Random
-            </button>
-          </div>
-        </div>
       </>
     );
   }
