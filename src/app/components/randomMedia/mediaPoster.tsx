@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -35,6 +35,7 @@ export default function MediaPoster({ data }: MediaPosterProps) {
       {/* Image with object-contain to fit full image in container */}
       {hasPoster && (
         <Image
+          draggable={false}
           src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
           alt={`Poster for ${displayTitle}`}
           fill
