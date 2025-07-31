@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
     // Limit to top 5 and get details for each (in parallel)
     const topResults = results
       .filter((r: any) => r.media_type === "movie" || r.media_type === "tv")
-      .slice(0, 5);
 
     const detailedResults = await Promise.all(
       topResults.map(async (item: any) => {

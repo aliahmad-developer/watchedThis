@@ -118,11 +118,11 @@ export default function Navbar() {
     inputRef.current?.focus();
   };
 
- const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-  e.preventDefault();
-  // Always navigate to a fresh random page with timestamp
-  router.push(`/random?ts=${Date.now()}`);
-};
+  const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    // Always navigate to a fresh random page with timestamp
+    router.push(`/random?ts=${Date.now()}`);
+  };
 
   const handleCloseDropdown = () => {
     setIsFocused(false);
@@ -136,26 +136,27 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-3 sticky top-0 z-50">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2 sticky top-0 z-50">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center justify-between w-full sm:w-auto">
             <Link
               href="/"
-              className="text-xl font-bold text-dark-accent whitespace-nowrap"
+              className="text-lg font-bold text-dark-accent whitespace-nowrap"
             >
               RandoMovie
             </Link>
-            <div className="flex items-center gap-3 sm:hidden">
+            <div className="flex items-center gap-2 sm:hidden">
               <SearchButton
                 isActive={searchVisible}
                 onClick={handleSearchToggle}
+                size="sm"
               />
-              <Toggle />
+              <Toggle size="sm" />
             </div>
           </div>
 
           <div className="hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-[260px]">
-            <div className="flex justify-evenly items-center gap-4 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl py-2 px-3 shadow-sm text-sm sm:text-base">
+            <div className="flex justify-evenly items-center gap-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1 px-2 shadow-sm text-xs sm:text-sm">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -169,26 +170,27 @@ export default function Navbar() {
                       : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
                   }`}
                 >
-                  <FontAwesomeIcon icon={item.icon} className="h-4 mb-1" />
+                  <FontAwesomeIcon icon={item.icon} className="h-3 mb-0.5" />
                   {item.label}
                 </Link>
               ))}
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2">
             <SearchButton
               isActive={searchVisible}
               onClick={handleSearchToggle}
+              size="sm"
             />
-            <Toggle />
+            <Toggle size="sm" />
           </div>
         </div>
       </nav>
 
       {/* Search Input */}
       {hasMounted && searchVisible && (
-        <div className="absolute left-0 right-0 top-16 sm:top-[76px] z-40 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-3 border-t border-light-border dark:border-dark-border">
+        <div className="absolute left-0 right-0 top-14 z-40 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
           <div className="relative w-full">
             <SearchInput
               clearInput={handleClearInput}
@@ -197,7 +199,7 @@ export default function Navbar() {
               onInputChange={handleInputChange}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-              className="w-full"
+              className="w-full text-sm"
               inputRef={(el) => {
                 inputRef.current = el;
                 if (el) el.focus();
@@ -211,7 +213,7 @@ export default function Navbar() {
       {searchVisible && isFocused && searchQuery.length >= 2 && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 right-0 top-[120px] sm:top-[140px] z-40 px-4"
+          className="absolute left-0 right-0 top-[104px] sm:top-[120px] z-40 px-4"
         >
           <SearchResultsDropdown
             results={searchResults}

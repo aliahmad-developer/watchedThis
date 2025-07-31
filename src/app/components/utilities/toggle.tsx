@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
-export default function ThemeToggle() {
+type ThemeToggleProps = {
+  size?: "sm" | "md" | "lg";
+};
+
+export default function ThemeToggle({ size = "md" }: ThemeToggleProps) {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
@@ -11,26 +15,49 @@ export default function ThemeToggle() {
     setMounted(true);
   }, []);
 
+  // Size configuration
+  const sizeClasses = {
+    sm: {
+      container: "h-6 w-12",
+      toggle: "h-5 w-5",
+      icon: "h-3 w-3",
+    },
+    md: {
+      container: "h-8 w-14",
+      toggle: "h-7 w-7",
+      icon: "h-4 w-4",
+    },
+    lg: {
+      container: "h-10 w-16",
+      toggle: "h-9 w-9",
+      icon: "h-5 w-5",
+    },
+  };
+
   if (!mounted) {
     return (
-      <div className="h-8 w-14 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+      <div
+        className={`${sizeClasses[size].container} rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse`}
+      />
     );
   }
+
   return (
     <button
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
       aria-label={`Toggle ${theme === "light" ? "dark" : "light"} mode`}
-      className="flex items-center h-8 w-14 rounded-full p-0.5 transition-colors duration-300 z-50
+      className={`flex items-center ${sizeClasses[size].container} rounded-full p-0.5 transition-colors duration-300 z-50
         bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600
-        focus:outline-none"
+        focus:outline-none`}
     >
-      <div className={`flex items-center justify-center h-7 w-7 rounded-full transform transition-transform duration-300
-        ${theme === "light" ? 'translate-x-0 bg-white' : 'translate-x-6 bg-gray-900'}`}
+      <div
+        className={`flex items-center justify-center ${sizeClasses[size].toggle} rounded-full transform transition-transform duration-300
+          ${theme === "light" ? "translate-x-0 bg-white" : `translate-x-${size === "sm" ? "6" : size === "md" ? "6" : "7"} bg-gray-900`}`}
       >
         {theme === "light" ? (
-          <SunIcon className="h-4 w-4 text-yellow-500" />
+          <SunIcon className={`${sizeClasses[size].icon} text-yellow-500`} />
         ) : (
-          <MoonIcon className="h-4 w-4 text-gray-300" />
+          <MoonIcon className={`${sizeClasses[size].icon} text-gray-300`} />
         )}
       </div>
     </button>
