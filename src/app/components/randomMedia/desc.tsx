@@ -27,10 +27,11 @@ export default function Desc({ data, backdropUrl }: DescProps) {
         {hasBackdrop && (
           <>
             <Image
+              onContextMenu={(e) => e.preventDefault()}
               src={backdropUrl}
               alt=""
               fill
-              className="object-cover"
+              className="object-cover select-none"
               quality={80}
               priority
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 75vw, 50vw"

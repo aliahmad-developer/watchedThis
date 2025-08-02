@@ -28,11 +28,11 @@ export async function GET() {
 
           if (!detailRes.ok) {
             console.warn(`Failed to fetch detail for ${type}/${item.id}`);
-            return item; // Fallback to original item
+            return item; 
           }
 
           const detail = await detailRes.json();
-          return { ...item, ...detail }; // Merge data
+        return { ...detail, ...item };
         } catch (err) {
           console.error(`Error fetching detail for ${type}/${item.id}`, err);
           return item;

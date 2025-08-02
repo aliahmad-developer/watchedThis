@@ -8,6 +8,7 @@ interface UseGenreDataProps {
   mediaType: "movie" | "tv";
   genreMappings: Record<string, GenreInfo>;
   createSlug: (name: string, id?: number) => string;
+  page?: number;
 }
 
 export function useGenreData({
@@ -15,12 +16,16 @@ export function useGenreData({
   mediaType,
   genreMappings,
   createSlug,
+  page = 1,
 }: UseGenreDataProps) {
   const router = useRouter();
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [genreName, setGenreName] = useState("");
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(page);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const normalizeSlug = useCallback((slug: string) => {
     const parts = slug.split("-");
@@ -73,10 +78,10 @@ export function useGenreData({
       : null;
   }, [genreSlug, genreMappings, mediaType, normalizeSlug]);
 
-  useEffect(() => {
-    if (!genreSlug || Object.keys(genreMappings).length === 0) return;
+  const fetchMediaByGenre = useCallback(
+    async (pageNum: number, isInitial: boolean = false) => {
+      if (!genreSlug || Object.keys(genreMappings).length === 0) return;
 
-    const fetchMediaByGenre = async () => {
       setLoading(true);
       setError(null);
 
@@ -124,7 +129,7 @@ export function useGenreData({
         }
 
         const response = await fetch(
-          `/api/genre/${genreId}?media_type=${mediaType}`
+          `/api/genre/${genreId}?media_type=${mediaType}&page=${pageNum}`
         );
         
         if (!response.ok) {
@@ -133,7 +138,7 @@ export function useGenreData({
 
         const data = await response.json();
 
-        const uniqueItems = data.results
+        const newItems = data.results
           ?.filter((item: MediaItem) => item.poster_path)
           ?.reduce((acc: MediaItem[], item: MediaItem) => {
             const key = `${mediaType}-${item.id}`;
@@ -143,25 +148,47 @@ export function useGenreData({
             return acc;
           }, []);
 
-        setMediaItems(uniqueItems || []);
+        if (isInitial) {
+          setMediaItems(newItems || []);
+        } else {
+          setMediaItems((prev) => [...prev, ...(newItems || [])]);
+        }
+
+        setHasMore(data.results?.length > 0);
         setGenreName(genreInfo.name);
+        setCurrentPage(pageNum);
       } catch (err) {
         console.error("Fetch error:", err);
         setError(err instanceof Error ? err.message : "Unknown error occurred");
       } finally {
         setLoading(false);
+        if (isInitial) {
+          setIsInitialLoad(false);
+        }
       }
-    };
+    },
+    [
+      genreSlug,
+      mediaType,
+      genreMappings,
+      normalizeSlug,
+      findBestMatchingGenre,
+      router,
+    ]
+  );
 
-    fetchMediaByGenre();
-  }, [
-    genreSlug,
-    mediaType,
-    genreMappings,
-    normalizeSlug,
-    findBestMatchingGenre,
-    router,
-  ]);
+  const fetchMore = useCallback(async () => {
+    if (!hasMore || loading) return;
+    await fetchMediaByGenre(currentPage + 1, false);
+  }, [currentPage, fetchMediaByGenre, hasMore, loading]);
+
+  useEffect(() => {
+    setIsInitialLoad(true);
+    setMediaItems([]);
+    setCurrentPage(1);
+    setHasMore(true);
+    fetchMediaByGenre(1, true);
+  }, [genreSlug, mediaType, fetchMediaByGenre]);
 
   return {
     mediaItems,
@@ -171,5 +198,8 @@ export function useGenreData({
     currentGenreId,
     normalizeSlug,
     findBestMatchingGenre,
+    fetchMore,
+    hasMore,
+    isInitialLoad,
   };
 }

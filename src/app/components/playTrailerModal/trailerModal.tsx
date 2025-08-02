@@ -62,7 +62,6 @@ export default function TrailerModal({
         return;
       }
       setError(true);
-      console.error("Failed to fetch trailer:", err);
     } finally {
       setLoading(false);
     }

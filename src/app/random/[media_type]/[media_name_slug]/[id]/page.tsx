@@ -16,7 +16,7 @@ export default function SpecificRandomMediaPage({
 
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasCheckedRedirect, setHasCheckedRedirect] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -28,8 +28,6 @@ export default function SpecificRandomMediaPage({
       return;
     }
 
-    if (isRedirecting) return;
-
     const fetchData = async () => {
       try {
         const res = await fetch(
@@ -39,10 +37,15 @@ export default function SpecificRandomMediaPage({
         const json = await res.json();
         setData(json);
 
-        const expectedSlug = createSlug(json.title || json.name);
-        if (media_name_slug !== expectedSlug && !isRedirecting) {
-          setIsRedirecting(true);
-          router.replace(`/random/${media_type}/${expectedSlug}/${id}`);
+        // Check if we need to redirect to correct slug
+        if (!hasCheckedRedirect) {
+          const expectedSlug = createSlug(json.title || json.name);
+          if (media_name_slug !== expectedSlug) {
+            setHasCheckedRedirect(true);
+            router.replace(`/random/${media_type}/${expectedSlug}/${id}`);
+            return;
+          }
+          setHasCheckedRedirect(true);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load media");
@@ -50,7 +53,7 @@ export default function SpecificRandomMediaPage({
     };
 
     fetchData();
-  }, [media_type, media_name_slug, id, router, isRedirecting]);
+  }, [media_type, media_name_slug, id, router, hasCheckedRedirect]);
 
   const createSlug = (str: string) =>
     str

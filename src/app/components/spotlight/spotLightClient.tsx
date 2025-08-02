@@ -166,7 +166,6 @@ export default function PopularSpotlightSliderClient({
     }
     return `${minutes}m`;
   };
-
   if (!current || items.length === 0) return null;
 
   return (
@@ -206,15 +205,16 @@ export default function PopularSpotlightSliderClient({
               const itemMediaType = item.media_type.toLowerCase();
               const itemSlug = slugify(itemTitle);
               const itemLinkHref = `/${itemMediaType}/${itemSlug}/${item.id}`;
-
               let itemDuration: string | null = null;
-              if (typeof item.runtime === "number" && item.runtime > 0) {
+
+              if (item.media_type === "movie" && item.runtime) {
+                // Handle movie runtime
                 itemDuration = formatDuration(item.runtime);
               } else if (
                 item.media_type === "tv" &&
-                Array.isArray(item.episode_run_time) &&
-                item.episode_run_time.length > 0
+                item.episode_run_time?.[0]
               ) {
+                // Use first episode runtime if available
                 itemDuration = formatDuration(item.episode_run_time[0]);
               }
 
@@ -247,7 +247,7 @@ export default function PopularSpotlightSliderClient({
                         <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
                           <div className="space-y-2">
                             {showSpotlightNumber && (
-                              <div className="text-xs font-medium text-light-accent">
+                              <div className="text-xs font-medium text-light-header dark:text-dark-disabled">
                                 #
                                 {i === 0
                                   ? items.length
@@ -257,7 +257,7 @@ export default function PopularSpotlightSliderClient({
                                 Spotlight
                               </div>
                             )}
-                            <h2 className="text-xl font-bold text-white">
+                            <h2 className="text-xl font-bold text-white line-clamp-1">
                               {itemTitle}
                             </h2>
                             <div className="flex gap-2 pt-1">
@@ -293,12 +293,12 @@ export default function PopularSpotlightSliderClient({
                     <div className="flex items-center px-8 lg:px-10 w-full md:w-1/2 z-20 relative">
                       <div className="space-y-4 lg:space-y-5 max-w-xl">
                         {showSpotlightNumber && (
-                          <div className="text-sm font-medium text-light-accent">
+                          <div className="text-sm font-medium text-light-header dark:text-dark-disabled">
                             #{i === 0 ? items.length : i > items.length ? 1 : i}{" "}
                             Spotlight
                           </div>
                         )}
-                        <h2 className="text-3xl lg:text-4xl font-bold text-light-header dark:text-white p-1">
+                        <h2 className="text-3xl lg:text-4xl font-bold text-light-header dark:text-white p-1 line-clamp-2">
                           {itemTitle}
                         </h2>
                         <div className="flex flex-wrap items-center gap-3 lg:gap-6 text-sm text-light-secondary-text dark:text-dark-secondary-text">

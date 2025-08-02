@@ -1,5 +1,5 @@
-// app/genre/[genreId]/page.tsx
 "use client";
+
 import { useParams } from "next/navigation";
 import { GenreHeader } from "../../components/Genre/GenreHeader";
 import { GenreMediaGrid } from "../../components/Genre/GenreMediaGrid";
@@ -8,6 +8,7 @@ import { useGenreMappings } from "../../components/hooks/Genre/useGenreMapping";
 import { useGenreData } from "../../components/hooks/Genre/useGenreData";
 import { useMediaType } from "../../components/hooks/Genre/useMediaType";
 import { useGenreNavigation } from "../../components/hooks/Genre/useGenreNavigation";
+import { MediaItem } from "../../components/Genre/types";
 
 export default function GenrePage() {
   const params = useParams();
@@ -25,8 +26,11 @@ export default function GenrePage() {
     loading: dataLoading,
     error,
     genreName,
+    fetchMore,
+    hasMore,
     normalizeSlug,
     findBestMatchingGenre,
+    isInitialLoad,
   } = useGenreData({
     genreSlug,
     mediaType,
@@ -41,12 +45,19 @@ export default function GenrePage() {
     genreMappings,
     normalizeSlug,
     findBestMatchingGenre,
-    setGenreName: (name) => {}, // This would need to be connected
+    setGenreName: (name) => {},
   });
 
   if (Object.keys(genreMappings).length === 0 && mappingsLoading) {
     return <GenreLoadingSkeleton />;
   }
+
+  const processedMediaItems: MediaItem[] = mediaItems.map((item: MediaItem) => ({
+    ...item,
+    duration: mediaType === 'movie' 
+      ? item.runtime 
+      : item.episode_run_time?.[0] || item.runtime
+  }));
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -57,11 +68,13 @@ export default function GenrePage() {
       />
 
       <GenreMediaGrid
-        mediaItems={mediaItems}
+        mediaItems={processedMediaItems}
         mediaType={mediaType}
-        loading={dataLoading}
+        loading={dataLoading && isInitialLoad}
         error={error}
         genreName={genreName}
+        fetchMore={fetchMore}
+        hasMore={hasMore}
       />
     </div>
   );

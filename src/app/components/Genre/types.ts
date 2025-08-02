@@ -53,6 +53,8 @@ export const GENRE_IDS: Record<"movie" | "tv", Record<string, number>> = {
 export interface MediaItem {
   id: number;
   title?: string;
+  runtime?: number;              // For movies
+  episode_run_time?: number[];   // For TV shows
   name?: string;
   poster_path?: string;
   vote_average: number;

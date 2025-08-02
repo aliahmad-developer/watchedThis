@@ -31,7 +31,8 @@ export default function RandomPage() {
           .replace(/\s+/g, "-")
           .replace(/--+/g, "-");
 
-        router.replace(`/random/${data.media_type}/${slug}/${data.id}`);
+        // Use push instead of replace to avoid immediate re-render
+        router.push(`/random/${data.media_type}/${slug}/${data.id}`);
       } catch (err) {
         console.error("Failed to fetch random media:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -39,15 +40,11 @@ export default function RandomPage() {
       }
     };
 
-    // Only fetch if we have a timestamp parameter (to prevent double fetch)
-    const ts = searchParams.get('ts');
-    if (ts) {
+    // Only fetch if we're not already on a redirect path
+    if (!window.location.pathname.startsWith('/random/')) {
       fetchRandomMedia();
-    } else {
-      // If no timestamp, add one to force fresh load
-      router.replace(`/random?ts=${Date.now()}`);
     }
-  }, [router, searchParams, isRedirecting]);
+  }, [router, isRedirecting]);
 
   if (error) {
     return (
@@ -55,7 +52,10 @@ export default function RandomPage() {
         <h1 className="text-2xl font-bold text-red-500">Error</h1>
         <p className="text-center">{error}</p>
         <button
-          onClick={() => router.push(`/random?ts=${Date.now()}`)}
+          onClick={() => {
+            setIsRedirecting(false);
+            router.push(`/random`);
+          }}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Try Again

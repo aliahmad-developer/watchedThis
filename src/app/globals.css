@@ -10,15 +10,15 @@
   --color-light-body-text: #495057;
   --color-light-header: #343a40;
   --color-light-nav: #212529;
- 
+
   --color-light-btn-bg: #ad858d;
   --color-light-btn-text: #ffffff;
   --color-light-btn-hover-bg: #966e77;
   --color-light-btn-hover-text: #ffffff;
 
   --color-dark-bg: #1a1a1a;
---color-dark-card: #282828;
-  --color-dark-border:rgb(49, 49, 49);
+  --color-dark-card: #282828;
+  --color-dark-border: rgb(49, 49, 49);
   --color-dark-disabled: #8a8a8a;
   --color-dark-accent: #d4a373;
   --color-dark-secondary-text: #9e9e9e;
@@ -29,29 +29,65 @@
   --color-dark-btn-text: #000000;
   --color-dark-btn-hover-bg: #b87c45;
   --color-dark-btn-hover-text: #ffffff;
+
+  --scrollbar-width: 8px;
+  --scrollbar-track-light: var(--color-light-card);
+  --scrollbar-thumb-light: var(--color-light-accent);
+  --scrollbar-track-dark: var(--color-dark-card);
+  --scrollbar-thumb-dark: var(--color-dark-accent);
 }
+
 @layer base {
   li {
     @apply text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-xs dark:text-white;
   }
-  button{
+  button {
     @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text cursor-pointer;
-    font-family:verdana;
+    font-family: verdana;
   }
-  p{
-    font-family:helvetica;
+  p {
+    font-family: helvetica;
     @apply text-light-body-text dark:text-dark-body-text text-xs;
   }
-  span{
-    @apply flex flex-col items-center justify-center gap-1 mt-1
+  span {
+    @apply flex flex-col items-center justify-center gap-1 mt-1;
   }
-   * {
-    font-family:georgia,serif;
+  * {
+    font-family: georgia, serif;
     overflow-x: hidden;
+    scrollbar-width: var(--scrollbar-width);
+    scrollbar-color: var(--scrollbar-thumb-light) var(--scrollbar-track-light);
   }
-  body{
+  body {
     @apply bg-light-bg dark:bg-dark-bg;
-
   }
 }
 
+/* WebKit scrollbar */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-light);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-light);
+  border-radius: calc(var(--scrollbar-width) / 2);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-light-btn-hover-bg);
+}
+
+/* Dark mode scrollbar */
+.dark {
+  scrollbar-color: var(--scrollbar-thumb-dark) var(--scrollbar-track-dark);
+}
+.dark ::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-dark);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-dark);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-dark-btn-hover-bg);
+}

@@ -35,11 +35,13 @@ export default function MediaPoster({ data }: MediaPosterProps) {
       {/* Image with object-contain to fit full image in container */}
       {hasPoster && (
         <Image
+       
           draggable={false}
           src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
           alt={`Poster for ${displayTitle}`}
           fill
-          className="object-contain object-center transition-opacity duration-300"
+          onContextMenu={(e) => e.preventDefault()}
+          className="object-contain object-center transition-opacity duration-300 select-none"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           priority
           onError={() => setHasError(true)}
