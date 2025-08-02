@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
+const MAX_PAGES = 5; // You can raise this if needed
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -17,42 +18,72 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const res = await fetch(
-      `${TMDB_BASE}/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=en-US`
-    );
+    let allResults: any[] = [];
 
-    if (!res.ok) {
-      const errData = await res.json();
-      return NextResponse.json({ error: errData.status_message }, { status: res.status });
+    // Loop to fetch multiple pages
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const res = await fetch(
+        `${TMDB_BASE}/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=en-US&page=${page}`
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        return NextResponse.json({ error: err.status_message }, { status: res.status });
+      }
+
+      const data = await res.json();
+      const results = data.results || [];
+
+      // Break early if no more results
+      if (results.length === 0) break;
+
+      allResults.push(...results);
+
+      // Optional: break if we've fetched everything
+      if (page >= data.total_pages) break;
     }
 
-    const { results } = await res.json();
+    // Filter only movie/tv with a valid title
+    const filtered = allResults.filter(
+      (item) =>
+        (item.media_type === "movie" || item.media_type === "tv") &&
+        (item.title || item.name || item.original_name)
+    );
 
-    // Limit to top 5 and get details for each (in parallel)
-    const topResults = results
-      .filter((r: any) => r.media_type === "movie" || r.media_type === "tv")
+    // Sort by popularity descending
+    const sorted = filtered.sort((a, b) => b.popularity - a.popularity);
 
+    // Fetch detailed info (runtime etc.)
     const detailedResults = await Promise.all(
-      topResults.map(async (item: any) => {
+      sorted.map(async (item) => {
         const detailRes = await fetch(
           `${TMDB_BASE}/${item.media_type}/${item.id}?api_key=${apiKey}&language=en-US`
         );
+
+        if (!detailRes.ok) return null;
+
         const detail = await detailRes.json();
 
         return {
           id: item.id,
           media_type: item.media_type,
-          title: item.title,
-          name: item.name,
+          title: item.title || item.name || item.original_name || "Untitled",
           original_name: item.original_name,
           poster_path: item.poster_path,
           release_date: item.release_date || item.first_air_date || null,
-          runtime: item.media_type === "movie" ? detail.runtime : detail.episode_run_time?.[0] || null,
+          runtime:
+            item.media_type === "movie"
+              ? detail.runtime
+              : detail.episode_run_time?.[0] || null,
+          popularity: item.popularity,
         };
       })
     );
 
-    return NextResponse.json({ results: detailedResults });
+    // Remove any nulls (failed fetches)
+    const cleaned = detailedResults.filter(Boolean);
+
+    return NextResponse.json({ results: cleaned });
   } catch (error) {
     console.error("Search error:", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
