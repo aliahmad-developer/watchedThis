@@ -50,7 +50,7 @@ export default function SearchClientPage() {
               item={item}
               onClick={() =>
                 router.push(
-                  `/random/${item.media_type}/${createSlug(item.title || item.name)}/${item.id}`
+                  `/${item.media_type}/${createSlug(item.title || item.name)}/${item.id}`
                 )
               }
             />

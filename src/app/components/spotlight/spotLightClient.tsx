@@ -49,10 +49,12 @@ export default function PopularSpotlightSliderClient({
 }: Props) {
   const [index, setIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [disableTransition, setDisableTransition] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const displayItems = [items[items.length - 1], ...items, items[0]];
   const current = items[index - 1] || items[0];
@@ -60,49 +62,101 @@ export default function PopularSpotlightSliderClient({
   const handleWatchTrailer = (media: MediaItem) => {
     setCurrentMedia(media);
     setShowTrailer(true);
+    // Pause autoplay when trailer opens
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const handleCloseTrailer = () => {
+    setShowTrailer(false);
+    // Resume autoplay when trailer closes if autoPlay is enabled
+    if (autoPlay) {
+      startAutoPlay();
+    }
+  };
+
+  const startAutoPlay = () => {
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    // Start new interval
+    intervalRef.current = setInterval(() => {
+      next();
+    }, slideDuration);
   };
 
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => {
-      next();
-    },
-    onSwipedRight: () => {
-      prev();
-    },
+    onSwipedLeft: () => next(),
+    onSwipedRight: () => prev(),
     delta: 10,
     trackTouch: true,
     preventScrollOnSwipe: true,
   });
 
   const next = () => {
-    if (isTransitioning || displayItems.length <= 1) return;
+    if (isTransitioning) return;
+
+    const nextIndex = index + 1;
     setIsTransitioning(true);
-    setIndex((prev) => prev + 1);
-    if (index === displayItems.length - 2) {
+    setIndex(nextIndex);
+
+    if (nextIndex === displayItems.length - 1) {
+      // Step 1: wait for transition to complete
+      setTimeout(() => {
+        // Step 2: disable transition for jump
+        setDisableTransition(true);
+        setIndex(1);
+
+        // Step 3: re-enable transition on next frame
+        requestAnimationFrame(() => {
+          setDisableTransition(false);
+          setIsTransitioning(false);
+        });
+      }, 500);
+    } else {
       setTimeout(() => {
         setIsTransitioning(false);
-        setIndex(1);
       }, 500);
     }
   };
 
   const prev = () => {
-    if (isTransitioning || displayItems.length <= 1) return;
+    if (isTransitioning) return;
+
+    const prevIndex = index - 1;
     setIsTransitioning(true);
-    setIndex((prev) => prev - 1);
-    if (index === 1) {
+    setIndex(prevIndex);
+
+    if (prevIndex === 0) {
+      setTimeout(() => {
+        setDisableTransition(true);
+        setIndex(displayItems.length - 2);
+
+        requestAnimationFrame(() => {
+          setDisableTransition(false);
+          setIsTransitioning(false);
+        });
+      }, 500);
+    } else {
       setTimeout(() => {
         setIsTransitioning(false);
-        setIndex(displayItems.length - 2);
       }, 500);
     }
   };
 
   useEffect(() => {
-    if (!autoPlay) return;
-    const timer = setInterval(() => next(), slideDuration);
-    return () => clearInterval(timer);
-  }, [displayItems, isTransitioning, autoPlay, slideDuration]);
+    if (autoPlay && !showTrailer) {
+      startAutoPlay();
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoPlay, showTrailer, displayItems, isTransitioning, slideDuration]);
 
   const formatDuration = (minutes: number): string => {
     if (minutes >= 60) {
@@ -134,7 +188,11 @@ export default function PopularSpotlightSliderClient({
         <div className="relative w-full h-full overflow-hidden pointer-none">
           <div
             ref={sliderRef}
-            className="flex transition-transform duration-500 ease-in-out h-full"
+            className={`flex h-full ${
+              disableTransition
+                ? ""
+                : "transition-transform duration-500 ease-in-out"
+            }`}
             style={{
               transform: `translateX(-${index * (100 / displayItems.length)}%)`,
               width: `${displayItems.length * 100}%`,
@@ -311,7 +369,9 @@ export default function PopularSpotlightSliderClient({
                             alt={itemTitle}
                             fill
                             className={`object-cover object-right transition-opacity duration-700 ${
-                              current.id === item.id ? "opacity-100" : "opacity-0"
+                              current.id === item.id
+                                ? "opacity-100"
+                                : "opacity-0"
                             }`}
                             sizes="50vw"
                             priority={item.id === current.id}
@@ -337,17 +397,17 @@ export default function PopularSpotlightSliderClient({
             <div className="md:hidden absolute bottom-2 right-2 flex flex-row gap-1 z-30">
               <button
                 onClick={prev}
-                className="bg-white/20 hover:bg-white/30 p-1 rounded-full transition"
+                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
                 aria-label="Previous slide"
               >
-                <ChevronLeft className="w-3 h-3 text-white" />
+                <ChevronLeft className="w-3 h-3 text-black dark:text-white" />
               </button>
               <button
                 onClick={next}
-                className="bg-white/20 hover:bg-white/30 p-1 rounded-full transition"
+                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
                 aria-label="Next slide"
               >
-                <ChevronRight className="w-3 h-3 text-white" />
+                <ChevronRight className="w-3 h-3 text-black dark:text-white" />
               </button>
             </div>
 
@@ -355,17 +415,17 @@ export default function PopularSpotlightSliderClient({
             <div className="hidden md:flex absolute bottom-4 right-4 flex-col gap-3 z-30">
               <button
                 onClick={prev}
-                className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition"
+                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
                 aria-label="Previous slide"
               >
-                <ChevronLeft className="w-5 h-5 text-white" />
+                <ChevronLeft className="w-5 h-5 text-black dark:text-white" />
               </button>
               <button
                 onClick={next}
-                className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition"
+                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
                 aria-label="Next slide"
               >
-                <ChevronRight className="w-5 h-5 text-white" />
+                <ChevronRight className="w-5 h-5 text-black dark:text-white" />
               </button>
             </div>
           </>
@@ -377,7 +437,7 @@ export default function PopularSpotlightSliderClient({
         <TrailerModal
           mediaId={currentMedia.id}
           mediaType={currentMedia.media_type as "movie" | "tv"}
-          onClose={() => setShowTrailer(false)}
+          onClose={handleCloseTrailer}
           title={currentMedia.title || currentMedia.name}
         />
       )}
