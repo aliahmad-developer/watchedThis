@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { useMemo } from "react";
 import { MediaResult } from "./searchInput";
 
 interface SearchResultsDropdownProps {
@@ -16,26 +18,36 @@ export default function SearchResultsDropdown({
   isLoading,
   onClose,
 }: SearchResultsDropdownProps) {
-  const formatMediaType = (type: string) => {
-    switch (type) {
-      case "tv":
-        return "TV";
-      case "movie":
-        return "Movie";
-      case "ona":
-        return "ONA";
-      default:
-        return type.toUpperCase();
-    }
-  };
+  const limitedResults = useMemo(() => results.slice(0, 10), [results]);
 
-  const createSlug = (str?: string) => {
-    return (str || "untitled")
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/--+/g, "-");
-  };
+  const formattedResults = useMemo(() => {
+    return limitedResults.map((item) => {
+      const title = item.title || item.name || "Untitled";
+      const slug = createSlug(title);
+      const year = item.release_date?.slice(0, 4) ?? "—";
+
+      const runtime =
+        item.runtime && item.runtime > 0
+          ? formatRuntime(item.runtime)
+          : item.media_type === "tv"
+          ? "23m per ep"
+          : item.media_type === "ona"
+          ? "9m"
+          : "";
+
+      return {
+        id: item.id,
+        title,
+        slug,
+        year,
+        runtime,
+        mediaType: item.media_type,
+        poster: item.poster_path,
+        originalName: item.original_name,
+        link: `/random/${item.media_type}/${slug}/${item.id}`,
+      };
+    });
+  }, [limitedResults]);
 
   return (
     <div className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg shadow-lg overflow-hidden">
@@ -44,64 +56,48 @@ export default function SearchResultsDropdown({
           <div className="px-4 py-3 text-center text-light-secondary-text dark:text-dark-secondary-text">
             Loading...
           </div>
-        ) : results.length > 0 ? (
-          results.map((item, index) => {
-            const title = item.title || item.name || "Untitled";
-            const year = item.release_date?.slice(0, 4) ?? "—";
-            const slug = createSlug(title);
-            const link = `/random/${item.media_type}/${slug}/${item.id}`;
-
-            const runtime =
-              item.runtime && item.runtime > 0
-                ? formatRuntime(item.runtime)
-                : item.media_type === "tv"
-                ? "23m per ep"
-                : item.media_type === "ona"
-                ? "9m"
-                : "";
-
-            return (
-              <div key={item.id}>
-                <Link
-                  href={link}
-                  onClick={onClose}
-                  className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
-                >
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    {item.poster_path ? (
-                      <img
-                        src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
-                        alt={title}
-                        className="w-10 h-14 rounded object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-10 h-14 bg-light-disabled dark:bg-dark-disabled rounded" />
+        ) : formattedResults.length > 0 ? (
+          formattedResults.map((item, index) => (
+            <div key={item.id}>
+              <Link
+                href={item.link}
+                onClick={onClose}
+                className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
+              >
+                <div className="flex items-center gap-3 px-4 py-3">
+                  {item.poster ? (
+                    <Image
+                      src={`https://image.tmdb.org/t/p/w92${item.poster}`}
+                      alt={item.title}
+                      width={40}
+                      height={56}
+                      className="w-10 h-14 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-14 bg-light-disabled dark:bg-dark-disabled rounded" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-light-body-text dark:text-dark-body-text text-sm font-medium line-clamp-1">
+                      {item.title}
+                    </div>
+                    {item.originalName && (
+                      <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
+                        {item.originalName}
+                      </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-light-body-text dark:text-dark-body-text text-sm font-medium line-clamp-1">
-                        {title}
-                      </div>
-                      {item.original_name && (
-                        <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
-                          {item.original_name}
-                        </div>
-                      )}
-                      <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1">
-                        {year} • {formatMediaType(item.media_type)}
-                        {runtime && ` • ${runtime}`}
-                      </div>
+                    <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1">
+                      {item.year} • {formatMediaType(item.mediaType)}
+                      {item.runtime && ` • ${item.runtime}`}
                     </div>
                   </div>
-                </Link>
+                </div>
+              </Link>
 
-                {/* Separator line except after the last item */}
-                {index < results.length - 1 && (
-                  <div className="border-t border-light-border dark:border-dark-border mx-4" />
-                )}
-              </div>
-            );
-          })
+              {index < formattedResults.length - 1 && (
+                <div className="border-t border-light-border dark:border-dark-border mx-4" />
+              )}
+            </div>
+          ))
         ) : (
           <div className="px-4 py-3 text-center text-light-secondary-text dark:text-dark-secondary-text">
             No results found
@@ -120,6 +116,28 @@ export default function SearchResultsDropdown({
       </div>
     </div>
   );
+}
+
+// Utility functions
+function formatMediaType(type: string) {
+  switch (type) {
+    case "tv":
+      return "TV";
+    case "movie":
+      return "Movie";
+    case "ona":
+      return "ONA";
+    default:
+      return type.toUpperCase();
+  }
+}
+
+function createSlug(str?: string) {
+  return (str || "untitled")
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/--+/g, "-");
 }
 
 function formatRuntime(runtime: number): string {

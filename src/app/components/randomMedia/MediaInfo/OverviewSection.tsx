@@ -6,7 +6,7 @@ interface OverviewProps {
 
 export default function OverviewSection({ overview }: OverviewProps) {
   const [showFullOverview, setShowFullOverview] = useState(false);
-  const maxOverviewLength = 130;
+  const maxOverviewLength = 133;
   const shouldTruncate = overview.length > maxOverviewLength;
   const truncatedOverview = shouldTruncate ? overview.substring(0, maxOverviewLength) + "..." : overview;
 

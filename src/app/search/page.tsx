@@ -15,7 +15,6 @@ export default function SearchClientPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const observer = useRef<IntersectionObserver | null>(null);
 
   const lastItemRef = useCallback(
@@ -40,7 +39,6 @@ export default function SearchClientPage() {
         if (page === 1) {
           setLoading(true);
           setResults([]);
-          setSuggestions([]);
         } else {
           setLoadingMore(true);
         }
@@ -54,8 +52,7 @@ export default function SearchClientPage() {
         setResults((prev) =>
           page === 1 ? data.results : [...prev, ...data.results]
         );
-        setHasMore(data.has_more);
-        setSuggestions(data.suggestions || []);
+        setHasMore(data.results.length > 0);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Search failed");
       } finally {
@@ -66,7 +63,7 @@ export default function SearchClientPage() {
 
     const timer = setTimeout(() => {
       fetchResults();
-    }, 300);
+    }, 300); // Small delay to prevent flash of loading state
 
     return () => clearTimeout(timer);
   }, [query, page]);
@@ -86,26 +83,6 @@ export default function SearchClientPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Search Results for "{query}"</h1>
-
-      {suggestions.length > 0 && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm font-medium text-blue-800">Did you mean:</p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {suggestions.map((suggestion, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  setSuggestions([]);
-                  router.push(`/search?q=${encodeURIComponent(suggestion)}`);
-                }}
-                className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="min-h-[50vh] relative">
         {loading ? (
