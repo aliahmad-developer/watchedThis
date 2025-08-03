@@ -39,7 +39,7 @@ export default function MediaCard({ item }: MediaCardProps) {
       </div>
 
       {/* Metadata */}
-      <div className="mt-1 text-xs text-center text-gray-400 dark:text-gray-300 flex justify-center gap-2">
+      <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2">
         <span className="capitalize">{mediaType}</span>
         {duration ? <span>{duration} m</span> : null}
       </div>

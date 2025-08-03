@@ -24,10 +24,10 @@ export default function Loading({
   };
 
   const containerClasses = fullScreen
-    ? 'fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg)]/80'
+    ? 'fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--color-bg)]/80'
     : centerInParent
-    ? 'flex items-center justify-center w-full h-full'
-    : 'flex flex-col items-center justify-center w-full py-12';
+    ? 'flex flex-col items-center justify-center w-full h-full'
+    : 'flex flex-col items-center justify-center w-full py-8';
 
   return (
     <div className={containerClasses}>
@@ -43,7 +43,7 @@ export default function Loading({
       />
       {!hideText && (
         <p
-          className="mt-4 text-sm sm:text-base text-center"
+          className="mt-3 text-sm sm:text-base text-center"
           style={{ color: 'var(--color-body-text)' }}
         >
           {text}
