@@ -2,7 +2,6 @@
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import TrailerModal from "../playTrailerModal/trailerModal";
-import useIsMobile from "../hooks/isMobile";
 import {
   faCalendar,
   faClock,
@@ -26,7 +25,7 @@ interface Props {
   showNavigation?: boolean;
   showSpotlightNumber?: boolean;
   autoPlay?: boolean;
-  showOnMobile?: boolean;
+  isMobile?: boolean; // Pass isMobile from server
 }
 
 function slugify(text: string) {
@@ -46,6 +45,7 @@ export default function PopularSpotlightSliderClient({
   showNavigation = true,
   showSpotlightNumber = true,
   autoPlay = true,
+  isMobile = false, // Default to false if not provided
 }: Props) {
   const [index, setIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -53,16 +53,15 @@ export default function PopularSpotlightSliderClient({
   const [showTrailer, setShowTrailer] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Use the isMobile prop directly instead of client-side detection
   const displayItems = [items[items.length - 1], ...items, items[0]];
   const current = items[index - 1] || items[0];
 
   const handleWatchTrailer = (media: MediaItem) => {
     setCurrentMedia(media);
     setShowTrailer(true);
-    // Pause autoplay when trailer opens
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -71,18 +70,15 @@ export default function PopularSpotlightSliderClient({
 
   const handleCloseTrailer = () => {
     setShowTrailer(false);
-    // Resume autoplay when trailer closes if autoPlay is enabled
     if (autoPlay) {
       startAutoPlay();
     }
   };
 
   const startAutoPlay = () => {
-    // Clear any existing interval
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
-    // Start new interval
     intervalRef.current = setInterval(() => {
       next();
     }, slideDuration);
@@ -104,13 +100,9 @@ export default function PopularSpotlightSliderClient({
     setIndex(nextIndex);
 
     if (nextIndex === displayItems.length - 1) {
-      // Step 1: wait for transition to complete
       setTimeout(() => {
-        // Step 2: disable transition for jump
         setDisableTransition(true);
         setIndex(1);
-
-        // Step 3: re-enable transition on next frame
         requestAnimationFrame(() => {
           setDisableTransition(false);
           setIsTransitioning(false);
@@ -134,7 +126,6 @@ export default function PopularSpotlightSliderClient({
       setTimeout(() => {
         setDisableTransition(true);
         setIndex(displayItems.length - 2);
-
         requestAnimationFrame(() => {
           setDisableTransition(false);
           setIsTransitioning(false);
@@ -166,6 +157,7 @@ export default function PopularSpotlightSliderClient({
     }
     return `${minutes}m`;
   };
+
   if (!current || items.length === 0) return null;
 
   return (

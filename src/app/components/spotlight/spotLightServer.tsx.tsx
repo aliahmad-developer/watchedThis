@@ -1,4 +1,4 @@
-// components/PopularSpotlightSliderServer.tsx
+import { headers } from "next/headers";
 import PopularSpotlightSliderClient from "./spotLightClient";
 import { MediaItem } from "./types";
 
@@ -11,7 +11,6 @@ interface PopularSpotlightSliderServerProps {
   showNavigation?: boolean;
   showSpotlightNumber?: boolean;
   autoPlay?: boolean;
-  showOnMobile?: boolean;
 }
 
 export default async function PopularSpotlightSliderServer({
@@ -23,15 +22,22 @@ export default async function PopularSpotlightSliderServer({
   showNavigation = true,
   showSpotlightNumber = true,
   autoPlay = true,
-  showOnMobile = true,
 }: PopularSpotlightSliderServerProps) {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${apiEndpoint}`, {
-      next: { revalidate: 60 }, // Static generation with revalidation every 60s
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}${apiEndpoint}`,
+      {
+        next: { revalidate: 60 },
+      }
+    );
     const data = await res.json();
-
     const results: MediaItem[] = data.results?.slice(0, maxItems) || [];
+
+    // Correct way to use headers() in Next.js 13+
+    const headersList =await headers();
+    const userAgent = headersList.get("user-agent") || "";
+
+    const isMobile = /Mobile|Android|iP(ad|hone)/i.test(userAgent);
 
     return (
       <PopularSpotlightSliderClient
@@ -42,7 +48,7 @@ export default async function PopularSpotlightSliderServer({
         showNavigation={showNavigation}
         showSpotlightNumber={showSpotlightNumber}
         autoPlay={autoPlay}
-        showOnMobile={showOnMobile}
+        isMobile={isMobile}
       />
     );
   } catch (err) {
