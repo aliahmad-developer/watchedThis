@@ -16,6 +16,9 @@ export default function MediaPoster({ data }: MediaPosterProps) {
 
   const displayTitle = data.title || data.name || "Untitled";
   const hasPoster = !!data.poster_path && !hasError;
+  if (!!data.poster_path) {
+    console.warn("Missing backdrop for:", data);
+  }
 
   const getBadgeText = () => {
     if (data.media_type === "movie") return "MOVIE";
@@ -35,7 +38,6 @@ export default function MediaPoster({ data }: MediaPosterProps) {
       {/* Image with object-contain to fit full image in container */}
       {hasPoster && (
         <Image
-       
           draggable={false}
           src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
           alt={`Poster for ${displayTitle}`}
