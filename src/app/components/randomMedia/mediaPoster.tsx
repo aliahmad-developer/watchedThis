@@ -19,6 +19,9 @@ export default function MediaPoster({ data }: MediaPosterProps) {
   if (!!data.poster_path) {
     console.warn("Missing backdrop for:", data);
   }
+  if(hasPoster){
+    alert(hasPoster)
+  }
 
   const getBadgeText = () => {
     if (data.media_type === "movie") return "MOVIE";
