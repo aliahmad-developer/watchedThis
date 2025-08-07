@@ -191,11 +191,11 @@ function CarouselItem({
         {/* Title area */}
         <div className="flex flex-col justify-between h-full mr-3 w-8">
           <div className="h-[320px] flex justify-center">
-            <p className="text-sm font-semibold rotate-180 [writing-mode:vertical-lr] whitespace-nowrap text-light-accent dark:text-dark-accent">
+            <p className="cursor-default text-sm font-semibold rotate-180 [writing-mode:vertical-lr] whitespace-nowrap text-light-accent dark:text-dark-accent">
               {item.title || item.name}
             </p>
           </div>
-          <p className="text-black dark:text-white text-xl font-bold text-center h-[60px] flex items-center justify-center">
+          <p className="cursor-default text-black dark:text-white text-xl font-bold text-center h-[60px] flex items-center justify-center">
             {String(position).padStart(2, "0")}
           </p>
         </div>
