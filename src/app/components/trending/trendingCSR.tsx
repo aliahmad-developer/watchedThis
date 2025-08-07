@@ -21,18 +21,35 @@ export default function TrendingCarouselClient({
   media: MediaItem[];
 }) {
   const [visibleCount, setVisibleCount] = useState(4);
+  const [maxIndex, setMaxIndex] = useState(0);
   const [index, setIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxIndexRef = useRef(0);
 
+  // Debugging logs
+  useEffect(() => {
+    console.log("Current state:", {
+      index,
+      visibleCount,
+      mediaLength: media.length,
+      maxIndex: maxIndexRef.current,
+      canGoLeft: index > 0,
+      canGoRight: index < maxIndexRef.current,
+    });
+  }, [index, visibleCount, media.length]);
+
   // Responsive item count calculation
   const updateVisibleCount = useCallback(() => {
     const width = window.innerWidth;
-    if (width >= 1280) setVisibleCount(4);
-    else if (width >= 1024) setVisibleCount(3);
-    else if (width >= 640) setVisibleCount(2);
-    else setVisibleCount(1);
+    let newVisibleCount = 4;
+    if (width >= 1280) newVisibleCount = 4;
+    else if (width >= 1024) newVisibleCount = 3;
+    else if (width >= 640) newVisibleCount = 2;
+    else newVisibleCount = 1;
+
+    console.log("Updating visible count:", newVisibleCount);
+    setVisibleCount(newVisibleCount);
   }, []);
 
   // Debounced resize handler
@@ -56,14 +73,32 @@ export default function TrendingCarouselClient({
 
   // Calculate max index and clamp current index
   useEffect(() => {
-    const maxIndex = Math.max(0, media.length - visibleCount);
-    maxIndexRef.current = maxIndex;
-    setIndex((prev) => Math.min(prev, maxIndex));
-  }, [media.length, visibleCount]);
+    const newMaxIndex = Math.max(0, media.length - visibleCount);
+    setMaxIndex(newMaxIndex);
+    maxIndexRef.current = newMaxIndex;
 
-  const scrollLeft = () => setIndex((prev) => Math.max(0, prev - 1));
-  const scrollRight = () =>
-    setIndex((prev) => Math.min(maxIndexRef.current, prev + 1));
+    if (index > newMaxIndex) {
+      setIndex(newMaxIndex);
+    }
+  }, [media.length, visibleCount, index]);
+
+  const scrollLeft = () => {
+    console.log("Scrolling left from", index);
+    setIndex((prev) => {
+      const newIndex = Math.max(0, prev - 1);
+      console.log("New left index:", newIndex);
+      return newIndex;
+    });
+  };
+
+  const scrollRight = () => {
+    console.log("Scrolling right from", index);
+    setIndex((prev) => {
+      const newIndex = Math.min(maxIndexRef.current, prev + 1);
+      console.log("New right index:", newIndex);
+      return newIndex;
+    });
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -80,6 +115,16 @@ export default function TrendingCarouselClient({
 
   // Edge case: No media
   if (!media.length) return null;
+
+  const canGoLeft = index > 0;
+  const canGoRight = index < maxIndex;
+
+  console.log("Rendering with:", {
+    canGoLeft,
+    canGoRight,
+    currentIndex: index,
+    maxIndex: maxIndexRef.current,
+  });
 
   return (
     <section className="relative px-4 py-6 w-full" ref={carouselRef}>
@@ -109,8 +154,8 @@ export default function TrendingCarouselClient({
         <NavigationButtons
           onLeft={scrollLeft}
           onRight={scrollRight}
-          canGoLeft={index > 0}
-          canGoRight={index < maxIndexRef.current}
+          canGoLeft={canGoLeft}
+          canGoRight={canGoRight}
         />
       </div>
     </section>
@@ -199,32 +244,35 @@ function NavigationButtons({
       <button
         onClick={onLeft}
         disabled={!canGoLeft}
-        className={`w-12 h-[180px] bg-gray-500 dark:bg-gray-800 rounded-md shadow-lg flex items-center justify-center
-          transition-opacity duration-200
+        className={`w-12 h-[180px] rounded-md shadow-lg flex items-center justify-center
+          transition-all duration-200
           ${
             !canGoLeft
-              ? "opacity-40 cursor-not-allowed"
-              : "hover:bg-light-accent dark:hover:bg-dark-accent"
+              ? "bg-gray-400 dark:bg-gray-600 opacity-40 cursor-not-allowed"
+              : "bg-gray-500 dark:bg-gray-800 hover:bg-light-accent dark:hover:bg-dark-accent"
           }
         `}
         aria-label="Scroll left"
       >
-        <ChevronLeft size={28} />
+        <ChevronLeft size={28} className={!canGoLeft ? "text-gray-500" : ""} />
       </button>
       <button
         onClick={onRight}
         disabled={!canGoRight}
-        className={`w-12 h-[180px] bg-gray-500 dark:bg-gray-800 rounded-md shadow-lg flex items-center justify-center
-          transition-opacity duration-200
+        className={`w-12 h-[180px] rounded-md shadow-lg flex items-center justify-center
+          transition-all duration-200
           ${
             !canGoRight
-              ? "opacity-40 cursor-not-allowed"
-              : "hover:bg-light-accent dark:hover:bg-dark-accent"
+              ? "bg-gray-400 dark:bg-gray-600 opacity-40 cursor-not-allowed"
+              : "bg-gray-500 dark:bg-gray-800 hover:bg-light-accent dark:hover:bg-dark-accent"
           }
         `}
         aria-label="Scroll right"
       >
-        <ChevronRight size={28} />
+        <ChevronRight
+          size={28}
+          className={!canGoRight ? "text-gray-500" : ""}
+        />
       </button>
     </div>
   );
