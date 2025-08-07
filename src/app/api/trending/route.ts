@@ -5,7 +5,7 @@ const API_KEY = process.env.TMDB_API_KEY;
 export async function GET() {
   try {
     const res = await fetch(
-      `https://api.themoviedb.org/3/popular/all/week?api_key=${API_KEY}`
+      `https://api.themoviedb.org/3/trending/all/week?api_key=${API_KEY}`
     );
 
     if (!res.ok) {
@@ -14,13 +14,11 @@ export async function GET() {
     }
 
     const data = await res.json();
-    const first8 = data.results.slice(0, 8);
+    const first8 = data.results.slice(0, 10);
 
-    // Enrich each item with runtime/episode_run_time
     const enriched = await Promise.all(
       first8.map(async (item: any) => {
         const type = item.media_type;
-
         try {
           const detailRes = await fetch(
             `https://api.themoviedb.org/3/${type}/${item.id}?api_key=${API_KEY}`
@@ -28,11 +26,11 @@ export async function GET() {
 
           if (!detailRes.ok) {
             console.warn(`Failed to fetch detail for ${type}/${item.id}`);
-            return item; 
+            return item;
           }
 
           const detail = await detailRes.json();
-        return { ...detail, ...item };
+          return { ...detail, ...item };
         } catch (err) {
           console.error(`Error fetching detail for ${type}/${item.id}`, err);
           return item;
@@ -44,7 +42,7 @@ export async function GET() {
   } catch (error) {
     console.error("API route error", error);
     return NextResponse.json(
-      { message: "Error fetching popular media", error: String(error) },
+      { message: "Error fetching trending media", error: String(error) },
       { status: 500 }
     );
   }

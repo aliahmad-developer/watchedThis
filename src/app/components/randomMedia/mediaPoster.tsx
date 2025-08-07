@@ -16,13 +16,6 @@ export default function MediaPoster({ data }: MediaPosterProps) {
 
   const displayTitle = data.title || data.name || "Untitled";
   const hasPoster = !!data.poster_path && !hasError;
-  if (!!data.poster_path) {
-    console.warn("Missing backdrop for:", data);
-  }
-  if(hasPoster){
-    alert(hasPoster)
-  }
-
   const getBadgeText = () => {
     if (data.media_type === "movie") return "MOVIE";
     if (data.media_type === "tv") return "SERIES";

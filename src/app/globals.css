@@ -91,3 +91,17 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: var(--color-dark-btn-hover-bg);
 }
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Rotate text vertically left to right */
+.writing-vertical-ltr {
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+}
