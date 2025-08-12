@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { createSlug } from "../components/utilities/createSlug";
 import Loading from "../components/utilities/loading";
 import MediaCard from "../components/mediaCard/mediaCard";
 import Link from "next/link";
@@ -130,12 +131,4 @@ export default function SearchClientPage() {
       </div>
     </div>
   );
-}
-
-function createSlug(str: string) {
-  return str
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/--+/g, "-");
 }

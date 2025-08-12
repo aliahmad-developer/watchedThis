@@ -1,11 +1,11 @@
 //app\[media_type]\[media_name_slug]\[id]\page.tsx
 "use client";
 import React, { useEffect, useState } from "react";
-
+import { createSlug } from "@/app/components/utilities/createSlug";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
-import Loading from "../../../components/utilities/loading";
-import Desc from "../../../components/randomMedia/desc";
+import Loading from "@/app/components/utilities/loading";
+import Desc from "@/app/components/randomMedia/desc";
 export default function SpecificRandomMediaPage({
   params,
 }: {
@@ -46,13 +46,6 @@ export default function SpecificRandomMediaPage({
 
     fetchData();
   }, [media_type, media_name_slug, id, router]);
-
-  const createSlug = (str: string) =>
-    str
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/--+/g, "-");
 
   const mediaTitle = data?.title || data?.name || "Media Details";
   const metaDescription = data?.overview

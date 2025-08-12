@@ -21,16 +21,25 @@ export default function BackToTop() {
   }, []);
 
   const scrollToTop = () => {
-    const scrollDuration = 250; // Duration in milliseconds (1 second)
-    const scrollStep = -window.scrollY / (scrollDuration / 15);
+    const start = window.scrollY;
+    const startTime = performance.now();
+    const duration = 1200;
 
-    const scrollInterval = setInterval(() => {
-      if (window.scrollY !== 0) {
-        window.scrollBy(0, scrollStep);
-      } else {
-        clearInterval(scrollInterval);
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const animateScroll = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeOutCubic(progress);
+
+      window.scrollTo(0, start * (1 - easedProgress));
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
       }
-    }, 25);
+    };
+
+    requestAnimationFrame(animateScroll);
   };
 
   return (

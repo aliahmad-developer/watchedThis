@@ -1,5 +1,7 @@
+import Link from "next/link";
+
 interface ProductionListProps {
-  companies?: { name: string | null }[];
+  companies?: { id: number; name: string | null }[]; // Added id
 }
 
 export function ProductionList({ companies }: ProductionListProps) {
@@ -11,7 +13,9 @@ export function ProductionList({ companies }: ProductionListProps) {
     <ul className="grid grid-cols-2 gap-y-1 gap-x-4">
       {filtered.map((c, i) => (
         <li key={i} className="flex items-center">
-          {c.name}
+          <Link href={`/production/${c.id}`}>
+            {c.name}
+          </Link>
         </li>
       ))}
     </ul>
