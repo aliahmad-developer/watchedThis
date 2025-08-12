@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { slug?: string[] } }
+  { params }: { params: Promise<{ slug?: string[] }> }
 ) {
-  const { params } = context;
-  const slug = await params?.slug || [];
+  const { slug = [] } = await params; // ✅ await the params object
 
   if (!Array.isArray(slug)) {
     return NextResponse.json(

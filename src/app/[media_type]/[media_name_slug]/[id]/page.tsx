@@ -37,6 +37,7 @@ export default function SpecificRandomMediaPage({
 
         const expectedSlug = createSlug(json.title || json.name);
         if (media_name_slug !== expectedSlug) {
+          
           router.replace(`/${media_type}/${expectedSlug}/${id}`);
         }
       } catch (err) {

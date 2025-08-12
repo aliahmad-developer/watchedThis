@@ -10,7 +10,7 @@ interface Company {
   logo_path: string | null;
   origin_country: string;
   headquarters?: string;
-  description?: string; 
+  description?: string;
 }
 
 interface MediaItem {
@@ -39,9 +39,10 @@ async function getCompanyData(id: string): Promise<CompanyData> {
 export default async function ProductionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { company, movies, tv } = await getCompanyData(params.id);
+  const { id } = await params;
+  const { company, movies, tv } = await getCompanyData(id);
 
   const renderMediaGrid = (items: MediaItem[], type: "movie" | "tv") =>
     items.length > 0 && (

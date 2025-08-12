@@ -6,7 +6,7 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 // TMDB types
 interface TMDBDiscoverResponse {
   page: number;
-  results: any[]; // you can replace `any` with a proper TMDB media type if you want
+  results: any[]; 
   total_pages: number;
   total_results: number;
 }
@@ -39,9 +39,9 @@ async function fetchFromTMDB<T>(endpoint: string): Promise<T> {
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
 
   try {
     const [company, movies, tv] = await Promise.all([
