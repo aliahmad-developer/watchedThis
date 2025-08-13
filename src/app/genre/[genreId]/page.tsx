@@ -3,12 +3,12 @@
 import { useParams } from "next/navigation";
 import { GenreHeader } from "../../components/Genre/GenreHeader";
 import { GenreMediaGrid } from "../../components/Genre/GenreMediaGrid";
-import { GenreLoadingSkeleton } from "../../components/Genre/GenreLoadingSkeleton";
 import { useGenreMappings } from "../../components/hooks/Genre/useGenreMapping";
 import { useGenreData } from "../../components/hooks/Genre/useGenreData";
 import { useMediaType } from "../../components/hooks/Genre/useMediaType";
 import { useGenreNavigation } from "../../components/hooks/Genre/useGenreNavigation";
 import { MediaItem } from "../../components/Genre/types";
+import Loading from "@/app/components/utilities/loading";
 
 export default function GenrePage() {
   const params = useParams();
@@ -49,7 +49,7 @@ export default function GenrePage() {
   });
 
   if (Object.keys(genreMappings).length === 0 && mappingsLoading) {
-    return <GenreLoadingSkeleton />;
+    return <Loading fullScreen centerInParent />;
   }
 
   const processedMediaItems: MediaItem[] = mediaItems.map((item: MediaItem) => ({

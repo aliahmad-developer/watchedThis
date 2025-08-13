@@ -3,12 +3,10 @@ import { NextResponse } from "next/server";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
-// TMDB types
 interface TMDBDiscoverResponse {
   page: number;
-  results: any[]; 
+  results: any[];
   total_pages: number;
-  total_results: number;
 }
 
 interface TMDBCompany {
@@ -27,58 +25,45 @@ async function fetchFromTMDB<T>(endpoint: string): Promise<T> {
     endpoint.includes("?") ? "&" : "?"
   }api_key=${apiKey}`;
   const res = await fetch(url, { cache: "no-store" });
-
-  if (!res.ok) {
-    throw new Error(
-      `TMDB request failed for ${endpoint}: ${res.status} ${res.statusText}`
-    );
-  }
-
+  if (!res.ok) throw new Error(`TMDB request failed: ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  req: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id } = await context.params;
+  const { searchParams } = new URL(req.url);
+
+  const mediaType = searchParams.get("mediaType") || "movie";
+  const page = searchParams.get("page") || "1";
 
   try {
-    const [company, movies, tv] = await Promise.all([
-      fetchFromTMDB<TMDBCompany>(`/company/${id}`),
-      fetchFromTMDB<TMDBDiscoverResponse>(
-        `/discover/movie?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=1`
-      ).catch(
-        () =>
-          ({
-            page: 1,
-            total_pages: 0,
-            total_results: 0,
-            results: [],
-          } as TMDBDiscoverResponse)
-      ),
-      fetchFromTMDB<TMDBDiscoverResponse>(
-        `/discover/tv?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=1`
-      ).catch(
-        () =>
-          ({
-            page: 1,
-            total_pages: 0,
-            total_results: 0,
-            results: [],
-          } as TMDBDiscoverResponse)
-      ),
-    ]);
+    if (page === "1") {
+      // First page → also fetch company info
+      const company = await fetchFromTMDB<TMDBCompany>(`/company/${id}`);
 
-    return NextResponse.json({
-      company,
-      movies: movies.results || [],
-      tv: tv.results || [],
-    });
+      const media = await fetchFromTMDB<TMDBDiscoverResponse>(
+        `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`
+      );
+
+      return NextResponse.json({
+        company,
+        results: media.results,
+        total_pages: media.total_pages,
+      });
+    } else {
+      // Only media for subsequent pages
+      const media = await fetchFromTMDB<TMDBDiscoverResponse>(
+        `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`
+      );
+      return NextResponse.json({
+        results: media.results,
+        total_pages: media.total_pages,
+      });
+    }
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

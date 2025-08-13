@@ -62,15 +62,16 @@ const GENRE_IDS = {
 
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context;
-    const genreId = parseInt(params.id);
+    const { id } = await context.params;
+    const genreId = parseInt(id);
     const mediaType = req.nextUrl.searchParams.get("media_type") as
       | "movie"
       | "tv";
     const page = parseInt(req.nextUrl.searchParams.get("page") || "1");
+
 
     if (!API_KEY) {
       return NextResponse.json(
