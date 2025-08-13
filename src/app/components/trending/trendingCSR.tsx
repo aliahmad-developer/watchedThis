@@ -75,7 +75,7 @@ export default function TrendingCarouselClient({ media }: { media: MediaItem[] }
 
   return (
     <section className="relative px-4 py-6 w-full" ref={carouselRef}>
-      <h2 className="text-2xl font-bold mb-6">Trending</h2>
+      <h2 className="text-3xl font-bold mb-6">Trending</h2>
 
       <div className="flex w-full items-start">
         <div className="relative overflow-hidden flex-1">
