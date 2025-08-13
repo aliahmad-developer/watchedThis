@@ -1,11 +1,12 @@
-//app\[media_type]\[media_name_slug]\[id]\page.tsx
 "use client";
 import React, { useEffect, useState } from "react";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Loading from "@/app/components/utilities/loading";
+import CastScroll from "@/app/components/mediaCard/castScroll";
 import Desc from "@/app/components/randomMedia/desc";
+
 export default function SpecificRandomMediaPage({
   params,
 }: {
@@ -16,6 +17,7 @@ export default function SpecificRandomMediaPage({
 
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -37,7 +39,6 @@ export default function SpecificRandomMediaPage({
 
         const expectedSlug = createSlug(json.title || json.name);
         if (media_name_slug !== expectedSlug) {
-          
           router.replace(`/${media_type}/${expectedSlug}/${id}`);
         }
       } catch (err) {
@@ -63,6 +64,9 @@ export default function SpecificRandomMediaPage({
             content="An error occurred while loading media details"
           />
         </Head>
+        <div className="flex items-center justify-center min-h-screen text-red-500">
+          {error}
+        </div>
       </>
     );
   }
@@ -97,14 +101,19 @@ export default function SpecificRandomMediaPage({
         <meta name="twitter:card" content="summary_large_image" />
       </Head>
 
-      <div className="py-6 px-4 min-h-screen bg-light-bg dark:bg-dark-bg">
-        <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-md overflow-hidden transition-colors">
+      <div className="py-6 px-4 sm:px-6 lg:px-8 min-h-screen bg-light-bg dark:bg-dark-bg">
+        <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-lg overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
           <Desc
             data={data}
             backdropUrl={`https://image.tmdb.org/t/p/original${data.backdrop_path}`}
           />
         </div>
+
+        {/* Cast Section */}
+        {data.credits?.cast && data.credits.cast.length > 0 && (
+          <CastScroll cast={data.credits.cast} mediaType={media_type} />
+        )}
       </div>
     </>
   );

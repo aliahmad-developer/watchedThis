@@ -4,7 +4,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug?: string[] }> }
 ) {
-  const { slug = [] } = await params; // ✅ await the params object
+  const { slug = [] } = await params; 
 
   if (!Array.isArray(slug)) {
     return NextResponse.json(
@@ -60,6 +60,20 @@ export async function GET(
         { status: res.status }
       );
     }
+    const detailsUrl = `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${apiKey}&language=en-US&append_to_response=videos,images,release_dates,content_ratings`;
+
+    const creditsUrl =
+      media_type === "movie"
+        ? `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}&language=en-US`
+        : `https://api.themoviedb.org/3/tv/${id}/aggregate_credits?api_key=${apiKey}&language=en-US`;
+
+    const [detailsRes, creditsRes] = await Promise.all([
+      fetch(detailsUrl),
+      fetch(creditsUrl),
+    ]);
+
+    const details = await detailsRes.json();
+    const credits = await creditsRes.json();
 
     let certification: string | null = null;
 
@@ -99,6 +113,7 @@ export async function GET(
       media_type,
       production_companies: data.production_companies,
       certification,
+      credits,
     };
 
     return NextResponse.json(transformedData);

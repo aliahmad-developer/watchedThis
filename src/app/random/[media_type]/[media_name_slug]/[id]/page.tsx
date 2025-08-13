@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Loading from "../../../../components/utilities/loading";
 import Desc from "../../../../components/randomMedia/desc";
+import CastScroll from "@/app/components/mediaCard/castScroll";
 
 export default function SpecificRandomMediaPage({
   params,
@@ -133,6 +134,10 @@ export default function SpecificRandomMediaPage({
             backdropUrl={`https://image.tmdb.org/t/p/original${data.backdrop_path}`}
           />
         </div>
+        {/* Cast Section */}
+        {data.credits?.cast && data.credits.cast.length > 0 && (
+          <CastScroll cast={data.credits.cast} mediaType={media_type} />
+        )}
       </div>
     </>
   );
