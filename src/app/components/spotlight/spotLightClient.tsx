@@ -25,7 +25,7 @@ interface Props {
   showNavigation?: boolean;
   showSpotlightNumber?: boolean;
   autoPlay?: boolean;
-  isMobile?: boolean; // Pass isMobile from server
+  isMobile?: boolean;
 }
 
 function slugify(text: string) {
@@ -45,7 +45,7 @@ export default function PopularSpotlightSliderClient({
   showNavigation = true,
   showSpotlightNumber = true,
   autoPlay = true,
-  isMobile = false, // Default to false if not provided
+  isMobile = false, //default
 }: Props) {
   const [index, setIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -55,7 +55,6 @@ export default function PopularSpotlightSliderClient({
   const sliderRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Use the isMobile prop directly instead of client-side detection
   const displayItems = [items[items.length - 1], ...items, items[0]];
   const current = items[index - 1] || items[0];
 
@@ -270,7 +269,7 @@ export default function PopularSpotlightSliderClient({
                                 Details
                                 <FontAwesomeIcon
                                   icon={faAngleRight}
-                                  className="w-2 h-2"
+                                  className="w-3 h-3"
                                 />
                               </Link>
                             </div>
@@ -384,43 +383,29 @@ export default function PopularSpotlightSliderClient({
         </div>
 
         {showNavigation && (
-          <>
-            {/* Mobile Navigation */}
-            <div className="md:hidden absolute bottom-2 right-2 flex flex-row gap-1 z-30">
+          <div className="absolute z-30 flex gap-1 md:gap-3 bottom-2 right-2 md:bottom-4 md:right-4 flex-row md:flex-col">
+            {[
+              { dir: "prev", Icon: ChevronLeft, label: "Previous slide" },
+              { dir: "next", Icon: ChevronRight, label: "Next slide" },
+            ].map(({ dir, Icon, label }) => (
               <button
-                onClick={prev}
-                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
-                aria-label="Previous slide"
+                key={dir}
+                onClick={dir === "prev" ? prev : next}
+                aria-label={label}
+                className="bg-black/20 hover:bg-black/30 
+                   dark:bg-white/20 dark:hover:bg-white/30 
+                   p-2 rounded-full transition"
               >
-                <ChevronLeft className="w-3 h-3 text-black dark:text-white" />
+                <Icon
+                  className={`text-black dark:text-white ${
+                    dir === "prev"
+                      ? "w-4 h-4 md:w-5 md:h-5"
+                      : "w-4 h-4 md:w-5 md:h-5"
+                  }`}
+                />
               </button>
-              <button
-                onClick={next}
-                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
-                aria-label="Next slide"
-              >
-                <ChevronRight className="w-3 h-3 text-black dark:text-white" />
-              </button>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex absolute bottom-4 right-4 flex-col gap-3 z-30">
-              <button
-                onClick={prev}
-                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
-                aria-label="Previous slide"
-              >
-                <ChevronLeft className="w-5 h-5 text-black dark:text-white" />
-              </button>
-              <button
-                onClick={next}
-                className="bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 p-2 rounded-full transition"
-                aria-label="Next slide"
-              >
-                <ChevronRight className="w-5 h-5 text-black dark:text-white" />
-              </button>
-            </div>
-          </>
+            ))}
+          </div>
         )}
       </div>
 
