@@ -1,10 +1,7 @@
 /* --- Updated SearchInput.tsx --- */
 "use client";
 
-import {
-  FormEvent,
-  ChangeEvent,
-} from "react";
+import { FormEvent, ChangeEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
 

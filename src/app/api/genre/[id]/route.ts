@@ -16,6 +16,7 @@ interface TMDBMediaItem {
   episode_run_time?: number[];
 }
 
+// (optional) name lookup if you want to return a nice title
 const GENRE_IDS = {
   movie: {
     Action: 28,
@@ -60,18 +61,34 @@ const GENRE_IDS = {
   },
 };
 
+function parseIds(idParam: string): number[] {
+  // support “28+12” or “28,12”
+  return idParam
+    .split(/[+,]/g)
+    .map((s) => parseInt(s, 10))
+    .filter((n) => !Number.isNaN(n));
+}
+
+function namesForIds(mediaType: "movie" | "tv", ids: number[]): string[] {
+  const map = mediaType === "movie" ? GENRE_IDS.movie : GENRE_IDS.tv;
+  const entries = Object.entries(map);
+  return ids
+    .map((id) => entries.find(([_, v]) => v === id)?.[0])
+    .filter(Boolean) as string[];
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
-    const genreId = parseInt(id);
-    const mediaType = req.nextUrl.searchParams.get("media_type") as
-      | "movie"
-      | "tv";
-    const page = parseInt(req.nextUrl.searchParams.get("page") || "1");
-
+    const { id: idParam } = await context.params;
+    const mediaType = (req.nextUrl.searchParams.get("media_type") ||
+      "") as "movie" | "tv";
+    const page = parseInt(req.nextUrl.searchParams.get("page") || "1", 10);
+    const strict = ["true", "1", "yes"].includes(
+      (req.nextUrl.searchParams.get("strict") || "false").toLowerCase()
+    );
 
     if (!API_KEY) {
       return NextResponse.json(
@@ -79,35 +96,26 @@ export async function GET(
         { status: 500 }
       );
     }
-
-    if (!mediaType || isNaN(genreId)) {
+    const ids = parseIds(idParam);
+    if (!mediaType || ids.length === 0) {
       return NextResponse.json(
-        { error: "Invalid media type or genre ID" },
+        { error: "Invalid media type or genre IDs" },
         { status: 400 }
       );
     }
 
-    const genreName =
-      mediaType === "movie"
-        ? Object.entries(GENRE_IDS.movie).find(([_, id]) => id === genreId)?.[0]
-        : Object.entries(GENRE_IDS.tv).find(([_, id]) => id === genreId)?.[0];
-
-    if (!genreName) {
-      return NextResponse.json({
-        results: [],
-        genreName: "Unknown Genre",
-        empty: true,
-      });
-    }
+    // For strict mode, we need to handle the filtering ourselves
+    // since TMDB doesn't support AND logic natively
+    const withGenres = ids.join("|"); // Always use OR for the initial API call
 
     const discoverUrl = new URL(`${BASE_URL}/discover/${mediaType}`);
     discoverUrl.searchParams.set("api_key", API_KEY);
-    discoverUrl.searchParams.set("with_genres", genreId.toString());
+    discoverUrl.searchParams.set("with_genres", withGenres);
     discoverUrl.searchParams.set("sort_by", "popularity.desc");
-    discoverUrl.searchParams.set("page", page.toString());
+    discoverUrl.searchParams.set("page", String(page));
     discoverUrl.searchParams.set("with_watch_monetization_types", "flatrate");
 
-    const discoverRes = await fetch(discoverUrl.toString());
+    const discoverRes = await fetch(discoverUrl.toString(), { next: { revalidate: 60 } });
     if (!discoverRes.ok) {
       console.error("TMDB Discover API Error:", await discoverRes.text());
       return NextResponse.json({ error: "TMDB API error" }, { status: 502 });
@@ -115,27 +123,27 @@ export async function GET(
 
     const pageData = await discoverRes.json();
 
-    const filteredResults: TMDBMediaItem[] = pageData.results
-      .filter(
-        (item: TMDBMediaItem) =>
-          item.genre_ids?.includes(genreId) && item.poster_path
+    // Filter results based on strict mode
+    const filteredResults: TMDBMediaItem[] = (pageData.results || [])
+      .filter((item: TMDBMediaItem) => item.poster_path && Array.isArray(item.genre_ids))
+      .filter((item: TMDBMediaItem) =>
+        strict
+          ? ids.every((gid) => item.genre_ids!.includes(gid)) // AND - must include ALL selected genres
+          : ids.some((gid) => item.genre_ids!.includes(gid)) // OR - can include ANY selected genre
       )
-      .reduce((unique: TMDBMediaItem[], item: TMDBMediaItem) => {
-        if (!unique.some((i) => i.id === item.id)) {
-          unique.push(item);
-        }
-        return unique;
+      .reduce((acc: TMDBMediaItem[], item: TMDBMediaItem) => {
+        if (!acc.some((i) => i.id === item.id)) acc.push(item);
+        return acc;
       }, []);
 
+    // Enrich with runtime / episode_run_time
     const enrichedResults = await Promise.all(
       filteredResults.map(async (item) => {
         try {
           const detailUrl = `${BASE_URL}/${mediaType}/${item.id}?api_key=${API_KEY}`;
           const detailRes = await fetch(detailUrl);
           if (!detailRes.ok) throw new Error("Failed to fetch details");
-
           const detailData = await detailRes.json();
-
           return {
             ...item,
             runtime: detailData.runtime,
@@ -143,17 +151,27 @@ export async function GET(
           };
         } catch (err) {
           console.error("Detail fetch failed for", item.id, err);
-          return item; // fallback
+          return item;
         }
       })
     );
 
+    const genreNames = namesForIds(mediaType, ids);
+    const genreLabel =
+      genreNames.length > 0
+        ? strict
+          ? genreNames.join(" & ")
+          : genreNames.join(" | ")
+        : "Unknown Genre";
+
     return NextResponse.json({
       results: enrichedResults,
-      genreName,
+      genreName: genreLabel,
       page: pageData.page,
       total_pages: pageData.total_pages,
       total_results: pageData.total_results,
+      strict,
+      ids,
     });
   } catch (error) {
     console.error("Genre API error:", error);

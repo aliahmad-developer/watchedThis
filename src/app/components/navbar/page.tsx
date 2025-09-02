@@ -120,7 +120,6 @@ export default function Navbar() {
 
   const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    // Always navigate to a fresh random page with timestamp
     router.push(`/random?ts=${Date.now()}`);
   };
 

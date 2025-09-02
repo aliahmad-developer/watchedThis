@@ -4,6 +4,7 @@ import React, { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Loading from "../../../../components/utilities/loading";
+import { createSlug } from "@/app/components/utilities/createSlug";
 import Desc from "../../../../components/randomMedia/desc";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 
@@ -56,13 +57,6 @@ export default function SpecificRandomMediaPage({
     fetchData();
   }, [media_type, media_name_slug, id, router, hasCheckedRedirect]);
 
-  const createSlug = (str: string) =>
-    str
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/--+/g, "-");
-
   const mediaTitle = data?.title || data?.name || "Media Details";
   const metaDescription = data?.overview
     ? `${data.overview.substring(0, 160)}...`
@@ -72,7 +66,7 @@ export default function SpecificRandomMediaPage({
     return (
       <>
         <Head>
-          <title>Error Loading Media | Your Site Name</title>
+          <title>Error Loading Media | RandoMovie</title>
           <meta
             name="description"
             content="An error occurred while loading media details"

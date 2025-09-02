@@ -74,7 +74,7 @@ export default function TrendingCarouselClient({ media }: { media: MediaItem[] }
   const canGoRight = index < maxIndex;
 
   return (
-    <section className="relative px-4 py-6 w-full" ref={carouselRef}>
+    <section className="relative px-4 w-full" ref={carouselRef}>
       <h2 className="text-3xl font-bold mb-6">Trending</h2>
 
       <div className="flex w-full items-start">

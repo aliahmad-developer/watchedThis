@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Loading from "../components/utilities/loading";
+import { createSlug } from "../components/utilities/createSlug";
 
 export default function RandomPage() {
   const router = useRouter();
@@ -23,16 +24,12 @@ export default function RandomPage() {
         if (!data.media_type || !data.id) {
           throw new Error("Invalid data format from API");
         }
-        
-        const mediaTitle = data.title || data.name || "";
-        const slug = mediaTitle
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, "")
-          .replace(/\s+/g, "-")
-          .replace(/--+/g, "-");
 
-        // Use push instead of replace to avoid immediate re-render
-        router.push(`/random/${data.media_type}/${slug}/${data.id}`);
+        const mediaTitle = data.title || data.name || "";
+
+        router.push(
+          `/random/${data.media_type}/${createSlug(mediaTitle)}/${data.id}`
+        );
       } catch (err) {
         console.error("Failed to fetch random media:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -41,7 +38,7 @@ export default function RandomPage() {
     };
 
     // Only fetch if we're not already on a redirect path
-    if (!window.location.pathname.startsWith('/random/')) {
+    if (!window.location.pathname.startsWith("/random/")) {
       fetchRandomMedia();
     }
   }, [router, isRedirecting]);
