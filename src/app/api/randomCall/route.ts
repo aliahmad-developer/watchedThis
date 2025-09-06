@@ -45,7 +45,7 @@ export async function GET() {
     const discoverUrl = `https://api.themoviedb.org/3/discover/${media_type}?api_key=${TMDB_API_KEY}` +
       `&language=en-US&sort_by=popularity.desc` +
       `&primary_release_year=${randomYear}` +
-      `&vote_count.gte=100` + // Ensure some popularity
+      `&vote_count.gte=100` + 
       `&page=${Math.floor(Math.random() * 10) + 1}`; // Random page 1-10
 
     const discoverRes = await fetch(discoverUrl);

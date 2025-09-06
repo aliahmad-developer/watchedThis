@@ -10,10 +10,10 @@ interface MediaCardProps {
     runtime?: number;
     episode_run_time?: number[];
   };
-  displayTitle?: string;
+  displayTitle?: string; // <- optional (role/job/extra info)
 }
 
-export default function MediaCard({ item }: MediaCardProps) {
+export default function MediaCard({ item, displayTitle }: MediaCardProps) {
   const title = item.title || item.name || "Untitled";
   const mediaType = item.media_type || "movie";
   const duration =
@@ -37,6 +37,15 @@ export default function MediaCard({ item }: MediaCardProps) {
       <div className="mt-2 text-sm font-semibold text-center line-clamp-1 break-words">
         {title}
       </div>
+
+      {/* Extra role/job if passed */}
+      {displayTitle ? (
+        <div className="mt-1 text-xs text-center text-gray-600 dark:text-gray-400 line-clamp-1">
+          {displayTitle}
+        </div>
+      ) : (
+        <p className="text-sm invisible">placeholder</p>
+      )}
 
       {/* Metadata */}
       <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2">

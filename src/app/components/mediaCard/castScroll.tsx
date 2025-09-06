@@ -12,7 +12,6 @@ export default function CastScroll({
   const [visibleCount, setVisibleCount] = useState(10); // small buffer to keep scrollbar
   const [showGradient, setShowGradient] = useState(true);
   const CHUNK_SIZE = 10;
-  
 
   useEffect(() => {
     const container = scrollRef.current;

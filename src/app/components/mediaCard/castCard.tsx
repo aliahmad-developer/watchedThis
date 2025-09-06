@@ -1,5 +1,5 @@
 import Image from "next/image";
-
+import Link from "next/link";
 export default function CastCard({
   actor,
   mediaType,
@@ -24,6 +24,7 @@ export default function CastCard({
       <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-700">
         {actor.profile_path ? (
           <>
+          <Link href={`/person/${actor.id}`}>
             <Image
               src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
               alt={actorName}
@@ -31,6 +32,7 @@ export default function CastCard({
               className="object-cover"
               sizes="(max-width: 640px) 112px, 128px"
             />
+            </Link>
             {showGradient && (
               <div className="absolute inset-y-0 right-0 w-2/3 z-10 pointer-events-none bg-gradient-to-l from-light-bg dark:from-dark-bg to-transparent" />
             )}
