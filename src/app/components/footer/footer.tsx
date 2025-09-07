@@ -137,7 +137,13 @@ export default function Footer() {
                 from Tmdb.
               </p>
               <p className="text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text">
-                Usage of website agrees user to <Link className="hover:text-light-accent dark:hover:text-dark-accent transition-colors duration-200" href={'/terms'}>Terms of Use.</Link>
+                Usage of website agrees user to{" "}
+                <Link
+                  className="hover:text-light-accent dark:hover:text-dark-accent transition-colors duration-200"
+                  href={"/terms"}
+                >
+                  Terms of Use.
+                </Link>
               </p>
             </div>
             <div className="space-y-2 text-center sm:text-right text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text">
@@ -145,6 +151,8 @@ export default function Footer() {
               <p>
                 <Link
                   href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-light-accent dark:hover:text-dark-accent transition-colors underline"
                 >
                   Creative Commons BY-NC-SA 4.0 License
