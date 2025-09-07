@@ -39,13 +39,16 @@ export default function MediaCard({ item, displayTitle }: MediaCardProps) {
       </div>
 
       {/* Extra role/job if passed */}
-      {displayTitle ? (
-        <div className="mt-1 text-xs text-center text-gray-600 dark:text-gray-400 line-clamp-1">
-          {displayTitle}
-        </div>
-      ) : (
-        <p className="text-sm invisible">placeholder</p>
-      )}
+      {
+        displayTitle && (
+          <div className="mt-1 text-xs text-center text-gray-600 dark:text-gray-400 line-clamp-1">
+            {displayTitle}
+          </div>
+        )
+        // ) : (
+        //   <p className="text-sm invisible">placeholder</p>
+        // )
+      }
 
       {/* Metadata */}
       <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2">

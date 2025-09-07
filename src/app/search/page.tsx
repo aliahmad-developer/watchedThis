@@ -6,6 +6,27 @@ import Loading from "../components/utilities/loading";
 import MediaCard from "../components/mediaCard/mediaCard";
 import Link from "next/link";
 
+// Skeleton component for loading state
+function SearchSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header skeleton */}
+      <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mb-6 animate-pulse"></div>
+      
+      {/* Results grid skeleton */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2">
+        {Array.from({ length: 10 }).map((_, index) => (
+          <div key={index} className="animate-pulse">
+            <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-[2/3] w-full mb-2"></div>
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
+            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SearchClientPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,7 +85,7 @@ export default function SearchClientPage() {
 
     const timer = setTimeout(() => {
       fetchResults();
-    }, 300); // Small delay to prevent flash of loading state
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [query, page]);
@@ -85,50 +106,54 @@ export default function SearchClientPage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Search Results for "{query}"</h1>
 
-      <div className="min-h-[50vh] relative">
-        {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Loading fullScreen={false} centerInParent={true} />
-          </div>
-        ) : results.length > 0 ? (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2">
-              {results.map((item, i) => {
-                const isLast = i === results.length - 1;
-                return (
-                  <div
-                    key={`${item.id}-${i}`}
-                    ref={isLast ? lastItemRef : null}
-                    draggable={false}
-                    className="transition-opacity duration-300"
+      {loading ? (
+        <SearchSkeleton />
+      ) : results.length > 0 ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2">
+            {results.map((item, i) => {
+              const isLast = i === results.length - 1;
+              return (
+                <div
+                  key={`${item.id}-${i}`}
+                  ref={isLast ? lastItemRef : null}
+                  draggable={false}
+                  className="transition-opacity duration-300"
+                >
+                  <Link
+                    href={`/${item.media_type}/${createSlug(
+                      item.title || item.name
+                    )}/${item.id}`}
+                    passHref
                   >
-                    <Link
-                      href={`/${item.media_type}/${createSlug(
-                        item.title || item.name
-                      )}/${item.id}`}
-                      passHref
-                    >
-                      <MediaCard item={item} />
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-
-            {loadingMore && (
-              <div className="w-full flex justify-center py-8">
-                <Loading size="md" fullScreen={false} text="Loading more..." />
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-lg text-gray-500">
-              No results found for "{query}"
-            </p>
+                    <MediaCard item={item} />
+                  </Link>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+
+          {loadingMore && (
+            <div className="w-full flex justify-center py-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2 w-full">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={`loading-${index}`} className="animate-pulse">
+                    <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-[2/3] w-full mb-2"></div>
+                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
+                    <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <p className="text-lg text-gray-500">
+            No results found for "{query}"
+          </p>
+        </div>
+      )}
     </div>
   );
 }

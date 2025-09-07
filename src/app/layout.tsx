@@ -2,6 +2,7 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import Navbar from "./components/navbar/page";
 import PushUp from "./components/utilities/pushUp";
+import Footer from "./components/footer/footer";
 
 export const metadata = {
   title: "RandoMovie.com",
@@ -42,6 +43,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Navbar />
           <div>{children}</div>
+          <Footer/>
         </ThemeProvider>
         <PushUp />
       </body>

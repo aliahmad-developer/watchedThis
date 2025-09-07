@@ -12,16 +12,105 @@ interface MediaItem {
   name?: string;
 }
 
-const ITEM_WIDTH = 260; // Card width only
-const GAP = 24; // Gap between items
+const ITEM_WIDTH = 260;
+const GAP = 24;
 
-export default function TrendingCarouselClient({ media }: { media: MediaItem[] }) {
+// Skeleton component for loading state
+function TrendingCarouselSkeleton() {
+  const [visibleCount, setVisibleCount] = useState(4);
+  
+  const updateVisibleCount = useCallback(() => {
+    const w = window.innerWidth;
+    const newCount = w >= 1280 ? 4 : w >= 1024 ? 3 : w >= 640 ? 2 : 1;
+    setVisibleCount(newCount);
+  }, []);
+
+  useEffect(() => {
+    updateVisibleCount();
+    window.addEventListener("resize", updateVisibleCount);
+    return () => window.removeEventListener("resize", updateVisibleCount);
+  }, [updateVisibleCount]);
+
+  return (
+    <section className="relative px-4 w-full">
+      <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded w-1/4 mb-6 animate-pulse"></div>
+
+      <div className="flex w-full items-start">
+        <div className="relative overflow-hidden flex-1">
+          <div
+            className="flex gap-6 pb-6 pr-5"
+            style={{
+              width: `calc(${visibleCount} * (${ITEM_WIDTH}px + ${GAP}px) - ${GAP}px)`,
+            }}
+          >
+            {Array.from({ length: visibleCount }).map((_, idx) => (
+              <div
+                key={idx}
+                className="flex flex-col flex-shrink-0 animate-pulse"
+                style={{ width: `${ITEM_WIDTH}px` }}
+              >
+                <div className="flex h-[380px]">
+                  <div className="flex flex-col justify-between h-full mr-3 w-8">
+                    <div className="h-[320px] flex justify-center">
+                      <div className="w-4 h-24 bg-gray-300 dark:bg-gray-700 rounded"></div>
+                    </div>
+                    <div className="h-[60px] bg-gray-300 dark:bg-gray-700 rounded flex items-center justify-center">
+                      <div className="w-6 h-6 bg-gray-400 dark:bg-gray-600 rounded"></div>
+                    </div>
+                  </div>
+
+                  <div className="relative w-[242px] h-full rounded-lg overflow-hidden shadow-xl bg-gray-300 dark:bg-gray-700">
+                    <div className="w-full h-full bg-gray-300 dark:bg-gray-700"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 ml-2 shrink-0">
+          <div className="w-14 h-[180px] bg-gray-300 dark:bg-gray-700 rounded-md animate-pulse"></div>
+          <div className="w-14 h-[180px] bg-gray-300 dark:bg-gray-700 rounded-md animate-pulse"></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function TrendingCarouselClient() {
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(4);
   const [maxIndex, setMaxIndex] = useState(0);
   const [index, setIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxIndexRef = useRef(0);
+
+  // Fetch trending media on client side
+  useEffect(() => {
+    const fetchTrendingMedia = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/trending');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch trending media: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setMedia(data.results || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('Error fetching trending media:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrendingMedia();
+  }, []);
 
   const updateVisibleCount = useCallback(() => {
     const w = window.innerWidth;
@@ -68,7 +157,40 @@ export default function TrendingCarouselClient({ media }: { media: MediaItem[] }
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [scrollLeft, scrollRight]);
 
-  if (!media.length) return null;
+  // Show skeleton while loading
+  if (loading) {
+    return <TrendingCarouselSkeleton />;
+  }
+
+  // Show error message if fetch failed
+  if (error) {
+    return (
+      <section className="relative px-4 w-full">
+        <h2 className="text-3xl font-bold mb-6">Trending</h2>
+        <div className="text-center py-8 text-red-500">
+          <p>Failed to load trending content: {error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-light-accent text-white rounded"
+          >
+            Try Again
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // Show empty state if no media
+  if (!media.length) {
+    return (
+      <section className="relative px-4 w-full">
+        <h2 className="text-3xl font-bold mb-6">Trending</h2>
+        <div className="text-center py-8 text-gray-500">
+          <p>No trending content available at the moment.</p>
+        </div>
+      </section>
+    );
+  }
 
   const canGoLeft = index > 0;
   const canGoRight = index < maxIndex;
@@ -159,8 +281,8 @@ function CarouselItem({
               priority={isPriority}
             />
           ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-500">No image</span>
+            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+              <span className="text-gray-500 dark:text-gray-400">No image</span>
             </div>
           )}
         </Link>
