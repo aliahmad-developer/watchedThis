@@ -1,13 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import AuthModal from "../authModal";
 import { auth } from "../../../firebase/firebaseConfig";
-import { User, onAuthStateChanged, sendEmailVerification } from "firebase/auth";
+import { User, onAuthStateChanged } from "firebase/auth";
 
 export default function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const pathname = usePathname();
+  const isAuthPage = pathname === "/auth";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -26,7 +29,7 @@ export default function AuthButton() {
   };
 
   const handleClick = () => {
-    if (!user) setModalOpen(true);
+    if (!user && !isAuthPage) setModalOpen(true);
   };
 
   return (
@@ -34,22 +37,23 @@ export default function AuthButton() {
       {user ? (
         <Link href="/auth">
           <span
-            className="bold px-4 py-1.5 bg-transparent rounded-lg text-sm font-medium 
-                      text-light-btn-text 
-                     hover:text-light-accent dark:hover:text-dark-accent
-                     dark:text-white
-                    dark:hover:text-dark-accent
-                     transition-colors
-                       max-w-[140px] truncate"
+            className={`px-4 py-1.5 rounded-lg text-md font-medium transition-colors max-w-[140px] truncate
+              ${
+                isAuthPage
+                  ? "bg-light-accent dark:bg-dark-accent text-white dark:text-dark-card shadow-md"
+                  : "bg-transparent text-light-btn-text dark:text-white hover:text-light-accent dark:hover:text-dark-accent"
+              }`}
             title={
               user.displayName
-                ? user.displayName
+                ? user.displayName.charAt(0).toUpperCase() +
+                  user.displayName.slice(1).toLowerCase()
                 : user.email?.split("@")[0] || ""
             }
           >
             {truncateUsername(
               user.displayName
-                ? user.displayName
+                ? user.displayName.charAt(0).toUpperCase() +
+                    user.displayName.slice(1).toLowerCase()
                 : user.email?.split("@")[0] || ""
             )}
           </span>
@@ -57,12 +61,12 @@ export default function AuthButton() {
       ) : (
         <button
           onClick={handleClick}
-          className="bold px-4 py-1.5 bg-transparent rounded-lg text-sm font-medium 
-                      text-light-btn-text 
-                     hover:text-light-accent dark:hover:text-dark-accent
-                     dark:text-white
-                    dark:hover:text-dark-accent
-                     transition-colors"
+          className={`px-4 py-1.5 rounded-lg text-md font-medium transition-colors
+            ${
+              isAuthPage
+                ? "bg-light-accent dark:bg-dark-accent text-white dark:text-dark-card shadow-md cursor-default"
+                : "bg-transparent text-light-btn-text dark:text-white hover:text-light-accent dark:hover:text-dark-accent"
+            }`}
         >
           Login
         </button>

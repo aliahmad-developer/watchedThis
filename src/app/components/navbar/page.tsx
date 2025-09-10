@@ -152,7 +152,7 @@ export default function Navbar() {
                 size="sm"
               />
               <Toggle size="sm" />
-              <AuthButton /> {/* ✅ Added here for mobile */}
+              <AuthButton /> 
             </div>
           </div>
 
