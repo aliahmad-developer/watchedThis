@@ -29,6 +29,21 @@ async function fetchFromTMDB<T>(endpoint: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// helper to fetch runtime details for each item
+async function fetchRuntime(mediaType: string, id: number) {
+  try {
+    const detail = await fetchFromTMDB<any>(`/${mediaType}/${id}`);
+    if (mediaType === "movie") {
+      return detail.runtime || null;
+    } else if (mediaType === "tv") {
+      return detail.episode_run_time?.[0] || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -40,26 +55,28 @@ export async function GET(
   const page = searchParams.get("page") || "1";
 
   try {
+    const media = await fetchFromTMDB<TMDBDiscoverResponse>(
+      `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`
+    );
+
+    // fetch runtimes in parallel
+    const resultsWithRuntime = await Promise.all(
+      media.results.map(async (item) => {
+        const runtime = await fetchRuntime(mediaType, item.id);
+        return { ...item, runtime };
+      })
+    );
+
     if (page === "1") {
-      // First page → also fetch company info
       const company = await fetchFromTMDB<TMDBCompany>(`/company/${id}`);
-
-      const media = await fetchFromTMDB<TMDBDiscoverResponse>(
-        `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`
-      );
-
       return NextResponse.json({
         company,
-        results: media.results,
+        results: resultsWithRuntime,
         total_pages: media.total_pages,
       });
     } else {
-      // Only media for subsequent pages
-      const media = await fetchFromTMDB<TMDBDiscoverResponse>(
-        `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`
-      );
       return NextResponse.json({
-        results: media.results,
+        results: resultsWithRuntime,
         total_pages: media.total_pages,
       });
     }

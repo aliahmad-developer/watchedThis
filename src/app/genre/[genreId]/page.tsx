@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { GenreHeader } from "../../components/Genre/GenreHeader";
+import { GenreHeader } from "../../components/Genre/mediaTypeToggle";
 import { GenreMediaGrid } from "../../components/Genre/GenreMediaGrid";
 import { useGenreMappings } from "../../components/hooks/Genre/useGenreMapping";
 import { useGenreData } from "../../components/hooks/Genre/useGenreData";

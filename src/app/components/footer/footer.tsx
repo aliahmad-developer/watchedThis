@@ -100,7 +100,7 @@ export default function Footer() {
                 className="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text"
               />
               <textarea
-                placeholder="Goblins, goblins, goblins.."
+                placeholder="Goblins, goblins, goblins..."
                 rows={3}
                 className="w-full px-3 py-2 min-h-10 
                  bg-light-bg dark:bg-dark-bg 

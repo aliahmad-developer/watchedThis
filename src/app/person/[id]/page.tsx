@@ -6,7 +6,8 @@ import Link from "next/link";
 import slugify from "slugify";
 import { useMediaType } from "@/app/components/hooks/Genre/useMediaType";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
-import { useEffect, useState, use, useRef, useCallback } from "react";
+import { useEffect, useState, use, useRef } from "react";
+import {GenreHeader}  from "@/app/components/Genre/mediaTypeToggle";
 
 // ----------------------
 // Types
@@ -121,52 +122,15 @@ const BiographySection = ({
   );
 };
 
-// Media type toggle buttons component
-const MediaTypeToggle = ({
-  mediaType,
-  setMediaType,
-}: {
-  mediaType: string;
-  setMediaType: (type: "movie" | "tv") => void;
-}) => (
-  <div className="flex space-x-4 mb-4">
-    <button
-      onClick={() => setMediaType("movie")}
-      className={`px-6 py-2 rounded-full transition-colors duration-200 ${
-        mediaType === "movie"
-          ? "bg-light-accent text-white"
-          : "bg-light-card dark:bg-dark-card hover:bg-light-card-hover dark:hover:bg-dark-card-hover"
-      }`}
-      aria-pressed={mediaType === "movie"}
-    >
-      Movies
-    </button>
-    <button
-      onClick={() => setMediaType("tv")}
-      className={`px-6 py-2 rounded-full transition-colors duration-200 ${
-        mediaType === "tv"
-          ? "bg-light-accent text-white"
-          : "bg-light-card dark:bg-dark-card hover:bg-light-card-hover dark:hover:bg-dark-card-hover"
-      }`}
-      aria-pressed={mediaType === "tv"}
-    >
-      TV Shows
-    </button>
-  </div>
-);
-
 // Skeleton loader for PersonPage
 const PersonPageSkeleton = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-pulse">
       {/* Header Section Skeleton */}
       <div className="flex flex-col md:flex-row gap-8 mb-12">
-        {/* Profile Image Skeleton */}
         <div className="flex-shrink-0 mx-auto md:mx-0">
           <div className="w-[300px] h-[450px] bg-gray-300 dark:bg-gray-700 rounded-xl"></div>
         </div>
-
-        {/* Info Section Skeleton */}
         <div className="flex-grow space-y-4">
           <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
           <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
@@ -177,27 +141,6 @@ const PersonPageSkeleton = () => {
             <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-4/6"></div>
             <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/6"></div>
           </div>
-        </div>
-      </div>
-
-      {/* Credits Section Skeleton */}
-      <div className="mb-12">
-        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-          <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/4"></div>
-          <div className="flex space-x-4">
-            <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-            <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-          </div>
-        </div>
-
-        {/* Media Cards Skeleton */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={i}
-              className="h-64 bg-gray-300 dark:bg-gray-700 rounded-lg"
-            ></div>
-          ))}
         </div>
       </div>
     </div>
@@ -215,21 +158,17 @@ export default function PersonPage({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // biography toggle
   const [showFullBio, setShowFullBio] = useState(false);
   const maxBioLength = 250;
 
-  // Infinite scroll refs and state
   const loaderRef = useRef<HTMLDivElement | null>(null);
   const [visibleCount, setVisibleCount] = useState(10);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Scroll to top when ID changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [id]);
 
-  // Fetch person data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -237,9 +176,7 @@ export default function PersonPage({
         const personData = await getPersonData(id);
         setData(personData);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
-        );
+        setError(err instanceof Error ? err.message : "An unknown error occurred");
       } finally {
         setLoading(false);
       }
@@ -248,26 +185,20 @@ export default function PersonPage({
     fetchData();
   }, [id]);
 
-  // Filter credits based on media type
   const filteredCast =
     data?.credits?.cast.filter((c) => c.media_type === mediaType) || [];
   const filteredCrew =
     data?.credits?.crew.filter((c) => c.media_type === mediaType) || [];
 
-  // Intersection Observer for infinite scroll with better cleanup
   useEffect(() => {
     const currentLoader = loaderRef.current;
-    if (
-      !currentLoader ||
-      (filteredCast.length === 0 && filteredCrew.length === 0)
-    )
+    if (!currentLoader || (filteredCast.length === 0 && filteredCrew.length === 0))
       return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !isLoadingMore) {
           setIsLoadingMore(true);
-          // Use requestAnimationFrame for smoother loading
           requestAnimationFrame(() => {
             setVisibleCount((prev) => prev + 10);
             setIsLoadingMore(false);
@@ -280,22 +211,21 @@ export default function PersonPage({
     observer.observe(currentLoader);
 
     return () => {
-      if (currentLoader) {
-        observer.unobserve(currentLoader);
-      }
+      if (currentLoader) observer.unobserve(currentLoader);
     };
   }, [isLoadingMore, filteredCast.length, filteredCrew.length]);
 
-  // Reset visible count when media type changes
   useEffect(() => {
     setVisibleCount(10);
   }, [mediaType]);
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Person Not Found</h1>
+          <h1 className="text-2xl font-bold mb-4 text-light-header dark:text-white">
+            Person Not Found
+          </h1>
           <p className="mb-4 text-light-secondary-text dark:text-dark-secondary-text">
             {error}
           </p>
@@ -318,10 +248,9 @@ export default function PersonPage({
   const bioText = details.biography || "No biography available.";
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl min-h-screen">
+    <div className="container mx-auto px-4 py-8 max-w-6xl min-h-screen bg-light-bg dark:bg-dark-bg space-y-12">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row gap-8 mb-12">
-        {/* Profile Image */}
+      <div className="flex flex-col md:flex-row gap-8 bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md">
         <div className="flex-shrink-0 mx-auto md:mx-0">
           {details.profile_path ? (
             <Image
@@ -338,21 +267,16 @@ export default function PersonPage({
             </div>
           )}
         </div>
-
-        {/* Info Section */}
         <div className="flex-grow">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 p-1">
+          <h1 className="text-4xl font-bold text-light-accent dark:text-dark-accent mb-2 p-1">
             {details.name}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text mb-4">
             {details.known_for_department}
           </p>
-
-          {/* Biography */}
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-2xl font-semibold text-light-header dark:text-white mb-4">
             Biography
           </h2>
-
           <BiographySection
             bioText={bioText}
             showFullBio={showFullBio}
@@ -364,22 +288,19 @@ export default function PersonPage({
 
       {/* Credits Section */}
       {data.credits && (
-        <div className="mb-12">
+        <div className="bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md">
           <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              Filmography
-            </h2>
-
-            <MediaTypeToggle
+            <GenreHeader
+              genreName="Filmography"
               mediaType={mediaType}
-              setMediaType={setMediaType}
+              onMediaTypeChange={setMediaType}
             />
           </div>
 
-          {/* Acting Credits */}
+          {/* Acting */}
           {filteredCast.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-xl font-medium text-gray-800 dark:text-gray-200 mb-4">
+              <h3 className="text-xl font-medium text-light-header dark:text-gray-200 mb-4">
                 Acting
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -410,18 +331,16 @@ export default function PersonPage({
             </div>
           )}
 
-          {/* Crew Credits */}
+          {/* Crew */}
           {filteredCrew.length > 0 && (
             <div>
-              <h3 className="text-xl font-medium text-gray-800 dark:text-gray-200 mb-4">
+              <h3 className="text-xl font-medium text-light-header dark:text-gray-200 mb-4">
                 Production
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filteredCrew.slice(0, visibleCount).map((credit, index) => (
                   <Link
-                    key={`crew-${credit.media_type}-${credit.id}-${
-                      credit.job || "unknown"
-                    }-${index}`}
+                    key={`crew-${credit.media_type}-${credit.id}-${credit.job || "unknown"}-${index}`}
                     href={createCreditSlug(
                       credit.title,
                       credit.id,
@@ -447,7 +366,7 @@ export default function PersonPage({
             </div>
           )}
 
-          {/* Loader for infinite scroll */}
+          {/* Loader */}
           {(visibleCount < filteredCast.length ||
             visibleCount < filteredCrew.length) && (
             <div
@@ -461,10 +380,10 @@ export default function PersonPage({
         </div>
       )}
 
-      {/* Gallery Section */}
+      {/* Gallery */}
       {images && images.profiles.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+        <div className="bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md">
+          <h2 className="text-2xl font-semibold text-light-header dark:text-white mb-6">
             Gallery
           </h2>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">

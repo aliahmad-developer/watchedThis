@@ -14,31 +14,9 @@ export async function GET() {
     }
 
     const data = await res.json();
-    const first8 = data.results.slice(0, 10);
+    const first10 = data.results.slice(0, 10);
 
-    const enriched = await Promise.all(
-      first8.map(async (item: any) => {
-        const type = item.media_type;
-        try {
-          const detailRes = await fetch(
-            `https://api.themoviedb.org/3/${type}/${item.id}?api_key=${API_KEY}`
-          );
-
-          if (!detailRes.ok) {
-            console.warn(`Failed to fetch detail for ${type}/${item.id}`);
-            return item;
-          }
-
-          const detail = await detailRes.json();
-          return { ...detail, ...item };
-        } catch (err) {
-          console.error(`Error fetching detail for ${type}/${item.id}`, err);
-          return item;
-        }
-      })
-    );
-
-    return NextResponse.json({ results: enriched });
+    return NextResponse.json({ results: first10 });
   } catch (error) {
     console.error("API route error", error);
     return NextResponse.json(

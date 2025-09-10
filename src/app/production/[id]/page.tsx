@@ -138,9 +138,9 @@ export default function ProductionPage({
 
       {/* Media Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <Link
-            key={item.id}
+            key={`${mediaType}-${item.id}-${index}`}
             href={`/${mediaType}/${createSlug(
               item.title || item.name || "untitled"
             )}/${item.id}`}

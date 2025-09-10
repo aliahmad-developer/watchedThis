@@ -51,7 +51,7 @@ export default function SearchResultsDropdown({
 
   return (
     <div className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg shadow-lg overflow-hidden">
-      <div className="max-h-[60vh] overflow-y-auto">
+      <div className="max-h-[90vh] overflow-y-auto">
         {isLoading ? (
           <div className="px-4 py-3 text-center text-light-secondary-text dark:text-dark-secondary-text">
             Loading...
@@ -64,7 +64,7 @@ export default function SearchResultsDropdown({
                 onClick={onClose}
                 className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
               >
-                <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex items-center gap-3 px-4 py-4">
                   {item.poster ? (
                     <Image
                       src={`https://image.tmdb.org/t/p/w92${item.poster}`}
@@ -81,7 +81,7 @@ export default function SearchResultsDropdown({
                       {item.title}
                     </div>
                     {item.originalName && (
-                      <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
+                      <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1 bold">
                         {item.originalName}
                       </div>
                     )}

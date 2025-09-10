@@ -15,6 +15,12 @@ export default function ThemeToggle({ size = "md" }: ThemeToggleProps) {
     setMounted(true);
   }, []);
 
+  const translateClasses = {
+    sm: "translate-x-6",
+    md: "translate-x-6",
+    lg: "translate-x-7",
+  };
+
   // Size configuration
   const sizeClasses = {
     sm: {
@@ -51,8 +57,14 @@ export default function ThemeToggle({ size = "md" }: ThemeToggleProps) {
         focus:outline-none`}
     >
       <div
-        className={`flex items-center justify-center ${sizeClasses[size].toggle} rounded-full transform transition-transform duration-300
-          ${theme === "light" ? "translate-x-0 bg-white" : `translate-x-${size === "sm" ? "6" : size === "md" ? "6" : "7"} bg-gray-900`}`}
+        className={`flex items-center justify-center ${
+          sizeClasses[size].toggle
+        } rounded-full transform transition-transform duration-300
+    ${
+      theme === "light"
+        ? "translate-x-0 bg-white"
+        : `${translateClasses[size]} bg-gray-900`
+    }`}
       >
         {theme === "light" ? (
           <SunIcon className={`${sizeClasses[size].icon} text-yellow-500`} />

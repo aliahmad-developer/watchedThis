@@ -22,7 +22,7 @@
   --color-dark-accent: #d4a373;
   --color-dark-secondary-text: #9e9e9e;
   --color-dark-body-text: #eeeeee;
-  --color-dark-header: #0d0d0d;
+  --color-dark-header: #5a5a5aff;
   --color-dark-btn-bg: #d4a373;
   --color-dark-btn-text: #000000;
   --color-dark-btn-hover-bg: #b87c45;
@@ -36,32 +36,88 @@
 }
 
 @layer base {
-  li {@apply text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-xs dark:text-white;}
-  button {@apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text cursor-pointer; font-family: verdana;}
-  p {font-family: helvetica; @apply text-light-body-text dark:text-dark-body-text text-xs;}
-  span {@apply flex flex-col items-center justify-center gap-1 mt-1;}
-  * {font-family: georgia, serif; overflow-x: hidden;}
-  body {@apply bg-light-bg dark:bg-dark-bg;}
+  li {
+    @apply text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-sm sm:text-base dark:text-white;
+    font-family: "Poppins", sans-serif;
+  }
+
+  button {
+    @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text cursor-pointer rounded-md px-3 py-1 transition;
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  p {
+    @apply text-light-body-text dark:text-dark-body-text text-sm sm:text-base leading-relaxed;
+    font-family: "Inter", sans-serif;
+  }
+
+  span {
+    @apply flex flex-col items-center justify-center gap-1 mt-1;
+    font-family: "Inter", sans-serif;
+  }
+
+  * {
+    font-family: "Inter", sans-serif;
+  }
+
+  body {
+    @apply bg-light-bg dark:bg-dark-bg;
+  }
 }
 
 /* Base scrollbar */
-::-webkit-scrollbar {width: var(--scrollbar-width); height: var(--scrollbar-width);}
-::-webkit-scrollbar-track {background: var(--scrollbar-track-light);}
-::-webkit-scrollbar-thumb:horizontal {background: var(--scrollbar-thumb-light); border-radius: calc(var(--scrollbar-width) / 2);}
-::-webkit-scrollbar-thumb:vertical {background: var(--scrollbar-thumb-light);}
-::-webkit-scrollbar-thumb:hover:horizontal {background: var(--color-light-btn-hover-bg);}
-::-webkit-scrollbar-thumb:hover:vertical {background: var(--color-light-btn-hover-bg);}
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-light);
+}
+::-webkit-scrollbar-thumb:horizontal {
+  background: var(--scrollbar-thumb-light);
+  border-radius: calc(var(--scrollbar-width) / 2);
+}
+::-webkit-scrollbar-thumb:vertical {
+  background: var(--scrollbar-thumb-light);
+}
+::-webkit-scrollbar-thumb:hover:horizontal {
+  background: var(--color-light-btn-hover-bg);
+}
+::-webkit-scrollbar-thumb:hover:vertical {
+  background: var(--color-light-btn-hover-bg);
+}
 
 /* Dark mode scrollbar */
-.dark ::-webkit-scrollbar-track {background: var(--scrollbar-track-dark);}
-.dark ::-webkit-scrollbar-thumb:horizontal {background: var(--scrollbar-thumb-dark); border-radius: calc(var(--scrollbar-width) / 2);}
-.dark ::-webkit-scrollbar-thumb:vertical {background: var(--scrollbar-thumb-dark);}
-.dark ::-webkit-scrollbar-thumb:hover:horizontal {background: var(--color-dark-btn-hover-bg);}
-.dark ::-webkit-scrollbar-thumb:hover:vertical {background: var(--color-dark-btn-hover-bg);}
+.dark ::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-dark);
+}
+.dark ::-webkit-scrollbar-thumb:horizontal {
+  background: var(--scrollbar-thumb-dark);
+  border-radius: calc(var(--scrollbar-width) / 2);
+}
+.dark ::-webkit-scrollbar-thumb:vertical {
+  background: var(--scrollbar-thumb-dark);
+}
+.dark ::-webkit-scrollbar-thumb:hover:horizontal {
+  background: var(--color-dark-btn-hover-bg);
+}
+.dark ::-webkit-scrollbar-thumb:hover:vertical {
+  background: var(--color-dark-btn-hover-bg);
+}
 
 /* Hide scrollbar */
-.no-scrollbar::-webkit-scrollbar {display: none;}
-.no-scrollbar {-ms-overflow-style: none; scrollbar-width: none;}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* Vertical text */
-.writing-vertical-ltr {writing-mode: vertical-lr; text-orientation: mixed;}
+.writing-vertical-ltr {
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+}

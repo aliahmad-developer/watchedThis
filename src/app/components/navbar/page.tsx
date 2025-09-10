@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import AuthButton from "../../components/auth/navButton/authButton";
 import { useState, useEffect, FormEvent, ChangeEvent, useRef } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -135,7 +136,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2 sticky top-0 z-50">
+      <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2 top-0 z-50">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center justify-between w-full sm:w-auto">
             <Link
@@ -151,6 +152,7 @@ export default function Navbar() {
                 size="sm"
               />
               <Toggle size="sm" />
+              <AuthButton /> {/* ✅ Added here for mobile */}
             </div>
           </div>
 
@@ -183,6 +185,7 @@ export default function Navbar() {
               size="sm"
             />
             <Toggle size="sm" />
+            <AuthButton />
           </div>
         </div>
       </nav>
