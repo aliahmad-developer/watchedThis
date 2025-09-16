@@ -1,19 +1,71 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, FormEvent } from "react";
+
+// Static data that doesn't change
+const NAV_LINKS = [
+  { href: "/", label: "Home" },
+  { href: "/random", label: "Random" },
+  { href: "/spinner", label: "Spinner" },
+  { href: "/find", label: "Find" },
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const VERSION = "v5.0.12";
 
 export default function Footer() {
   const [name, setName] = useState("");
-  const [touched, setTouched] = useState(false);
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [touched, setTouched] = useState({ name: false });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const year = new Date().getFullYear();
 
   // Only render dynamic parts after client mount
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null; // prevents hydration mismatch
+  const nameError = useMemo(() => {
+    return touched.name && name.length === 0 ? "It'd be nice to know your name." : "";
+  }, [touched.name, name]);
+
+  const handleNameBlur = useCallback(() => {
+    setTouched(prev => ({ ...prev, name: true }));
+  }, []);
+
+  const handleSubmit = useCallback(async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Here you would typically send the form data to your backend
+    console.log({ name, email, message });
+    
+    // Simulate API call
+    setTimeout(() => {
+      alert("Thank you for your feedback!");
+      setName("");
+      setEmail("");
+      setMessage("");
+      setTouched({ name: false });
+      setIsSubmitting(false);
+    }, 500);
+  }, [name, email, message]);
+
+  if (!mounted) {
+    // Return a simplified version for SSR to prevent hydration mismatch
+    return (
+      <footer className="cursor-default bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text m-4 border border-light-border dark:border-dark-border rounded-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="text-center">
+            <p className="text-light-secondary-text dark:text-dark-secondary-text">
+              © {CURRENT_YEAR} RandoMovie. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="cursor-default bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text m-4 border border-light-border dark:border-dark-border rounded-lg">
@@ -57,12 +109,7 @@ export default function Footer() {
               Navigation
             </h3>
             <ul className="space-y-1">
-              {[
-                { href: "/", label: "Home" },
-                { href: "/random", label: "Random" },
-                { href: "/spinner", label: "Spinner" },
-                { href: "/find", label: "Find" },
-              ].map((link) => (
+              {NAV_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
@@ -80,44 +127,47 @@ export default function Footer() {
             <h3 className="text-lg sm:text-xl font-bold text-light-header dark:text-dark-header">
               Feedback
             </h3>
-            <form className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3">
               <input
+                id="name"
                 type="text"
                 placeholder="Your name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                onFocus={() => setTouched(true)}
-                className="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                onBlur={handleNameBlur}
+                className="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text border border-light-border dark:border-dark-border focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors"
               />
-              {touched && name.length === 0 && (
+              {nameError && (
                 <p className="mt-1 text-xs sm:text-sm text-light-accent dark:text-dark-accent italic">
-                  It'd be nice to know your name.
+                  {nameError}
                 </p>
               )}
               <input
+                id="email"
+                autoComplete="email"
                 type="email"
                 placeholder="Your email (optional)"
-                className="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text border border-light-border dark:border-dark-border focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors"
               />
               <textarea
                 placeholder="Goblins, goblins, goblins..."
                 rows={3}
-                className="w-full px-3 py-2 min-h-10 
-                 bg-light-bg dark:bg-dark-bg 
-                 border border-light-border dark:border-dark-border leading-relaxed
-                 rounded-md text-sm sm:text-base 
-                 text-light-body-text dark:text-dark-body-text 
-                 placeholder-light-secondary-text dark:placeholder-dark-secondary-text 
-                 resize-none overflow-y-auto"
+                id="text"
+                value={message}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
+                className="w-full px-3 py-2 min-h-10 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border leading-relaxed rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text resize-none overflow-y-auto focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors"
               />
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
                 *Please be kind and help improve the website.
               </p>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-md transition-colors text-sm sm:text-base bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg hover:text-light-btn-hover-text dark:hover:text-dark-btn-hover-text"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-md transition-colors text-sm sm:text-base bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg hover:text-light-btn-hover-text dark:hover:text-dark-btn-hover-text disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Send message
+                {isSubmitting ? "Sending..." : "Send message"}
               </button>
             </form>
           </div>
@@ -147,7 +197,7 @@ export default function Footer() {
               </p>
             </div>
             <div className="space-y-2 text-center sm:text-right text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text">
-              <p>v5.0.12</p>
+              <p>{VERSION}</p>
               <p>
                 <Link
                   href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
@@ -158,7 +208,7 @@ export default function Footer() {
                   Creative Commons BY-NC-SA 4.0 License
                 </Link>
               </p>
-              <p>© {year} RandoMovie. All rights reserved.</p>
+              <p>© {CURRENT_YEAR} RandoMovie. All rights reserved.</p>
             </div>
           </div>
         </div>

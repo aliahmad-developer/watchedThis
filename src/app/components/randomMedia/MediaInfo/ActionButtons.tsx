@@ -23,7 +23,7 @@ export default function ActionButtons({
         <FontAwesomeIcon icon={faPlay} />
         Play Trailer
       </button>
-      <button className="text-light-accent flex items-center gap-2 bg-light-card dark:bg-dark-card hover:bg-light-border dark:hover:bg-dark-border px-6 py-3 rounded-lg font-semibold transition">
+      <button className="text-light-accent rounded-xl  dark:text-dark-accent flex items-center gap-2 bg-light-card dark:bg-dark-card hover:bg-light-border dark:hover:bg-dark-border px-6 py-3 font-semibold transition">
         Add to List
       </button>
     </div>

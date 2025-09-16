@@ -10,7 +10,7 @@ export default function Home() {
         <SpotLightServer />
         <div className="mx-5">
           <Trending />
-          <div className="p-100"></div>
+          <div className="py-100"></div>
         </div>
       </div>
     </>

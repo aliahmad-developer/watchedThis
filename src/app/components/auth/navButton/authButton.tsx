@@ -41,7 +41,7 @@ export default function AuthButton() {
               ${
                 isAuthPage
                   ? "bg-light-accent dark:bg-dark-accent text-white dark:text-dark-card shadow-md"
-                  : "bg-transparent text-light-btn-text dark:text-white hover:text-light-accent dark:hover:text-dark-accent"
+                  : "font-bold bg-transparent text-light-btn-text dark:text-secondary-text hover:text-light-accent dark:hover:text-dark-btn-hover-bg transition-colors duration-200 ease-in-out"
               }`}
             title={
               user.displayName

@@ -13,6 +13,45 @@ import UsernameUpdate from "./authComponent/userNameUpdate";
 import PasswordUpdate from "./authComponent/passwordUpdate";
 import Message from "./authComponent/message";
 
+// Skeleton Loader Component
+const SkeletonLoader = () => {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-3">
+      <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-4 w-full max-w-xs sm:max-w-sm">
+        {/* Header Skeleton */}
+        <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded mb-4 animate-pulse mx-auto w-3/4"></div>
+        
+        {/* Email Field Skeleton */}
+        <div className="mb-4">
+          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2 w-1/4 animate-pulse"></div>
+          <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
+        
+        {/* Verification Skeleton */}
+        <div className="mb-4">
+          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2 w-1/2 animate-pulse"></div>
+          <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
+        
+        {/* Username Field Skeleton */}
+        <div className="mb-4">
+          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2 w-1/3 animate-pulse"></div>
+          <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
+        
+        {/* Account Created Skeleton */}
+        <div className="mb-4">
+          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2 w-1/2 animate-pulse"></div>
+          <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
+        
+        {/* Logout Button Skeleton */}
+        <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+      </div>
+    </div>
+  );
+};
+
 export default function AuthPage() {
   const [mode, setMode] = useState<"signup" | "login">("signup");
   const [user, setUser] = useState<User | null>(null);
@@ -201,14 +240,7 @@ export default function AuthPage() {
 
   // ---------------- UI ----------------
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-3">
-        <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-4 w-full max-w-xs sm:max-w-sm flex flex-col items-center">
-          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-light-accent dark:border-dark-accent mb-3 sm:mb-4"></div>
-          <p className="text-sm sm:text-base text-light-body-text dark:text-dark-body-text">Loading...</p>
-        </div>
-      </div>
-    );
+    return <SkeletonLoader />;
   }
 
   if (user) {

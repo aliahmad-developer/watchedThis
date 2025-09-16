@@ -30,13 +30,15 @@ export default function CastCard({
         {actor.profile_path ? (
           <>
             <Link href={`/person/${actor.id}`}>
-              <Image
-                src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
-                alt={actorName}
-                fill
-                className="object-cover"
-                sizes="(max-width: 640px) 112px, 128px"
-              />
+              <div className="relative w-full h-full"> {/* Added this wrapper div */}
+                <Image
+                  src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                  alt={actorName}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 112px, 128px"
+                />
+              </div>
             </Link>
             {showGradient && (
               <div className="absolute inset-y-0 right-0 w-2/3 z-10 pointer-events-none bg-gradient-to-l from-light-bg dark:from-dark-bg to-transparent" />

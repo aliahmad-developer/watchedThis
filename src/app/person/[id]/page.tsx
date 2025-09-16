@@ -7,7 +7,7 @@ import slugify from "slugify";
 import { useMediaType } from "@/app/components/hooks/Genre/useMediaType";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import { useEffect, useState, use, useRef } from "react";
-import {GenreHeader}  from "@/app/components/Genre/mediaTypeToggle";
+import { GenreHeader } from "@/app/components/Genre/mediaTypeToggle";
 
 // ----------------------
 // Types
@@ -176,7 +176,9 @@ export default function PersonPage({
         const personData = await getPersonData(id);
         setData(personData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred"
+        );
       } finally {
         setLoading(false);
       }
@@ -192,7 +194,10 @@ export default function PersonPage({
 
   useEffect(() => {
     const currentLoader = loaderRef.current;
-    if (!currentLoader || (filteredCast.length === 0 && filteredCrew.length === 0))
+    if (
+      !currentLoader ||
+      (filteredCast.length === 0 && filteredCrew.length === 0)
+    )
       return;
 
     const observer = new IntersectionObserver(
@@ -248,12 +253,13 @@ export default function PersonPage({
   const bioText = details.biography || "No biography available.";
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl min-h-screen bg-light-bg dark:bg-dark-bg space-y-12">
+    <div className="container mx-auto px-4 py-8 max-w-7xl min-h-screen bg-light-bg dark:bg-dark-bg space-y-12">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row gap-8 bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md">
         <div className="flex-shrink-0 mx-auto md:mx-0">
           {details.profile_path ? (
             <Image
+              draggable={false}
               src={`https://image.tmdb.org/t/p/w500${details.profile_path}`}
               alt={details.name}
               width={300}
@@ -340,7 +346,9 @@ export default function PersonPage({
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filteredCrew.slice(0, visibleCount).map((credit, index) => (
                   <Link
-                    key={`crew-${credit.media_type}-${credit.id}-${credit.job || "unknown"}-${index}`}
+                    key={`crew-${credit.media_type}-${credit.id}-${
+                      credit.job || "unknown"
+                    }-${index}`}
                     href={createCreditSlug(
                       credit.title,
                       credit.id,
@@ -393,6 +401,7 @@ export default function PersonPage({
                 className="overflow-hidden rounded-lg shadow-md"
               >
                 <Image
+                  draggable={false}
                   src={`https://image.tmdb.org/t/p/w300${image.file_path}`}
                   alt={`${details.name} portrait`}
                   width={200}

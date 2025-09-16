@@ -53,6 +53,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
         Email
         <input
           type="email"
+          id="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -72,6 +73,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
         Password
         <div className="relative mt-1">
           <input
+            id="password"
             type={showPassword ? "text" : "password"}
             placeholder="Password"
             value={password}
@@ -91,7 +93,10 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
             className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
             disabled={loading}
           >
-            <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} className="w-3 h-3" />
+            <FontAwesomeIcon
+              icon={showPassword ? faEyeSlash : faEye}
+              className="w-3 h-3"
+            />
           </button>
         </div>
       </label>
@@ -112,7 +117,11 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
 
       {/* Message */}
       {message && (
-        <p className={`text-xs ${message.includes("success") ? "text-green-600" : "text-red-600"}`}>
+        <p
+          className={`text-xs ${
+            message.includes("success") ? "text-green-600" : "text-red-600"
+          }`}
+        >
           {message}
         </p>
       )}
