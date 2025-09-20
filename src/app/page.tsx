@@ -12,6 +12,7 @@ export default function Home() {
           <Trending />
           <div className="py-100"></div>
         </div>
+
       </div>
     </>
   );

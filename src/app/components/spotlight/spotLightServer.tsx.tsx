@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
-import PopularSpotlightSliderClient from "./spotLightClient";
+import PopularSpotlightSliderClient from "./PopularSpotlightSliderClient";
 import { MediaItem } from "./types";
-import Head from "next/head"; // For meta tags
 
 interface PopularSpotlightSliderServerProps {
   apiEndpoint?: string;
@@ -25,62 +24,66 @@ export default async function PopularSpotlightSliderServer({
   autoPlay = true,
 }: PopularSpotlightSliderServerProps) {
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}${apiEndpoint}`,
-      {
-        next: { revalidate: 60 },
-      }
-    );
+    // Construct the full URL for the API endpoint
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const apiUrl = `${baseUrl}${apiEndpoint}`;
+    
+    const res = await fetch(apiUrl, {
+      next: { revalidate: 60 },
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch data: ${res.status}`);
+    }
+    
     const data = await res.json();
     const results: MediaItem[] = data.results?.slice(0, maxItems) || [];
 
-    const headersList = await headers();
-    const userAgent = headersList.get("user-agent") || "";
-    const isMobile = /Mobile|Android|iP(ad|hone)/i.test(userAgent);
+    // Check if we're on the client or server
+    let isMobile = false;
+    try {
+      const headersList = await headers();
+      const userAgent = headersList.get("user-agent") || "";
+      isMobile = /Mobile|Android|iP(ad|hone)/i.test(userAgent);
+    } catch (e) {
+      console.warn("Could not determine device type:", e);
+    }
 
-    const firstItem = results[0];
-    const seoTitle = firstItem?.title || firstItem?.name || "Spotlight";
-    const seoDescription =
-      firstItem?.overview?.slice(0, 160) ||
-      "Discover the latest popular movies and TV shows in our spotlight.";
+    // For server components, we can't use next/head
+    // Instead, we can set metadata in the layout or page
 
     return (
-      <>
-        {/* SEO Meta Tags */}
-        <Head>
-          <title>{seoTitle} | Spotlight</title>
-          <meta name="description" content={seoDescription} />
-          <meta property="og:title" content={seoTitle} />
-          <meta property="og:description" content={seoDescription} />
-          {firstItem?.backdrop_path && (
-            <meta
-              property="og:image"
-              content={`https://image.tmdb.org/t/p/w1280${firstItem.backdrop_path}`}
-            />
-          )}
-          <meta property="og:type" content="website" />
-        </Head>
-
-        {/* Main Content */}
-        <section
-          aria-label="Popular Spotlight Slider"
-          className={`spotlight-section ${className}`}
-        >
-          <PopularSpotlightSliderClient
-            items={results}
-            slideDuration={slideDuration}
-            className={className}
-            height={height}
-            showNavigation={showNavigation}
-            showSpotlightNumber={showSpotlightNumber}
-            autoPlay={autoPlay}
-            isMobile={isMobile}
-          />
-        </section>
-      </>
+      <section
+        aria-label="Popular Spotlight Slider"
+        className={`spotlight-section ${className}`}
+      >
+        <PopularSpotlightSliderClient
+          items={results}
+          slideDuration={slideDuration}
+          className={className}
+          height={height}
+          showNavigation={showNavigation}
+          showSpotlightNumber={showSpotlightNumber}
+          autoPlay={autoPlay}
+        />
+      </section>
     );
   } catch (err) {
     console.error("Failed to fetch spotlight data:", err);
-    return null;
+    
+    // Return a placeholder or error message
+    return (
+      <section
+        aria-label="Popular Spotlight Slider"
+        className={`spotlight-section ${className}`}
+        style={{ height: typeof height === "number" ? `${height}px` : height }}
+      >
+        <div className="flex items-center justify-center h-full">
+          <p className="text-center text-gray-500">
+            Failed to load spotlight content. Please try again later.
+          </p>
+        </div>
+      </section>
+    );
   }
 }

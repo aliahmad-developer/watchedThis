@@ -12,7 +12,6 @@ interface MediaItem {
   name?: string;
 }
 
-const ITEM_WIDTH = 260;
 const GAP = 24;
 
 // Skeleton component for loading state
@@ -20,8 +19,9 @@ function TrendingCarouselSkeleton() {
   const [visibleCount, setVisibleCount] = useState(4);
   
   const updateVisibleCount = useCallback(() => {
-    const w = window.innerWidth;
-    const newCount = w >= 1280 ? 4 : w >= 1024 ? 3 : w >= 640 ? 2 : 1;
+    const containerWidth = window.innerWidth - 32; // Subtract padding
+    const itemWidth = Math.min(260, containerWidth * 0.4); // Dynamic item width
+    const newCount = Math.max(1, Math.floor((containerWidth + GAP) / (itemWidth + GAP)));
     setVisibleCount(newCount);
   }, []);
 
@@ -37,17 +37,12 @@ function TrendingCarouselSkeleton() {
 
       <div className="flex w-full items-start">
         <div className="relative overflow-hidden flex-1">
-          <div
-            className="flex gap-6 pb-6 pr-5"
-            style={{
-              width: `calc(${visibleCount} * (${ITEM_WIDTH}px + ${GAP}px) - ${GAP}px)`,
-            }}
-          >
+          <div className="flex gap-6 pb-6 pr-5">
             {Array.from({ length: visibleCount }).map((_, idx) => (
               <div
                 key={idx}
                 className="flex flex-col flex-shrink-0 animate-pulse"
-                style={{ width: `${ITEM_WIDTH}px` }}
+                style={{ width: `calc((100% - ${(visibleCount - 1) * GAP}px) / ${visibleCount})` }}
               >
                 <div className="flex h-[380px]">
                   <div className="flex flex-col justify-between h-full mr-3 w-8">
@@ -59,7 +54,7 @@ function TrendingCarouselSkeleton() {
                     </div>
                   </div>
 
-                  <div className="relative w-[242px] h-full rounded-lg overflow-hidden shadow-xl bg-gray-300 dark:bg-gray-700">
+                  <div className="relative flex-1 h-full rounded-lg overflow-hidden shadow-xl bg-gray-300 dark:bg-gray-700">
                     <div className="w-full h-full bg-gray-300 dark:bg-gray-700"></div>
                   </div>
                 </div>
@@ -82,9 +77,11 @@ export default function TrendingCarouselClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(4);
+  const [itemWidth, setItemWidth] = useState(260);
   const [maxIndex, setMaxIndex] = useState(0);
   const [index, setIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxIndexRef = useRef(0);
 
@@ -112,25 +109,32 @@ export default function TrendingCarouselClient() {
     fetchTrendingMedia();
   }, []);
 
-  const updateVisibleCount = useCallback(() => {
-    const w = window.innerWidth;
-    const newCount = w >= 1280 ? 4 : w >= 1024 ? 3 : w >= 640 ? 2 : 1;
+  const updateDimensions = useCallback(() => {
+    if (!containerRef.current) return;
+    
+    const containerWidth = containerRef.current.offsetWidth;
+    // Calculate item width based on container size
+    const calculatedItemWidth = Math.min(260, containerWidth * 0.4);
+    setItemWidth(calculatedItemWidth);
+    
+    // Calculate how many items can fit in the container
+    const newCount = Math.max(1, Math.floor((containerWidth + GAP) / (calculatedItemWidth + GAP)));
     setVisibleCount(newCount);
   }, []);
 
   useEffect(() => {
     const handleResize = () => {
       if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
-      resizeTimeoutRef.current = setTimeout(updateVisibleCount, 100);
+      resizeTimeoutRef.current = setTimeout(updateDimensions, 100);
     };
 
-    updateVisibleCount();
+    updateDimensions();
     window.addEventListener("resize", handleResize);
     return () => {
       window.removeEventListener("resize", handleResize);
       if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
     };
-  }, [updateVisibleCount]);
+  }, [updateDimensions]);
 
   useEffect(() => {
     const newMaxIndex = Math.max(0, media.length - visibleCount);
@@ -199,13 +203,13 @@ export default function TrendingCarouselClient() {
     <section className="relative px-4 w-full" ref={carouselRef}>
       <h2 className="text-3xl font-bold mb-6">Trending</h2>
 
-      <div className="flex w-full items-start">
+      <div className="flex w-full items-start" ref={containerRef}>
         <div className="relative overflow-hidden flex-1">
           <div
             className="flex gap-6 transition-transform duration-500 ease-in-out pb-6 pr-5"
             style={{
-              transform: `translateX(calc(-${index} * (${ITEM_WIDTH}px + ${GAP}px)))`,
-              width: `calc(${media.length} * (${ITEM_WIDTH}px + ${GAP}px) - ${GAP}px)`,
+              transform: `translateX(calc(-${index} * (${itemWidth}px + ${GAP}px)))`,
+              width: `calc(${media.length} * (${itemWidth}px + ${GAP}px) - ${GAP}px)`,
             }}
           >
             {media.map((item, idx) => (
@@ -214,6 +218,7 @@ export default function TrendingCarouselClient() {
                 item={item}
                 position={idx + 1}
                 isPriority={idx < visibleCount}
+                itemWidth={itemWidth}
               />
             ))}
           </div>
@@ -234,10 +239,12 @@ function CarouselItem({
   item,
   position,
   isPriority,
+  itemWidth,
 }: {
   item: MediaItem;
   position: number;
   isPriority: boolean;
+  itemWidth: number;
 }) {
   const mediaType = item.title ? "movie" : "tv";
   const mediaTitle = (item.title || item.name || "")
@@ -249,7 +256,7 @@ function CarouselItem({
   return (
     <div
       className="flex flex-col flex-shrink-0"
-      style={{ width: `${ITEM_WIDTH}px` }}
+      style={{ width: `${itemWidth}px` }}
       tabIndex={0}
       aria-label={`${item.title || item.name}, position ${position}`}
     >
@@ -268,7 +275,7 @@ function CarouselItem({
         <Link
           href={href}
           passHref
-          className="relative w-[242px] h-full rounded-lg overflow-hidden shadow-xl block aspect-[2/3]"
+          className="relative flex-1 h-full rounded-lg overflow-hidden shadow-xl block aspect-[2/3]"
         >
           {item.poster_path ? (
             <Image

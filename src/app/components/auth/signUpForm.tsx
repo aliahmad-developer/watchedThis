@@ -68,7 +68,7 @@ export default function SignupForm({ onSuccess, onError }: SignupFormProps) {
       errors.username = "Username is required";
     } else if (!validateUsername(username)) {
       errors.username =
-        "Username must be 3-20 characters and can only contain letters, numbers, underscores, and hyphens";
+        "Username must be 3-20 characters and can only contain letters, numbers, underscores, or hyphens";
     }
 
     if (!email) {
@@ -202,9 +202,6 @@ export default function SignupForm({ onSuccess, onError }: SignupFormProps) {
                      text-light-body-text dark:text-dark-body-text
                      focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
         />
-        {validationErrors.email && (
-          <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>
-        )}
       </div>
 
       {/* Password */}
