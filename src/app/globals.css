@@ -37,6 +37,10 @@
 /* {
   outline: 1px solid rgba(255, 0, 0, 0.3); /* red outlines 
 } */
+html {
+  scroll-behavior: smooth;
+}
+
 @layer base {
   li {
     @apply text-light-accent hover:text-light-btn-hover-bg cursor-pointer text-sm sm:text-base dark:text-white;
