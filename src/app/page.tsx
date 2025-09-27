@@ -2,7 +2,7 @@ import "./globals.css";
 import SpotLightServer from "./components/spotlight/spotLightServer.tsx";
 import Find from "./find/page";
 
-import Trending from "./components/trending/trendingCSR";
+import Trending from "./components/trending/TrendingCrousel";
 export default function Home() {
   return (
     <>
