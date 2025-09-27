@@ -13,12 +13,11 @@ const IndicatorDots = ({
 }: IndicatorDotsProps) => (
   <div
     className="
-      absolute z-30 flex gap-3
-      /* sm: vertical, right aligned and centered vertically */
-      sm:top-1/2 sm:right-6 sm:left-auto sm:bottom-auto sm:-translate-y-1/2 sm:translate-x-0 sm:flex-col
-
-      /* lg: back to bottom-center (override sm) */
-      lg:bottom-6 lg:left-1/2 lg:top-auto lg:right-auto lg:-translate-y-0 lg:-translate-x-1/2 lg:flex-row
+      absolute z-30 flex gap-2
+      /* Mobile & Tablet: vertical, right aligned, compact */
+      top-1/2 right-3 -translate-y-1/2 flex-col
+      /* Large devices: horizontal bottom-center */
+      lg:bottom-4 lg:left-1/2 lg:top-auto lg:right-auto lg:-translate-x-1/2 lg:translate-y-0 lg:flex-row
     "
     role="tablist"
     aria-label="Slide navigation"
@@ -28,12 +27,18 @@ const IndicatorDots = ({
         key={index}
         onClick={() => goToIndex(index)}
         className={`
-          relative
-          w-3 h-2 rounded-full transition-all duration-300 
+          relative group rounded-full
+          transition-all duration-300 ease-out
+          focus:outline-none focus:ring-2 focus:ring-light-accent/50 dark:focus:ring-dark-accent/50
+          /* Mobile & Tablet: small round dots */
+          w-2 h-2 rounded-full 
+          /* Large devices: slightly larger */
+          lg:w-2.5 lg:h-2.5
+          
           ${
             index === currentIndex
-              ? "bg-light-accent dark:bg-dark-accent scale-110 ring-2 ring-light-accent/20 dark:ring-dark-accent/20"
-              : "bg-white/60 hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg hover:scale-105"
+              ? "bg-light-accent dark:bg-dark-accent scale-125 dark:ring-dark-accent/20"
+              : "bg-gray-400 hover:bg-light-btn-hover-bg dark:bg-gray-400/60 dark:hover:bg-dark-btn-hover-bg hover:scale-110"
           }
         `}
         role="tab"
@@ -41,18 +46,7 @@ const IndicatorDots = ({
         aria-label={`Go to slide ${index + 1}`}
         aria-controls={`slide-${index}`}
         tabIndex={index === currentIndex ? 0 : -1}
-      >
-        <span
-          className="
-          absolute -top-8 left-1/2 -translate-x-1/2 
-          bg-black/80 text-white text-xs px-2 py-1 rounded 
-          opacity-0 group-hover:opacity-100 transition-opacity duration-200
-          pointer-events-none
-        "
-        >
-          Slide {index + 1}
-        </span>
-      </button>
+      ></button>
     ))}
   </div>
 );

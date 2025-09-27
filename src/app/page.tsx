@@ -1,18 +1,19 @@
 import "./globals.css";
 import SpotLightServer from "./components/spotlight/spotLightServer.tsx";
-
+import Find from "./find/page";
 
 import Trending from "./components/trending/trendingCSR";
 export default function Home() {
   return (
     <>
-      <div>
+      <div id="SpotLightServer">
         <SpotLightServer />
-        <div className="mx-5">
+        <div className="lg:mx-5 ">
           <Trending />
-          <div className="py-100"></div>
-        </div>
 
+          <div className="py-100"></div>
+          <a href="#SpotLightServer">Click</a>
+        </div>
       </div>
     </>
   );
