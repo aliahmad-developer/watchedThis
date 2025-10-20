@@ -44,20 +44,55 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Navbar />
           <div>{children}</div>
-          <Footer/>
+          <Footer />
         </ThemeProvider>
         <PushUp />
         <Toaster
           position="bottom-center"
+          gutter={10}
           toastOptions={{
-            duration: 3000,
+            duration: 3500,
             style: {
-              background: "var(--color-dark-card)",
-              color: "var(--color-light-text)",
+              borderRadius: "0.75rem",
+              padding: "0.75rem 1rem",
+              boxShadow: "0 4px 14px rgba(0, 0, 0, 0.25)",
+              background: "light-card",
+              color: "light-accent",
+              border: "1px solid light-border",
+              transition: "all 0.3s ease-in-out",
+            },
+            className:
+              "dark:bg-dark-card dark:text-dark-accent dark:border-dark-border",
+
+            // ✅ Success Toast
+            success: {
+              iconTheme: {
+                primary: "dark-accent",
+                secondary: "dark-card",
+              },
+              style: {
+                background: "light-card",
+                color: "light-accent",
+                border: "1px solid light-border",
+              },
+              className:
+                "dark:bg-dark-card dark:text-dark-accent dark:border-dark-border",
+            },
+            error: {
+              iconTheme: {
+                primary: "#d9534f",
+                secondary: "dark-card",
+              },
+              style: {
+                background: "light-card",
+                color: "light-accent",
+                border: "1px solid light-border",
+              },
+              className:
+                "dark:bg-dark-card dark:text-dark-accent dark:border-dark-border",
             },
           }}
         />
-
       </body>
     </html>
   );
