@@ -1,7 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback, FormEvent } from "react";
-
+import axios from "axios";
+import { CloudCog } from "lucide-react";
+import toast from "react-hot-toast";
 // Static data that doesn't change
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -27,30 +29,63 @@ export default function Footer() {
   }, []);
 
   const nameError = useMemo(() => {
-    return touched.name && name.length === 0 ? "It'd be nice to know your name." : "";
+    return touched.name && name.length === 0
+      ? "It'd be nice to know your name."
+      : "";
   }, [touched.name, name]);
 
   const handleNameBlur = useCallback(() => {
-    setTouched(prev => ({ ...prev, name: true }));
+    setTouched((prev) => ({ ...prev, name: true }));
   }, []);
 
-  const handleSubmit = useCallback(async (e: FormEvent<HTMLFormElement>) => {
+ const handleSubmit = useCallback(
+  async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!name.trim()) {
+      toast.error("Please enter your name before submitting.");
+      setTouched({ name: true });
+      return;
+    }
+
+    if (!message.trim()) {
+      toast.error("Please enter a message before submitting.");
+      return;
+    }
+
     setIsSubmitting(true);
-    
-    // Here you would typically send the form data to your backend
-    console.log({ name, email, message });
-    
-    // Simulate API call
-    setTimeout(() => {
-      alert("Thank you for your feedback!");
-      setName("");
-      setEmail("");
-      setMessage("");
-      setTouched({ name: false });
+    const toastId = toast.loading("Sending your feedback...");
+
+    try {
+      const res = await axios.post("https://formspree.io/f/myznddbj", {
+        name,
+        email,
+        message,
+      });
+
+      if (res.status === 200) {
+        toast.success("Thank you for your feedback!", { id: toastId });
+        setName("");
+        setEmail("");
+        setMessage("");
+        setTouched({ name: false });
+      } else {
+        toast.error("Something went wrong. Please try again later.", {
+          id: toastId,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to send feedback. Check your connection.", {
+        id: toastId,
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 500);
-  }, [name, email, message]);
+    }
+  },
+  [name, email, message]
+);
+
 
   if (!mounted) {
     // Return a simplified version for SSR to prevent hydration mismatch
@@ -133,7 +168,9 @@ export default function Footer() {
                 type="text"
                 placeholder="Your name"
                 value={name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setName(e.target.value)
+                }
                 onBlur={handleNameBlur}
                 className="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text border border-light-border dark:border-dark-border focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors"
               />
@@ -148,7 +185,9 @@ export default function Footer() {
                 type="email"
                 placeholder="Your email (optional)"
                 value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setEmail(e.target.value)
+                }
                 className="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text border border-light-border dark:border-dark-border focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors"
               />
               <textarea
@@ -156,7 +195,9 @@ export default function Footer() {
                 rows={3}
                 id="text"
                 value={message}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setMessage(e.target.value)
+                }
                 className="w-full px-3 py-2 min-h-10 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border leading-relaxed rounded-md text-sm sm:text-base text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text resize-none overflow-y-auto focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors"
               />
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">

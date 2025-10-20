@@ -29,7 +29,6 @@ const IndicatorDots = ({
         className={`
           relative group rounded-full
           transition-all duration-300 ease-out
-          focus:outline-none focus:ring-2 focus:ring-light-accent/50 dark:focus:ring-dark-accent/50
           /* Mobile & Tablet: small round dots */
           w-2 h-2 rounded-full 
           /* Large devices: slightly larger */
@@ -37,7 +36,7 @@ const IndicatorDots = ({
           
           ${
             index === currentIndex
-              ? "bg-light-accent dark:bg-dark-accent scale-125 dark:ring-dark-accent/20"
+              ? "bg-light-accent dark:bg-dark-accent scale-125"
               : "bg-gray-400 hover:bg-light-btn-hover-bg dark:bg-gray-400/60 dark:hover:bg-dark-btn-hover-bg hover:scale-110"
           }
         `}

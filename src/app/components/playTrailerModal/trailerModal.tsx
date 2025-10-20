@@ -138,7 +138,7 @@ export default function TrailerModal({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-neutral-900 text-white">
             <h2 className="text-sm sm:text-base md:text-lg font-semibold truncate max-w-[70%]">
-              {title ? `Play Trailer – ${title}` : "Play Trailer"}
+              {"Play Trailer"}
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -168,7 +168,7 @@ export default function TrailerModal({
               </div>
             ) : error ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center px-4 py-8 text-white">
-                <p className="text-grey-400 text-lg mb-3">
+                <p className="text-ligt-accent dark:text-dark-accent text-lg mb-3">
                   Trailer not available
                 </p>
                 <button
@@ -176,7 +176,7 @@ export default function TrailerModal({
                     setRetryCount(0);
                     fetchTrailer();
                   }}
-                  className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition"
+                  className="px-4 py-2 bg-light-accent text-white dark:bg-dark-accent rounded hover:light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg transition"
                 >
                   Try Again
                 </button>

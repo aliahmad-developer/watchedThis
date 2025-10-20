@@ -1,3 +1,4 @@
+"use client"
 import Image from "next/image";
 import Link from "next/link";
 import { MediaItem } from "./types";
@@ -10,7 +11,13 @@ interface CarouselItemProps {
   showSidebar: boolean;
 }
 
-export function CarouselItem({ item, position, isPriority, itemWidth, showSidebar }: CarouselItemProps) {
+export function CarouselItem({
+  item,
+  position,
+  isPriority,
+  itemWidth,
+  showSidebar,
+}: CarouselItemProps) {
   const mediaType = item.title ? "movie" : "tv";
   const mediaTitle = (item.title || item.name || "")
     .toLowerCase()
@@ -18,7 +25,7 @@ export function CarouselItem({ item, position, isPriority, itemWidth, showSideba
     .replace(/(^-|-$)/g, "");
   const href = `/${mediaType}/${mediaTitle}/${item.id}`;
 
-  const itemHeight = (itemWidth * 3) / 2;
+  const itemHeight = (itemWidth * 3) / 2; // <-- keep exact height for alignment
 
   return (
     <div
@@ -35,7 +42,8 @@ export function CarouselItem({ item, position, isPriority, itemWidth, showSideba
           >
             <div className="flex-1 flex justify-center pt-4">
               <p
-                className="cursor-default text-sm font-semibold rotate-180 [writing-mode:vertical-lr] whitespace-nowrap text-light-accent dark:text-dark-accent line-clamp-3"
+                className="cursor-default text-sm font-semibold rotate-180 [writing-mode:vertical-lr] whitespace-nowrap 
+                           text-light-accent dark:text-dark-accent line-clamp-3"
                 title={item.title || item.name}
               >
                 {item.title || item.name}
@@ -49,12 +57,12 @@ export function CarouselItem({ item, position, isPriority, itemWidth, showSideba
 
         <Link
           href={href}
-          passHref
           className="relative lg:md:rounded-lg overflow-hidden shadow-xl block hover:scale-105 transition-transform duration-300 ease-out"
           style={{ width: `${itemWidth}px`, height: `${itemHeight}px` }}
           prefetch={isPriority}
         >
-          <div className="absolute top-0 left-0 z-10 md:hidden w-8 h-8 bg-white dark:bg-black flex items-center justify-center">
+          {/* Mobile badge */}
+          <div className="absolute top-0 left-0 z-10 md:hidden w-8 h-8 bg-black/70 flex items-center justify-center">
             <span className="text-light-accent dark:text-dark-accent font-bold text-sm">
               {position}
             </span>
@@ -67,10 +75,8 @@ export function CarouselItem({ item, position, isPriority, itemWidth, showSideba
               alt={item.title || item.name || "Media poster"}
               fill
               className="object-cover"
-              sizes={`(max-width: 768px) ${itemWidth}px, 33vw`}
+              sizes={`(max-width: 640px) ${itemWidth}px, (max-width: 768px) ${itemWidth}px, 33vw`}
               priority={isPriority}
-              placeholder="blur"
-              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaUMk6MeobdUwVpVjyYfW8K086Slj//2Q=="
             />
           ) : (
             <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">

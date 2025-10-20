@@ -39,6 +39,7 @@
 } */
 html {
   scroll-behavior: smooth;
+   scrollbar-gutter: stable;
 }
 
 @layer base {
@@ -146,4 +147,11 @@ html {
 .writing-vertical-ltr {
   writing-mode: vertical-lr;
   text-orientation: mixed;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none; /* IE & Edge */
+  scrollbar-width: none; /* Firefox */
 }

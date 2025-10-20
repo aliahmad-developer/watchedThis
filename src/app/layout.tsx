@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "react-hot-toast";
 import Navbar from "./components/navbar/page";
 import PushUp from "./components/utilities/pushUp";
 import Footer from "./components/footer/footer";
@@ -46,6 +47,17 @@ export default function RootLayout({
           <Footer/>
         </ThemeProvider>
         <PushUp />
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: "var(--color-dark-card)",
+              color: "var(--color-light-text)",
+            },
+          }}
+        />
+
       </body>
     </html>
   );

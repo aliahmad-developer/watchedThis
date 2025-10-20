@@ -9,7 +9,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
 
   return (
-    <div className="p-4 w-full max-w-md">
+    <div className="p-4 w-full max-w-md min-h-200 "> 
       <div className="relative w-full">
         <input
           value={query}

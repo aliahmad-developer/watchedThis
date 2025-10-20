@@ -6,7 +6,7 @@ import {
   updateProfile,
   sendEmailVerification,
 } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore"; // ✅ add this
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export async function signup(
   email: string,
@@ -28,11 +28,10 @@ export async function signup(
       createdAt: serverTimestamp(),
     });
 
-    // Set displayName immediately
+   
     await updateProfile(user, { displayName: username });
     await user.getIdToken(true);
 
-    // Send verification email
     await sendEmailVerification(user);
 
     return {
