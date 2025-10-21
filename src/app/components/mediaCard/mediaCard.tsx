@@ -10,7 +10,7 @@ interface MediaCardProps {
     runtime?: number;
     episode_run_time?: number[];
   };
-  displayTitle?: string; // <- optional (role/job/extra info)
+  displayTitle?: string; 
 }
 
 export default function MediaCard({ item, displayTitle }: MediaCardProps) {
@@ -45,9 +45,6 @@ export default function MediaCard({ item, displayTitle }: MediaCardProps) {
             {displayTitle}
           </div>
         )
-        // ) : (
-        //   <p className="text-sm invisible">placeholder</p>
-        // )
       }
 
       {/* Metadata */}

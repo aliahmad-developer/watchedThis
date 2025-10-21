@@ -114,7 +114,19 @@ export function GenreMediaGrid({
       </div>
 
       <div ref={loadMoreRef} className="w-full flex justify-center mt-6">
-        {hasMore && <Loading size="sm" hideText />}
+        {hasMore && (
+          <div className="w-full flex justify-center py-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2 w-full">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={`loading-${index}`} className="animate-pulse">
+                  <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-[2/3] w-full mb-2"></div>
+                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
+                  <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

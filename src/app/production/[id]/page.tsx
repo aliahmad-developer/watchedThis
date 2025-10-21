@@ -22,12 +22,18 @@ export default function ProductionPage({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
   const fetchData = useCallback(
     async (pageNum: number, type: string) => {
-      setLoading(true);
+      if (pageNum === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
       const res = await fetch(
         `/api/company/${id}?mediaType=${type}&page=${pageNum}`
       );
@@ -42,6 +48,7 @@ export default function ProductionPage({
 
       setTotalPages(data.total_pages || 1);
       setLoading(false);
+      setLoadingMore(false);
     },
     [id]
   );
@@ -58,7 +65,12 @@ export default function ProductionPage({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !loading && page < totalPages) {
+        if (
+          entries[0].isIntersecting &&
+          !loading &&
+          !loadingMore &&
+          page < totalPages
+        ) {
           setPage((prev) => prev + 1);
         }
       },
@@ -67,21 +79,36 @@ export default function ProductionPage({
 
     observer.observe(loaderRef.current);
     return () => observer.disconnect();
-  }, [loading, page, totalPages]);
+  }, [loading, loadingMore, page, totalPages]);
 
-  // Fetch new page
   useEffect(() => {
     if (page > 1) {
       fetchData(page, mediaType);
     }
   }, [page, mediaType, fetchData]);
 
+  if (loading) {
+    return (
+      <div className="min-h-[100vh] flex items-center justify-center">
+        <Loading fullScreen />
+      </div>
+    );
+  }
+
   if (!company) {
-    return <Loading centerInParent fullScreen />;
+    return (
+      <div className="min-h-[100vh] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-light-secondary-text dark:text-dark-secondary-text">
+            Company not found
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-8 min-h-[100vh]">
       {/* Company Banner */}
       <div className="flex flex-col md:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-md border border-light-border dark:border-dark-border">
         {company.logo_path ? (
@@ -137,23 +164,53 @@ export default function ProductionPage({
       </div>
 
       {/* Media Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {items.map((item, index) => (
-          <Link
-            key={`${mediaType}-${item.id}-${index}`}
-            href={`/${mediaType}/${createSlug(
-              item.title || item.name || "untitled"
-            )}/${item.id}`}
-          >
-            <MediaCard item={{ ...item, media_type: mediaType }} />
-          </Link>
-        ))}
+      {items.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {items.map((item, index) => (
+            <Link
+              key={`${mediaType}-${item.id}-${index}`}
+              href={`/${mediaType}/${createSlug(
+                item.title || item.name || "untitled"
+              )}/${item.id}`}
+            >
+              <MediaCard item={{ ...item, media_type: mediaType }} />
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <p className="text-light-secondary-text dark:text-dark-secondary-text">
+            No {mediaType === "movie" ? "movies" : "TV shows"} found for this
+            company.
+          </p>
+        </div>
+      )}
+
+      {/* Loader for infinite scroll */}
+      <div ref={loaderRef} className="h-20 flex justify-center items-center">
+        {loadingMore && (
+          <div className="w-full flex justify-center py-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2 w-full">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={`loading-${index}`} className="animate-pulse">
+                  <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-[2/3] w-full mb-2"></div>
+                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
+                  <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Loader */}
-      <div ref={loaderRef} className="h-10 flex justify-center items-center">
-        {loading && <Loading hideText size="sm" />}
-      </div>
+      {/* End of results message */}
+      {!loadingMore && page >= totalPages && items.length > 0 && (
+        <div className="text-center py-6">
+          <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
+            You've reached the end of the results.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
