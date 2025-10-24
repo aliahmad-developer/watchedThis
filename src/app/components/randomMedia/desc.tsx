@@ -1,28 +1,30 @@
+// components/Desc.tsx (updated)
 import MediaPoster from "./mediaPoster";
 import MediaInfo from "../randomMedia/MediaInfo/index";
+import MediaInfoSkeleton from "./MediaInfo/Skeleton/MainInfoSkeleton";
+import MediaPosterSkeleton from "./MediaInfo/Skeleton/PosterSkeleton";
 import Image from "next/image";
 import { useState } from "react";
 
 interface DescProps {
   data: any;
   backdropUrl: string;
+  isLoading?: boolean;
 }
 
-export default function Desc({ data, backdropUrl }: DescProps) {
+export default function Desc({ data, backdropUrl, isLoading = false }: DescProps) {
   const [hasError, setHasError] = useState(false);
   const hasBackdrop =
     !!backdropUrl?.trim() && backdropUrl !== "undefined" && !hasError;
 
   return (
     <div className="relative w-full min-h-screen bg-gray-900">
-      {" "}
-      {/* Fallback dark bg */}
+      {/* Backdrop Image with gradients */}
       {!hasBackdrop && (
         <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center px-2 text-center">
           <span className="text-gray-500 text-lg"></span>
         </div>
       )}
-      {/* Backdrop with enhanced gradients */}
       <div className="absolute inset-0">
         {hasBackdrop && (
           <>
@@ -38,7 +40,7 @@ export default function Desc({ data, backdropUrl }: DescProps) {
               onError={() => setHasError(true)}
             />
 
-            {/* Primary gradient overlay - dark at bottom fading up */}
+            {/* Primary gradient overlay */}
             <div
               className="
               absolute inset-0 
@@ -48,7 +50,7 @@ export default function Desc({ data, backdropUrl }: DescProps) {
             "
             />
 
-            {/* Secondary gradient overlay - accent tint at top */}
+            {/* Secondary gradient overlay */}
             <div
               className="
               absolute inset-0 
@@ -57,7 +59,7 @@ export default function Desc({ data, backdropUrl }: DescProps) {
             "
             />
 
-            {/* Optional: subtle vignette effect */}
+            {/* Vignette effect */}
             <div
               className="
               absolute inset-0 
@@ -67,15 +69,18 @@ export default function Desc({ data, backdropUrl }: DescProps) {
           </>
         )}
       </div>
+
       {/* Content container */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
-          <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto ">
-            <MediaPoster data={data} />
+          {/* Poster Column */}
+          <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">
+            {isLoading ? <MediaPosterSkeleton /> : <MediaPoster data={data} />}
           </div>
 
+          {/* Info Column */}
           <div className="w-full lg:w-2/3 xl:w-3/4">
-            <MediaInfo data={data} />
+            {isLoading ? <MediaInfoSkeleton /> : <MediaInfo data={data} />}
           </div>
         </div>
       </div>
