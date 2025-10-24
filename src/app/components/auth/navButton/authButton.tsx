@@ -11,9 +11,9 @@ export default function AuthButton() {
   const [displayLetter, setDisplayLetter] = useState<string>("");
   const [modalOpen, setModalOpen] = useState(false);
   const pathname = usePathname();
-  const isAuthPage = pathname === "/auth";
+  const isAuthPage = pathname === "/user/profile";
 
-  // ✅ Listen for auth state changes and auto-refresh displayName
+  //Listen for auth state changes and auto-refresh displayName
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -39,7 +39,7 @@ export default function AuthButton() {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Recalculate letter whenever displayName or email changes
+  //Recalculate letter whenever displayName or email changes
   useEffect(() => {
     if (user) {
       const name = user.displayName?.trim();
@@ -64,7 +64,7 @@ export default function AuthButton() {
   return (
     <>
       {user ? (
-        <Link href="/auth">
+        <Link href="/user/profile">
           <span
             className={`px-4 py-1.5 rounded-lg text-md font-bold transition-colors max-w-[140px] truncate
     ${

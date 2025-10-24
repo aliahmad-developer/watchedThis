@@ -79,7 +79,7 @@ export default async function PopularSpotlightSliderServer({
         style={{ height: typeof height === "number" ? `${height}px` : height }}
       >
         <div className="flex items-center justify-center h-full">
-          <p className="text-center text-gray-500">
+          <p className="text-center text-light-accent dark:text-dark-accent">
             Failed to load spotlight content. Please try again later.
           </p>
         </div>

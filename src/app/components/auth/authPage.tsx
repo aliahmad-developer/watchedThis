@@ -16,7 +16,7 @@ import Message from "./authComponent/message";
 // Skeleton Loader Component
 const SkeletonLoader = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-3">
+    <div className="flex flex-col items-center justify-center h-full p-3">
       <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-4 w-full max-w-xs sm:max-w-sm">
         {/* Header Skeleton */}
         <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded mb-4 animate-pulse mx-auto w-3/4"></div>
@@ -245,7 +245,7 @@ export default function AuthPage() {
 
   if (user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-3">
+     <div className="flex flex-col items-center justify-center h-full p-3 w-full">
         <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-3 sm:p-4 w-full max-w-xs sm:max-w-sm space-y-3 sm:space-y-4">
           <h2 className="text-base sm:text-lg font-semibold text-light-header dark:text-dark-header text-center">
             {isLoading ? "Loading..." : `Welcome, ${newUsername || user.email?.split("@")[0]}! 🎉`}
@@ -316,7 +316,7 @@ export default function AuthPage() {
                 await logout();
                 setUser(null);
                 setIsVerified(false);
-                router.push("/auth");
+                router.push("/user/profile");
               } catch (err: any) {
                 showMessage(err.message || "Failed to logout", true);
               }

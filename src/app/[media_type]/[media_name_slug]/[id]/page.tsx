@@ -69,7 +69,7 @@ export default function SpecificRandomMediaPage({
             content="An error occurred while loading media details"
           />
         </Head>
-        <div className="flex items-center justify-center min-h-screen text-red-500">
+        <div className="flex items-center justify-center min-h-screen text-light-accent dark:text-dark-accent">
           {error}
         </div>
       </>

@@ -6,7 +6,6 @@ import { createSlug } from "../components/utilities/createSlug";
 
 export default function RandomPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -46,14 +45,14 @@ export default function RandomPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-4">
-        <h1 className="text-2xl font-bold text-red-500">Error</h1>
+        <h1 className="text-2xl font-bold text-light-accent dark:text-dark-accent">Error</h1>
         <p className="text-center">{error}</p>
         <button
           onClick={() => {
             setIsRedirecting(false);
             router.push(`/random`);
           }}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-4 py-2 text-white rounded"
         >
           Try Again
         </button>

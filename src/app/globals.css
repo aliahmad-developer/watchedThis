@@ -34,12 +34,27 @@
   --scrollbar-track-dark: var(--color-dark-bg);
   --scrollbar-thumb-dark: var(--color-dark-accent);
 }
+/* In your global CSS */
+.ambient-text-container {
+  color: inherit;
+}
+
+.ambient-text-container[data-bg-color] {
+  background: var(--bg-color);
+  color: color-mix(in srgb, var(--bg-color) 100%, black 80%) contrast(100%);
+}
+
+@supports (background: color-mix(in srgb, black, white)) {
+  .ambient-text-container[data-bg-color] {
+    color: color-mix(in srgb, var(--bg-color) 20%, black);
+  }
+}
 /* {
   outline: 1px solid rgba(255, 0, 0, 0.3); /* red outlines 
 } */
 html {
   scroll-behavior: smooth;
-   scrollbar-gutter: stable;
+  scrollbar-gutter: stable;
 }
 
 @layer base {
@@ -49,7 +64,7 @@ html {
   }
 
   button {
-    @apply bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-text cursor-pointer rounded-md px-3 py-1 transition;
+    @apply bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg hover:text-light-btn-text cursor-pointer rounded-md px-3 py-1 transition;
     font-family: "Poppins", sans-serif;
     font-weight: 600;
     letter-spacing: 0.3px;

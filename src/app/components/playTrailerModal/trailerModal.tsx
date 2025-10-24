@@ -143,7 +143,7 @@ export default function TrailerModal({
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="p-2 rounded-md hover:bg-red-700 transition bg-transparent"
+                className="p-2 rounded-md text-white hover:bg-red-700 transition bg-transparent"
                 aria-label="Close trailer"
               >
                 <FontAwesomeIcon

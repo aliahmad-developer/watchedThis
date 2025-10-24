@@ -125,7 +125,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </button>
         </div>
 
-        {/* ✅ Updated Email Verification Section (matches AuthPage) */}
+        {/*Updated Email Verification Section (matches AuthPage) */}
         {user && (
           <div className="flex flex-col mb-4">
             <label className="text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text">
