@@ -115,7 +115,7 @@ export default function Footer() {
             <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm sm:text-base">
               Made by{" "}
               <span className="text-light-accent dark:text-dark-accent inline">
-                Missy.
+                Missy & Tiba  .
               </span>{" "}
               Always improving and open to feedback.
             </p>
