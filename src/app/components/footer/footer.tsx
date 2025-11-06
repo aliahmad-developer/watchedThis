@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback, FormEvent } from "react";
 import axios from "axios";
-import { CloudCog } from "lucide-react";
 import toast from "react-hot-toast";
 // Static data that doesn't change
 const NAV_LINKS = [
@@ -115,7 +114,7 @@ export default function Footer() {
             <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm sm:text-base">
               Made by{" "}
               <span className="text-light-accent dark:text-dark-accent inline">
-                Missy & Tiba  .
+                Missy & Tiba.
               </span>{" "}
               Always improving and open to feedback.
             </p>
