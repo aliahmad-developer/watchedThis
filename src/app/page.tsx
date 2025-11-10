@@ -1,16 +1,18 @@
 import "./globals.css";
 import SpotLightServer from "./components/spotlight/spotLightServer.tsx";
 import Trending from "./components/trending/TrendingCrousel";
-import Random from './components/Random/cont' 
+import Random from "./components/Random/randomMedia";
+import Membership from "./components/MemberShips/paid";
 export default function Home() {
   return (
     <>
       <div id="SpotLightServer">
         <SpotLightServer />
         <div className="lg:mx-5 ">
+          <Random />
           <Trending />
         </div>
-        <Random/>
+        <Membership />
       </div>
     </>
   );

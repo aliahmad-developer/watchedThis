@@ -3,9 +3,8 @@ import React, { useEffect, useState } from "react";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
-import Loading from "@/app/components/utilities/loading";
 import CastScroll from "@/app/components/mediaCard/castScroll";
-import Desc from "@/app/components/randomMedia/desc";
+import Desc from "@/app/components/randomMedia/detailsPage";
 
 export default function SpecificRandomMediaPage({
   params,
@@ -106,7 +105,7 @@ export default function SpecificRandomMediaPage({
           <h1 className="sr-only">
             {isLoading ? "Loading media..." : mediaTitle}
           </h1>
-          
+
           {/* Desc component with skeleton loading */}
           <Desc
             data={data || {}} // Pass empty object when loading
