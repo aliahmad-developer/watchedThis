@@ -8,7 +8,7 @@ export function TrendingCarouselSkeleton() {
       <div className="flex w-full items-start">
         <div className="relative overflow-hidden flex-1">
           <div className="flex gap-6 pb-6 pr-5">
-            {Array.from({ length: 5 }).map((_, idx) => {
+            {Array.from({ length: 4 }).map((_, idx) => {
               const itemHeight = (ITEM_WIDTH_TABLET * 3) / 2;
 
               return (

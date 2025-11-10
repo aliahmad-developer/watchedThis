@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Loading from "../utilities/loading";
-import Desc from "../randomMedia/desc";
+import Desc from "../randomMedia/detailsPage";
 
 interface MediaDetailPageProps {
   params: {

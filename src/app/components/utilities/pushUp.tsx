@@ -8,22 +8,26 @@ export default function BackToTop() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const toggleVisibility = () => {
-      if (window.scrollY > 200) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsVisible(window.scrollY > 300);
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
-    window.addEventListener("scroll", toggleVisibility);
-    return () => window.removeEventListener("scroll", toggleVisibility);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const scrollToTop = () => {
     const start = window.scrollY;
     const startTime = performance.now();
-    const duration = 1200;
+    const duration = 800;
 
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
@@ -43,17 +47,17 @@ export default function BackToTop() {
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-50">
+    <div className="fixed bottom-6 right-6 z-50">
       <button
         onClick={scrollToTop}
         aria-label="Back to top"
-        className={`p-3 rounded-full bg-gray-800/70 text-white shadow-lg hover:bg-gray-700/80 transition-all duration-300
-            focus:outline-none dark:bg-gray-600/60 dark:hover:bg-gray-500/70
-            ${isVisible ? "opacity-100" : "opacity-0 pointer-events-none"}
-            transition-opacity duration-300`}
+        className={`p-3 rounded-full bg-gray-800/70 text-white shadow-lg hover:bg-gray-700/80 transition-all duration-300 focus:outline-none dark:bg-gray-600/60 dark:hover:bg-gray-500/70 ${
+          isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        } transition-opacity duration-300`}
       >
-        <FontAwesomeIcon icon={faAngleUp} className="h-5 w-5" />
-      </button>
+        {" "}
+        <FontAwesomeIcon icon={faAngleUp} className="h-5 w-5" />{" "}
+      </button>{" "}
     </div>
   );
 }

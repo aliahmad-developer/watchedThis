@@ -31,6 +31,8 @@ export default function SearchPage() {
           <div className="text-gray-500">Write something to display here</div>
         )}
       </div>
+     
+      <div className="text-dark-accent p-10">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Commodi provident facere voluptatum magnam voluptates, corrupti nulla, optio nostrum minus odio eum. Quas ex fuga debitis atque hic, quae repudiandae perferendis?</div>
     </div>
   );
 }

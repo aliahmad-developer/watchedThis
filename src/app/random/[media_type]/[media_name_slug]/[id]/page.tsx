@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Head from "next/head";
 import Loading from "../../../../components/utilities/loading";
 import { createSlug } from "@/app/components/utilities/createSlug";
-import Desc from "../../../../components/randomMedia/desc";
+import Desc from "../../../../components/randomMedia/detailsPage";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 
 export default function SpecificRandomMediaPage({

@@ -1,10 +1,11 @@
-export default function spinner(){
-    return(
-        
-        <>
-        <h1 className="flex align-center">Spinner page</h1>
-        <div className="p-100"></div>
-        </>
-
-    );
+export default function spinner() {
+  return (
+    <>
+      <div className="m-5 flex">
+        <div className="p-50 bg-amber-200 rounded-full">
+            <input type="file" />
+        </div>
+      </div>
+    </>
+  );
 }
