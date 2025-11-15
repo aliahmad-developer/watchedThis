@@ -2,6 +2,7 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import Navbar from "./components/navbar/page";
+import Membership from "./components/MemberShips/paid";
 import PushUp from "./components/utilities/pushUp";
 import Footer from "./components/footer/footer";
 
@@ -44,6 +45,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Navbar />
           <div>{children}</div>
+          <Membership />
           <Footer />
         </ThemeProvider>
         <PushUp />

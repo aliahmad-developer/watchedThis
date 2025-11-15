@@ -2,7 +2,7 @@ import "./globals.css";
 import SpotLightServer from "./components/spotlight/spotLightServer.tsx";
 import Trending from "./components/trending/TrendingCrousel";
 import Random from "./components/Random/randomMedia";
-import Membership from "./components/MemberShips/paid";
+
 export default function Home() {
   return (
     <>
@@ -12,7 +12,7 @@ export default function Home() {
           <Random />
           <Trending />
         </div>
-        <Membership />
+       
       </div>
     </>
   );
