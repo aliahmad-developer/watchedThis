@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import PopularSpotlightSliderClient from "./PopularSpotlightSliderClient";
 import { MediaItem } from "./types";
 
@@ -24,13 +23,11 @@ export default async function PopularSpotlightSliderServer({
   autoPlay = true,
 }: PopularSpotlightSliderServerProps) {
   try {
-    // Get host from request headers
-    const headersList = await headers();
-    const host = headersList.get("host");
-    if (!host) throw new Error("Could not determine host for API fetch");
+    // 🔹 Use environment variable for base URL
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!baseUrl) throw new Error("NEXT_PUBLIC_BASE_URL is not defined");
 
-    const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-    const apiUrl = `${protocol}://${host}${apiEndpoint}`;
+    const apiUrl = `${baseUrl}${apiEndpoint}`;
 
     const res = await fetch(apiUrl, { next: { revalidate: 60 } });
 
@@ -38,8 +35,6 @@ export default async function PopularSpotlightSliderServer({
 
     const data = await res.json();
     const results: MediaItem[] = data.results?.slice(0, maxItems) || [];
-    console.log("Results length:", results.length);
-    console.log("First item:", results[0]);
 
     return (
       <section
@@ -59,6 +54,7 @@ export default async function PopularSpotlightSliderServer({
     );
   } catch (err) {
     console.error("Failed to fetch spotlight data:", err);
+
     return (
       <section
         aria-label="Popular Spotlight Slider"
