@@ -6,13 +6,12 @@ import Random from "./components/Random/randomMedia";
 export default function Home() {
   return (
     <>
-      <div id="SpotLightServer">
+      <div>
         <SpotLightServer />
         <div className="lg:mx-5 ">
           <Random />
           <Trending />
         </div>
-       
       </div>
     </>
   );

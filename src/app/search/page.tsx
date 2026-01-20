@@ -1,8 +1,7 @@
-"use client";
-import React, { useEffect, useState, useRef, useCallback } from "react";
+'use client'
+import React, { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createSlug } from "../components/utilities/createSlug";
-import Loading from "../components/utilities/loading";
 import MediaCard from "../components/mediaCard/mediaCard";
 import Link from "next/link";
 
@@ -27,7 +26,8 @@ function SearchSkeleton() {
   );
 }
 
-export default function SearchClientPage() {
+// Inner component that uses useSearchParams
+function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
@@ -155,5 +155,14 @@ export default function SearchClientPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Main component with Suspense
+export default function SearchClientPage() {
+  return (
+    <Suspense fallback={<SearchSkeleton />}>
+      <SearchContent />
+    </Suspense>
   );
 }
