@@ -13,7 +13,6 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@heroicons/react": "^2.2.0",
-    "@next/swc-win32-x64-msvc": "^16.0.3",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "axios": "^1.12.2",
     "color-thief-browser": "^2.0.2",
