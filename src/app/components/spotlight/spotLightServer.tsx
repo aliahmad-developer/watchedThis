@@ -38,9 +38,14 @@ export default async function PopularSpotlightSliderServer({
 
     const data = await res.json();
     const results: MediaItem[] = data.results?.slice(0, maxItems) || [];
+    console.log("Results length:", results.length);
+    console.log("First item:", results[0]);
 
     return (
-      <section aria-label="Popular Spotlight Slider" className={`spotlight-section ${className}`}>
+      <section
+        aria-label="Popular Spotlight Slider"
+        className={`spotlight-section ${className}`}
+      >
         <PopularSpotlightSliderClient
           items={results}
           slideDuration={slideDuration}
