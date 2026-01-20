@@ -1,5 +1,5 @@
 import "./globals.css";
-import SpotLightServer from "./components/spotlight/spotLightServer.tsx";
+import SpotLightServer from "./components/spotlight/spotLightServer";
 import Trending from "./components/trending/TrendingCrousel";
 import Random from "./components/Random/randomMedia";
 
