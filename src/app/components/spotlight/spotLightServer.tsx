@@ -30,6 +30,14 @@ export default async function PopularSpotlightSliderServer({
     const apiUrl = `${baseUrl}${apiEndpoint}`;
 
     const res = await fetch(apiUrl, { next: { revalidate: 60 } });
+    try {
+      const res = await fetch(apiUrl, { next: { revalidate: 60 } });
+      console.log("Fetch status:", res.status);
+      const data = await res.json();
+      console.log("Data length:", data.results?.length);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
 
     if (!res.ok) throw new Error(`Failed to fetch data: ${res.status}`);
 
