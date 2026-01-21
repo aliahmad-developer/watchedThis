@@ -22,7 +22,7 @@ export default function CastCard({
 
   return (
     <div
-      className="flex flex-col items-center text-center p-2 w-28 sm:w-32 flex-shrink-0"
+      className="flex flex-col items-center text-center p-2 w-28 sm:w-32 shrink-0"
       role="listitem"
     >
       {/* Image */}
@@ -41,7 +41,7 @@ export default function CastCard({
               </div>
             </Link>
             {showGradient && (
-              <div className="absolute inset-y-0 right-0 w-2/3 z-10 pointer-events-none bg-gradient-to-l from-light-bg dark:from-dark-bg to-transparent" />
+              <div className="absolute inset-y-0 right-0 w-2/3 z-10 pointer-events-none bg-linear-to-l from-light-bg dark:from-dark-bg to-transparent" />
             )}
           </>
         ) : (
