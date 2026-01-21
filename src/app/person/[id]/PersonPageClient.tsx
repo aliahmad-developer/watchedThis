@@ -58,7 +58,9 @@ interface PersonData {
 async function getPersonData(id?: string) {
   if (!id) throw new Error("Invalid person ID");
 
-  const res = await fetch(`/api/person/${id}`);
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+  const res = await fetch(`${baseUrl}/api/person/${id}`);
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -70,6 +72,7 @@ async function getPersonData(id?: string) {
 
   return data;
 }
+
 
 // ----------------------
 // Helpers
