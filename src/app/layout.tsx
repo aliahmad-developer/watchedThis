@@ -21,7 +21,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Move these inside <head> */}
         <link
           rel="apple-touch-icon"
           sizes="180x180"
@@ -65,8 +64,6 @@ export default function RootLayout({
             },
             className:
               "dark:bg-dark-card dark:text-dark-accent dark:border-dark-border",
-
-            // ✅ Success Toast
             success: {
               iconTheme: {
                 primary: "dark-accent",

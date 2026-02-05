@@ -3,10 +3,8 @@ import { NextResponse } from "next/server";
 const API_KEY = process.env.TMDB_API_KEY;
 const BASE_URL = process.env.TMDB_BASE_URL || "https://api.themoviedb.org/3";
 
-// Cache responses for 1 day (86400 seconds)
 export const revalidate = 86400;
 
-// Helper: fetch runtime for movie or tv
 async function fetchRuntime(id: number, media_type: string) {
   try {
     const res = await fetch(
