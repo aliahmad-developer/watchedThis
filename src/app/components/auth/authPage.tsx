@@ -248,14 +248,8 @@ export default function AuthPage() {
      <div className="flex flex-col items-center justify-center h-full p-3 w-full">
         <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-3 sm:p-4 w-full max-w-xs sm:max-w-sm space-y-3 sm:space-y-4">
           <h2 className="text-base sm:text-lg font-semibold text-light-header dark:text-dark-header text-center">
-            {isLoading ? "Loading..." : `Welcome, ${newUsername || user.email?.split("@")[0]}! 🎉`}
+            {isLoading ? "Loading..." : `Welcome, ${newUsername || user.email?.split("@")[0]}!`}
           </h2>
-
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 text-xs sm:text-sm rounded">
-              {error}
-            </div>
-          )}
 
           <div className="flex flex-col">
             <label className="text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text">
@@ -339,11 +333,6 @@ export default function AuthPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-3">
       <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-3 sm:p-4 w-full max-w-xs sm:max-w-sm">
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 text-xs sm:text-sm rounded mb-3">
-            {error}
-          </div>
-        )}
         
         <div className="flex justify-around mb-3 sm:mb-4">
           <button

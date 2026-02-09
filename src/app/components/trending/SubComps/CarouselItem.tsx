@@ -25,11 +25,11 @@ export function CarouselItem({
     .replace(/(^-|-$)/g, "");
   const href = `/${mediaType}/${mediaTitle}/${item.id}`;
 
-  const itemHeight = (itemWidth * 3) / 2; // <-- keep exact height for alignment
+  const itemHeight = (itemWidth * 3) / 2; 
 
   return (
     <div
-      className="flex flex-col flex-shrink-0 transition-transform duration-300 ease-out"
+      className="flex flex-col shrink-0 transition-transform duration-300 ease-out"
       style={{ width: `${itemWidth}px` }}
       tabIndex={0}
       aria-label={`${item.title || item.name}, position ${position}`}
@@ -49,7 +49,7 @@ export function CarouselItem({
                 {item.title || item.name}
               </p>
             </div>
-            <p className="cursor-default text-black dark:text-white text-xl font-bold text-center h-[50px] flex items-center justify-center shrink-0">
+            <p className="cursor-default text-black dark:text-white text-xl font-bold text-center h-12.5 flex items-center justify-center shrink-0">
               {String(position).padStart(2, "0")}
             </p>
           </div>
