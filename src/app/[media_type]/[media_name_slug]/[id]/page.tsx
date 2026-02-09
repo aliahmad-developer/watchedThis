@@ -139,7 +139,7 @@ function CastScrollSkeleton() {
       <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-4"></div>
       <div className="flex space-x-4 overflow-hidden">
         {[...Array(10)].map((_, index) => (
-          <div key={index} className="flex-shrink-0 w-32">
+          <div key={index} className="shrink-0 w-32">
             <div className="w-28 sm:w-32 h-40 sm:h-48 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
             <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24 mb-1"></div>
             <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
