@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { createSlug } from "../utilities/createSlug";
+import { db } from "../../firebase/firebaseConfig"; // adjust if your firebase.ts lives elsewhere
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 interface MediaItem {
   id: number;
@@ -15,14 +17,20 @@ interface MediaItem {
   media_type?: string;
 }
 
-const STORAGE_KEY = "dailyMediaSequence_v1";
+interface DailyMediaDoc {
+  date: string;
+  items: MediaItem[];
+}
+
+const FIRESTORE_COLLECTION = "appData";
+const FIRESTORE_DOC        = "dailyMedia";
+const LOCAL_CACHE_KEY      = "dailyMediaCache_v2";
 
 export default function TwoSectionLayout() {
-  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [media, setMedia]     = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
 
-  // Fetch single random item
   const fetchOneRandom = useCallback(async (): Promise<MediaItem> => {
     const res = await fetch("/api/randomCall");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -31,56 +39,84 @@ export default function TwoSectionLayout() {
     return data as MediaItem;
   }, []);
 
-  // Fetch N random items concurrently
   const fetchNRandom = useCallback(
     async (n: number): Promise<MediaItem[]> => {
-      const promises = Array.from({ length: n }, () => fetchOneRandom());
-      const settled = await Promise.allSettled(promises);
+      const settled = await Promise.allSettled(
+        Array.from({ length: n }, () => fetchOneRandom())
+      );
       const ok = settled
-        .filter(
-          (s): s is PromiseFulfilledResult<MediaItem> =>
-            s.status === "fulfilled"
-        )
+        .filter((s): s is PromiseFulfilledResult<MediaItem> => s.status === "fulfilled")
         .map((s) => s.value);
-      if (ok.length === 0) throw new Error("All initial fetches failed");
+      if (ok.length === 0) throw new Error("All fetches failed");
       return ok;
     },
     [fetchOneRandom]
   );
 
-  // Load daily media
   const loadDailyMedia = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const today = new Date().toDateString();
 
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const today = new Date().toDateString();
-      let saved: { date: string; items: MediaItem[] } | null = raw
-        ? JSON.parse(raw)
-        : null;
-
-      if (!saved) {
-        // First run: fetch 3 items
-        console.log("First run - fetching 3 initial items");
-        const initial = await fetchNRandom(3);
-        saved = { date: today, items: initial.slice(0, 3) };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-      } else if (saved.date !== today) {
-        // New day: fetch 1 item, unshift, and keep max 3
-        console.log("New day - rotating media");
-        const newItem = await fetchOneRandom();
-        const updated = [newItem, ...saved.items].filter(Boolean).slice(0, 3);
-        saved = { date: today, items: updated };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-      } else {
-        console.log("Same day - using cached media");
+      // ── 1. localStorage cache — skip Firestore read on repeat same-device visits ──
+      const cached = localStorage.getItem(LOCAL_CACHE_KEY);
+      if (cached) {
+        const parsed: DailyMediaDoc = JSON.parse(cached);
+        if (parsed.date === today && parsed.items?.length > 0) {
+          setMedia(parsed.items);
+          setLoading(false);
+          return;
+        }
       }
 
-      console.log("Media to display:", saved.items);
-      setMedia(saved.items);
+      // ── 2. Read from Firestore ──
+      const docRef  = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const remote = docSnap.data() as DailyMediaDoc;
+
+        if (remote.date === today && remote.items?.length > 0) {
+          // Today's data already in Firestore — just use it
+          setMedia(remote.items);
+          localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(remote));
+          return;
+        }
+
+        // ── 3. New day: rotate — fetch 1 new item, prepend, keep latest 3 ──
+        const newItem = await fetchOneRandom();
+        const rotated: DailyMediaDoc = {
+          date: today,
+          items: [newItem, ...remote.items].slice(0, 3),
+        };
+        await setDoc(docRef, rotated);
+        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(rotated));
+        setMedia(rotated.items);
+
+      } else {
+        // ── 4. First ever run — fetch 3 fresh items and seed Firestore ──
+        const initial = await fetchNRandom(3);
+        const seed: DailyMediaDoc = { date: today, items: initial.slice(0, 3) };
+        await setDoc(docRef, seed);
+        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(seed));
+        setMedia(seed.items);
+      }
+
     } catch (err) {
       console.error("Error loading daily media:", err);
+
+      // ── Fallback: serve stale localStorage data rather than show error ──
+      const cached = localStorage.getItem(LOCAL_CACHE_KEY);
+      if (cached) {
+        const parsed: DailyMediaDoc = JSON.parse(cached);
+        if (parsed.items?.length > 0) {
+          setMedia(parsed.items);
+          setLoading(false);
+          return;
+        }
+      }
+
       setError("Failed to load media. Please try again.");
     } finally {
       setLoading(false);
@@ -91,28 +127,23 @@ export default function TwoSectionLayout() {
     loadDailyMedia();
   }, [loadDailyMedia]);
 
+  /* ---------- Render ---------- */
+
   if (loading) {
     return (
       <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
         <header className="mb-6">
           <div className="flex mb-6">
-            <div className="h-8 bg-gray-200 px-40 rounded w-64 animate-pulse"></div>
+            <div className="h-8 bg-gray-200 px-40 rounded w-64 animate-pulse" />
           </div>
         </header>
-
-        {/* Desktop layout */}
-        <div className="hidden lg:grid grid-cols-3 gap-2 min-h-[400px]">
-          <div className="col-span-2">
-            <FeaturedCardSkeleton />
-          </div>
+        <div className="hidden lg:grid grid-cols-3 gap-2 min-h-100">
+          <div className="col-span-2"><FeaturedCardSkeleton /></div>
           <div className="flex flex-col gap-2">
             <RightStackCardSkeleton />
             <RightStackCardSkeleton />
           </div>
         </div>
-
-        {/* Tablet layout */}
-
         <div className="hidden md:block lg:hidden space-y-4">
           <FeaturedCardSkeleton />
           <div className="grid grid-cols-2 gap-2">
@@ -120,8 +151,6 @@ export default function TwoSectionLayout() {
             <RightStackCardSkeleton />
           </div>
         </div>
-
-        {/* Mobile layout */}
         <div className="block md:hidden">
           <FeaturedCardSkeleton />
         </div>
@@ -149,20 +178,16 @@ export default function TwoSectionLayout() {
         <h2 className="px-4 text-2xl font-bold mb-6">Recommended For You</h2>
       </header>
 
-      {/* Desktop layout (≥1024px) */}
+      {/* Desktop (≥1024px) */}
       <div className="hidden lg:block">
-        <div className="grid grid-cols-3 gap-2 min-h-[300px]">
-          {/* Left featured card - takes 2 columns */}
+        <div className="grid grid-cols-3 gap-2 min-h-75">
           <div className="col-span-2">
             {media[0] && <FeaturedCard item={media[0]} index={0} />}
           </div>
-
-          {/* Right container - takes 1 column */}
           <div className="flex flex-col space-y-2">
             {media.slice(1, 3).map((item, index) => (
               <RightStackCard key={item.id} item={item} index={index + 1} />
             ))}
-            {/* Fill empty slots if we don't have enough items */}
             {media.length < 3 && (
               <div className="text-center text-gray-500 p-4 border border-dashed rounded-lg">
                 More recommendations coming soon
@@ -172,19 +197,13 @@ export default function TwoSectionLayout() {
         </div>
       </div>
 
-      {/* Tablet layout (768px - 1023px) */}
-      {/* Tablet layout (768px - 1023px) */}
+      {/* Tablet (768–1023px) */}
       <div className="hidden md:flex lg:hidden flex-col gap-2">
-        {/* Featured card */}
         {media[0] && <FeaturedCard item={media[0]} index={0} />}
-
-        {/* Right stack */}
         <div className="grid grid-cols-2 gap-2">
           {media.slice(1, 3).map((item, index) => (
             <RightStackCard key={item.id} item={item} index={index + 1} />
           ))}
-
-          {/* Fill empty slots */}
           {media.length < 3 &&
             Array.from({ length: 2 - (media.length - 1) }).map((_, i) => (
               <div
@@ -197,7 +216,7 @@ export default function TwoSectionLayout() {
         </div>
       </div>
 
-      {/* Mobile layout (<768px) */}
+      {/* Mobile (<768px) */}
       <div className="block md:hidden">
         {media[0] && <FeaturedCard item={media[0]} index={0} />}
       </div>
@@ -213,8 +232,11 @@ interface CardProps {
 }
 
 const FeaturedCard = memo(({ item, index }: CardProps) => {
-  const imageUrl = getImageUrl(item.backdrop_path || item.poster_path, 1280);
-  const dayLabel = getDayLabel(index);
+  const hasBackdrop = !!item.backdrop_path;
+  const imageUrl = getImageUrl(
+    hasBackdrop ? item.backdrop_path : item.poster_path,
+    1280
+  );
 
   return (
     <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden group bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-lg">
@@ -224,15 +246,16 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
           alt={item.title || "Media"}
           fill
           draggable={false}
-          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          className={`transition-transform duration-700 scale-100 group-hover:scale-102 object-cover ${
+            hasBackdrop ? "object-center" : "object-top"
+          }`}
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 66vw"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
       </div>
-
       <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 text-white z-10">
-        <p className="text-xs opacity-80 mb-1">{dayLabel}</p>
+        <p className="text-xs opacity-80 mb-1">{getDayLabel(index)}</p>
         <h2 className="text-lg md:text-xl lg:text-2xl font-semibold leading-tight line-clamp-2 mb-2">
           {item.title || "Untitled"}
         </h2>
@@ -240,14 +263,10 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
           {item.overview || "No description available."}
         </p>
         <Link
-          href={`/${item.media_type || "movie"}/${createSlug(
-            item.title || ""
-          )}/${item.id}`}
-          className="inline-block"
+          href={`/${item.media_type || "movie"}/${createSlug(item.title || "")}/${item.id}`}
+          className="inline-block hover:scale-105 hover:text-light-accent dark:hover:text-dark-accent transition-transform duration-300 ease-in-out"
         >
-          <span className="hover:scale-105 hover:text-light-accent dark:hover:text-dark-accent transition-transform duration-300 ease-in-out">
-            View details
-          </span>
+          View details
         </Link>
       </div>
     </div>
@@ -256,14 +275,15 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
 FeaturedCard.displayName = "FeaturedCard";
 
 const RightStackCard = memo(({ item, index }: CardProps) => {
-  const imageUrl = getImageUrl(item.poster_path || item.backdrop_path, 500);
-  const dayLabel = getDayLabel(index);
+  const hasPoster = !!item.poster_path;
+  const imageUrl = getImageUrl(
+    hasPoster ? item.poster_path : item.backdrop_path,
+    500
+  );
 
   return (
     <Link
-      href={`/${item.media_type || "movie"}/${createSlug(item.title || "")}/${
-        item.id
-      }`}
+      href={`/${item.media_type || "movie"}/${createSlug(item.title || "")}/${item.id}`}
       className="relative w-full h-49 rounded-xl overflow-hidden group bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-md hover:shadow-lg transition-shadow"
     >
       <div className="absolute inset-0">
@@ -271,14 +291,15 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
           src={imageUrl}
           alt={item.title || "Media"}
           fill
-          className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
+          className={`transition-transform duration-700 group-hover:scale-105 ${
+            hasPoster ? "object-cover object-top" : "object-cover object-center"
+          }`}
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
       </div>
-
       <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-10">
-        <p className="text-xs opacity-80 mb-1">{dayLabel}</p>
+        <p className="text-xs opacity-80 mb-1">{getDayLabel(index)}</p>
         <h3 className="text-base font-semibold leading-tight line-clamp-1 mb-1">
           {item.title || "Untitled"}
         </h3>
@@ -304,14 +325,13 @@ const getDayLabel = (index: number): string => {
 };
 
 /* ---------- Skeletons ---------- */
-
 const FeaturedCardSkeleton = () => (
   <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-gray-300 dark:bg-gray-700 animate-pulse">
     <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6">
-      <div className="h-4 w-24 bg-gray-400 rounded mb-2"></div>
-      <div className="h-6 w-3/4 bg-gray-400 rounded mb-2"></div>
-      <div className="h-4 w-5/6 bg-gray-400 rounded"></div>
+      <div className="h-4 w-24 bg-gray-400 rounded mb-2" />
+      <div className="h-6 w-3/4 bg-gray-400 rounded mb-2" />
+      <div className="h-4 w-5/6 bg-gray-400 rounded" />
     </div>
   </div>
 );
@@ -320,9 +340,9 @@ const RightStackCardSkeleton = () => (
   <div className="relative w-full h-49 rounded-xl overflow-hidden bg-gray-300 dark:bg-gray-700 animate-pulse">
     <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4">
-      <div className="h-3 w-16 bg-gray-400 rounded mb-1"></div>
-      <div className="h-4 w-3/4 bg-gray-400 rounded mb-1"></div>
-      <div className="h-3 w-5/6 bg-gray-400 rounded"></div>
+      <div className="h-3 w-16 bg-gray-400 rounded mb-1" />
+      <div className="h-4 w-3/4 bg-gray-400 rounded mb-1" />
+      <div className="h-3 w-5/6 bg-gray-400 rounded" />
     </div>
   </div>
 );

@@ -9,29 +9,34 @@ interface MediaPosterProps {
     name?: string;
     media_type?: string;
   };
+  textScheme?: "light" | "dark";
 }
 
-export default function MediaPoster({ data }: MediaPosterProps) {
+export default function MediaPoster({ data, textScheme = "light" }: MediaPosterProps) {
   const [hasError, setHasError] = useState(false);
 
   const displayTitle = data.title || data.name || "Untitled";
   const hasPoster = !!data.poster_path && !hasError;
+
   const getBadgeText = () => {
     if (data.media_type === "movie") return "MOVIE";
     if (data.media_type === "tv") return "SERIES";
     return "MEDIA";
   };
 
+  // Badge and fallback title adapt to the backdrop's luminance
+  const badgeTextColor = textScheme === "light" ? "text-white" : "text-gray-900";
+  const badgeBorderColor = textScheme === "light" ? "border-white/40" : "border-gray-900/40";
+  const fallbackTitleColor = textScheme === "light" ? "text-gray-300" : "text-gray-600";
+
   return (
-    <div className="relative aspect-[2/3] w-full max-w-xs rounded-2xl overflow-hidden shadow-lg group transition-all duration-300 hover:shadow-xl bg-gray-900">
-      {/* Fallback background and title if image is missing or broken */}
+    <div className="relative aspect-2/3 w-full max-w-xs rounded-2xl overflow-hidden shadow-lg group transition-all duration-300 hover:shadow-xl bg-gray-900">
       {!hasPoster && (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center px-2 text-center rounded-2xl">
-          <span className="text-gray-500 text-lg">{displayTitle}</span>
+        <div className="absolute inset-0 bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center px-2 text-center rounded-2xl">
+          <span className={`text-lg ${fallbackTitleColor}`}>{displayTitle}</span>
         </div>
       )}
 
-      {/* Image with object-contain to fit full image in container */}
       {hasPoster && (
         <Image
           draggable={false}
@@ -46,8 +51,7 @@ export default function MediaPoster({ data }: MediaPosterProps) {
         />
       )}
 
-      {/* Badge */}
-      <div className="border-1 border-grey absolute top-3 left-3 bg-transparent text-white px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10">
+      <div className={`border absolute top-3 left-3 bg-transparent px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10 ${badgeTextColor} ${badgeBorderColor}`}>
         {getBadgeText()}
       </div>
     </div>

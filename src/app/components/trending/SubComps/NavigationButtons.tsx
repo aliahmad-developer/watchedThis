@@ -24,7 +24,7 @@ export function NavigationButtons({ onLeft, onRight, canGoLeft, canGoRight, item
         className={`${baseBtnClasses} ${
           !canGoLeft
             ? "bg-gray-400 dark:bg-gray-600 opacity-40 cursor-not-allowed"
-            : "bg-gray-500 dark:bg-gray-700 hover:bg-light-accent hover:text-amber-300 dark:hover:bg-dark-accent hover:scale-105 active:scale-95"
+            : "bg-gray-500 dark:bg-gray-700 hover:bg-light-accent dark:hover:bg-dark-accent hover:scale-105 active:scale-95"
         }`}
         style={{ height: `${buttonHeight}px` }}
         aria-label="Scroll left"

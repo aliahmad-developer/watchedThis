@@ -39,7 +39,7 @@ export default function Page() {
         </ul>
       </nav>
 
-      <main className="flex-grow min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-8">
+      <main className="grow min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           {" "}
           {/* keeps form width predictable */}

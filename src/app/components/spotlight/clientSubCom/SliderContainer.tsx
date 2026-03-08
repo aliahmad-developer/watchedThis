@@ -11,6 +11,7 @@ interface SliderContainerProps {
   formatDuration: (minutes: number) => string;
   formatDate: (dateString: string | undefined) => string;
   handleWatchTrailer: (media: MediaItem) => void;
+  isTransitioning: boolean;
 }
 
 const SliderContainer = ({
@@ -22,20 +23,26 @@ const SliderContainer = ({
   formatDuration,
   formatDate,
   handleWatchTrailer,
+  isTransitioning,
 }: SliderContainerProps) => {
+  // Append clone of first slide at the end so last→first feels forward
+  const clonedItems = [...items, items[0]];
+
   return (
     <div className="relative w-full h-full overflow-hidden" ref={sliderRef}>
       <div
-        className="flex w-full h-full transition-transform duration-500 ease-in-out"
+        className="flex w-full h-full"
         style={{
           transform: `translateX(-${currentIndex * 100}%)`,
+          // Kill transition during the instant snap-back (index reset)
+          transition: isTransitioning ? "transform 500ms ease-in-out" : "none",
         }}
       >
-        {items.map((item, index) => (
+        {clonedItems.map((item, index) => (
           <SlideItem
-            key={item.id}
+            key={`${item.id}-${index}`}
             item={item}
-            index={index}
+            index={index % items.length} // keep real index for spotlight number
             isMobile={isMobile}
             showSpotlightNumber={showSpotlightNumber}
             formatDuration={formatDuration}

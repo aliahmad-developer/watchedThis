@@ -38,19 +38,13 @@ export default function PopularSpotlightSliderClient({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check for mobile viewport
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
-
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Memoize the formatDuration function
   const formatDuration = useCallback((minutes: number): string => {
     if (!minutes) return "";
     if (minutes >= 60) {
@@ -61,7 +55,6 @@ export default function PopularSpotlightSliderClient({
     return `${minutes}m`;
   }, []);
 
-  // Memoize the formatted date
   const formatDate = useCallback((dateString: string | undefined): string => {
     if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -80,19 +73,9 @@ export default function PopularSpotlightSliderClient({
     }
   }, []);
 
-  const handleCloseTrailer = useCallback(() => {
-    setShowTrailer(false);
-    if (autoPlay) {
-      startAutoPlay();
-    }
-  }, [autoPlay]);
-
   const startAutoPlay = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
+    if (intervalRef.current) clearInterval(intervalRef.current);
     if (items.length <= 1) return;
-
     intervalRef.current = setInterval(() => {
       goToNext();
     }, slideDuration);
@@ -100,9 +83,7 @@ export default function PopularSpotlightSliderClient({
 
   const resetAutoPlayTimer = useCallback(() => {
     if (autoPlay) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
       startAutoPlay();
     }
   }, [autoPlay, startAutoPlay]);
@@ -113,11 +94,24 @@ export default function PopularSpotlightSliderClient({
     setIsTransitioning(true);
     resetAutoPlayTimer();
 
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % items.length);
+    setCurrentIndex((prev) => {
+      const next = prev + 1;
+      // If we've reached the clone (index === items.length), animate to it,
+      // then after the transition snap silently back to index 0
+      if (next === items.length) {
+        // Schedule the silent snap after the 500ms animation completes
+        transitionTimeoutRef.current = setTimeout(() => {
+          setIsTransitioning(false); // disable transition first
+          setCurrentIndex(0);        // instant jump to real first slide
+        }, 500);
+        return next; // go to clone position WITH animation
+      }
 
-    transitionTimeoutRef.current = setTimeout(() => {
-      setIsTransitioning(false);
-    }, 500);
+      transitionTimeoutRef.current = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 500);
+      return next;
+    });
   }, [isTransitioning, items.length, resetAutoPlayTimer]);
 
   const goToPrev = useCallback(() => {
@@ -126,9 +120,7 @@ export default function PopularSpotlightSliderClient({
     setIsTransitioning(true);
     resetAutoPlayTimer();
 
-    setCurrentIndex(
-      (prevIndex) => (prevIndex - 1 + items.length) % items.length
-    );
+    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
 
     transitionTimeoutRef.current = setTimeout(() => {
       setIsTransitioning(false);
@@ -137,19 +129,23 @@ export default function PopularSpotlightSliderClient({
 
   const goToIndex = useCallback(
     (index: number) => {
-      if (isTransitioning || index === currentIndex) return;
+      if (isTransitioning || index === currentIndex % items.length) return;
 
       setIsTransitioning(true);
       resetAutoPlayTimer();
-
       setCurrentIndex(index);
 
       transitionTimeoutRef.current = setTimeout(() => {
         setIsTransitioning(false);
       }, 500);
     },
-    [isTransitioning, currentIndex, resetAutoPlayTimer]
+    [isTransitioning, currentIndex, items.length, resetAutoPlayTimer]
   );
+
+  const handleCloseTrailer = useCallback(() => {
+    setShowTrailer(false);
+    if (autoPlay) startAutoPlay();
+  }, [autoPlay, startAutoPlay]);
 
   const swipeHandlers = useSwipeable({
     onSwipedLeft: goToNext,
@@ -160,42 +156,30 @@ export default function PopularSpotlightSliderClient({
   });
 
   useEffect(() => {
-    if (autoPlay && !showTrailer) {
-      startAutoPlay();
-    }
+    if (autoPlay && !showTrailer) startAutoPlay();
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
     };
   }, [autoPlay, showTrailer, startAutoPlay]);
 
-  // Calculate the container height
   const containerHeight = useMemo(() => {
     return isMobile
-      ? typeof mobileHeight === "number"
-        ? `${mobileHeight}px`
-        : mobileHeight
-      : typeof height === "number"
-      ? `${height}px`
-      : height;
+      ? typeof mobileHeight === "number" ? `${mobileHeight}px` : mobileHeight
+      : typeof height === "number" ? `${height}px` : height;
   }, [isMobile, mobileHeight, height]);
 
-  // Early return if no items
   if (!items || items.length === 0) return null;
+
+  // Dot indicator should show real index (clamp clone back to 0)
+  const realIndex = currentIndex % items.length;
 
   return (
     <>
       <div
         className={`relative w-full max-w-screen-2xl mx-auto overflow-hidden border-none text-white bg-light-bg dark:bg-dark-bg ${className}`}
         {...swipeHandlers}
-        style={{
-          touchAction: "pan-y",
-          height: containerHeight,
-        }}
+        style={{ touchAction: "pan-y", height: containerHeight }}
       >
         <SliderContainer
           items={items}
@@ -206,6 +190,7 @@ export default function PopularSpotlightSliderClient({
           formatDuration={formatDuration}
           formatDate={formatDate}
           handleWatchTrailer={handleWatchTrailer}
+          isTransitioning={isTransitioning}
         />
 
         {showNavigation && items.length > 1 && (
@@ -217,17 +202,15 @@ export default function PopularSpotlightSliderClient({
           />
         )}
 
-        {/* Indicator Dots */}
         {items.length > 1 && (
           <IndicatorDots
             items={items}
-            currentIndex={currentIndex}
+            currentIndex={realIndex}
             goToIndex={goToIndex}
           />
         )}
       </div>
 
-      {/* Trailer Modal */}
       {showTrailer && currentMedia && (
         <TrailerModal
           mediaId={currentMedia.id}

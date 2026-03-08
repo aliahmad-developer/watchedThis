@@ -27,7 +27,7 @@ export default function EmailVerification({
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center">
           {isVerified ? (
-            <span className="cursorflex items-center gap-2 px-3 py-1 rounded-full border-1 border-light-accent text-light-accent dark:text-dark-accent dark:border-dark-accent  text-sm font-medium flex-row">
+            <span className="cursorflex items-center gap-2 px-3 py-1 rounded-full border border-light-accent text-light-accent dark:text-dark-accent dark:border-dark-accent  text-sm font-medium flex-row">
               <FontAwesomeIcon icon={faCheckCircle} />
               Verified
             </span>

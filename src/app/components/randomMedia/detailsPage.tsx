@@ -13,298 +13,205 @@ interface DescProps {
   isLoading?: boolean;
 }
 
-// Constants
 const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
-const GRAY_COLORS = {
-  light: "rgb(229,231,235)",
-  dark: "rgb(31,41,55)",
-} as const;
-
 const BACKDROP_QUALITY = 85;
-const TRANSITION_DURATION = 700;
-const OVERLAY_BLUR = "blur(3px)";
 
-// Utility functions
-const getGrayColor = (isLight: boolean) => 
-  isLight ? GRAY_COLORS.light : GRAY_COLORS.dark;
-
-const calculateLuminance = (r: number, g: number, b: number): number => 
+const calculateLuminance = (r: number, g: number, b: number): number =>
   (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-const getAdjustedColor = (
-  r: number, 
-  g: number, 
-  b: number, 
-  luminance: number, 
+const isValidBackdropUrl = (url: string): boolean =>
+  Boolean(url?.trim() && url !== "undefined");
+
+const getBackdropSrc = (url: string): string =>
+  url.startsWith("http") ? url : `https://image.tmdb.org/t/p/original${url}`;
+
+const buildAmbientColor = (
+  r: number, g: number, b: number,
   isLightMode: boolean
-): string => {
+): { solid: string; rgb: string } => {
+  const lum = calculateLuminance(r, g, b);
   if (isLightMode) {
-    const lightAdjust = luminance > 0.7 ? 0.85 : 0.7;
-    return `rgb(
-      ${Math.min(Math.floor(r * lightAdjust + 40), 255)}, 
-      ${Math.min(Math.floor(g * lightAdjust + 40), 255)}, 
-      ${Math.min(Math.floor(b * lightAdjust + 40), 255)}
-    )`;
+    const f = lum < 0.5 ? 1.5 : 1.2;
+    const clamp = (v: number) => Math.min(Math.floor(v * f + 50), 235);
+    return { solid: `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`, rgb: `${clamp(r)}, ${clamp(g)}, ${clamp(b)}` };
   } else {
-    const darkAdjust = luminance < 0.3 ? 0.75 : 0.55;
-    return `rgb(
-      ${Math.floor(r * darkAdjust)}, 
-      ${Math.floor(g * darkAdjust)}, 
-      ${Math.floor(b * darkAdjust)}
-    )`;
+    const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
+    const clamp = (v: number) => Math.max(Math.floor(v * f), 0);
+    return { solid: `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`, rgb: `${clamp(r)}, ${clamp(g)}, ${clamp(b)}` };
   }
 };
 
-const getGradientVariant = (
-  r: number, 
-  g: number, 
-  b: number, 
-  isLightMode: boolean
-): string => {
-  const factor = isLightMode ? 1.2 : 0.8;
-  const clamp = (value: number) => Math.min(Math.max(Math.floor(value), 0), 255);
-  
-  return `rgb(
-    ${clamp(r * factor)}, 
-    ${clamp(g * factor)}, 
-    ${clamp(b * factor)}
-  )`;
-};
-
-const getOverlayOpacity = (luminance: number): number => {
-  if (luminance < 0.35) return 0.25;
-  if (luminance > 0.75) return 0.5;
-  return 0.35;
-};
-
-const getFallbackBg = (isLightMode: boolean): string => 
-  isLightMode 
-    ? "bg-gradient-to-br from-gray-200 to-gray-300" 
-    : "bg-gradient-to-br from-gray-700 to-gray-800";
-
-const getBackdropSrc = (backdropUrl: string): string => 
-  backdropUrl.startsWith("http") 
-    ? backdropUrl 
-    : `https://image.tmdb.org/t/p/original${backdropUrl}`;
-
-const isValidBackdropUrl = (backdropUrl: string): boolean => 
-  Boolean(backdropUrl?.trim() && backdropUrl !== "undefined");
-
-// Custom hook for theme detection
 const useThemeDetection = () => {
   const [isLightMode, setIsLightMode] = useState(false);
-
   const checkLightMode = useCallback(() => {
-    const isLight = 
+    const isLight =
       document.documentElement.classList.contains("light") ||
       window.matchMedia(COLOR_SCHEME_MEDIA_QUERY).matches;
     setIsLightMode(isLight);
   }, []);
-
   useEffect(() => {
     checkLightMode();
-
-    const mediaQuery = window.matchMedia(COLOR_SCHEME_MEDIA_QUERY);
-    
-    // Use addEventListener instead of deprecated addListener
-    const handleChange = () => checkLightMode();
-    mediaQuery.addEventListener("change", handleChange);
-
-    const observer = new MutationObserver(checkLightMode);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange);
-      observer.disconnect();
-    };
+    const mq = window.matchMedia(COLOR_SCHEME_MEDIA_QUERY);
+    mq.addEventListener("change", checkLightMode);
+    const obs = new MutationObserver(checkLightMode);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => { mq.removeEventListener("change", checkLightMode); obs.disconnect(); };
   }, [checkLightMode]);
-
   return isLightMode;
 };
 
-// Custom hook for color extraction
-const useAmbientColor = (
-  backdropUrl: string, 
-  hasBackdrop: boolean, 
-  isLightMode: boolean
-) => {
-  const [ambientColor, setAmbientColor] = useState("");
-  const [gradientColor, setGradientColor] = useState("");
-  const [luminance, setLuminance] = useState(0.5);
-  const [isExtracting, setIsExtracting] = useState(false);
+const useAmbientColor = (backdropUrl: string, hasBackdrop: boolean, isLightMode: boolean) => {
+  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const colorThiefRef = useRef<ColorThief | null>(null);
+  const extractingRef = useRef(false);
 
   const extractColor = useCallback(() => {
-    if (!imgRef.current || isExtracting) return;
-
+    if (!imgRef.current || extractingRef.current) return;
     const img = imgRef.current;
-    
-    // Ensure image is ready for color extraction
-    if (img.naturalWidth === 0 || img.naturalHeight === 0) return;
-
-    setIsExtracting(true);
-
+    if (img.naturalWidth === 0) return;
+    extractingRef.current = true;
     try {
-      if (!colorThiefRef.current) {
-        colorThiefRef.current = new ColorThief();
-      }
-
+      if (!colorThiefRef.current) colorThiefRef.current = new ColorThief();
       const [r, g, b] = colorThiefRef.current.getColor(img);
-      const lum = calculateLuminance(r, g, b);
-      
-      setLuminance(lum);
-      setAmbientColor(getAdjustedColor(r, g, b, lum, isLightMode));
-      setGradientColor(getGradientVariant(r, g, b, isLightMode));
-    } catch (error) {
-      console.warn("Color extraction failed:", error);
-      const fallbackColor = getGrayColor(isLightMode);
-      setAmbientColor(fallbackColor);
-      setGradientColor(fallbackColor);
-      setLuminance(0.5);
+      setAmbient(buildAmbientColor(r, g, b, isLightMode));
+    } catch {
+      setAmbient(null);
     } finally {
-      setIsExtracting(false);
+      extractingRef.current = false;
     }
-  }, [isLightMode, isExtracting]);
+  }, [isLightMode]);
 
-  // Reset colors when backdrop changes or theme changes
-  useEffect(() => {
-    const fallbackColor = getGrayColor(isLightMode);
-    setAmbientColor(fallbackColor);
-    setGradientColor(fallbackColor);
-    setLuminance(0.5);
-  }, [backdropUrl, isLightMode]);
+  useEffect(() => { setAmbient(null); }, [backdropUrl, isLightMode]);
 
-  // Setup image load listener
   useEffect(() => {
     if (!hasBackdrop || !imgRef.current) return;
-
     const img = imgRef.current;
-
-    const handleLoad = () => {
-      // Small delay to ensure image is fully rendered
-      setTimeout(extractColor, 100);
-    };
-
-    if (img.complete) {
-      handleLoad();
-    } else {
-      img.addEventListener("load", handleLoad);
-    }
-
-    return () => {
-      img.removeEventListener("load", handleLoad);
-    };
+    const handleLoad = () => setTimeout(extractColor, 100);
+    if (img.complete) { handleLoad(); } else { img.addEventListener("load", handleLoad); }
+    return () => img.removeEventListener("load", handleLoad);
   }, [hasBackdrop, extractColor]);
 
-  return {
-    imgRef,
-    ambientColor,
-    gradientColor,
-    luminance,
-    extractColor,
-  };
+  return { imgRef, ambient };
 };
 
-export default function Desc({
-  data,
-  backdropUrl = "",
-  isLoading = false,
-}: DescProps) {
+export default function Desc({ data, backdropUrl = "", isLoading = false }: DescProps) {
   const [hasError, setHasError] = useState(false);
   const isLightMode = useThemeDetection();
-  
   const hasBackdrop = isValidBackdropUrl(backdropUrl) && !hasError;
-  
-  const {
-    imgRef,
-    ambientColor,
-    gradientColor,
-    luminance,
-    extractColor,
-  } = useAmbientColor(backdropUrl, hasBackdrop, isLightMode);
-
-  // Memoized style calculations
-  const fallbackBg = getFallbackBg(isLightMode);
-  const overlayOpacity = getOverlayOpacity(luminance) + 0.1;
-  const overlayBg = isLightMode 
-    ? `rgba(255,255,255,${overlayOpacity})` 
-    : `rgba(0,0,0,${overlayOpacity})`;
-
-  const gradientBg = ambientColor && gradientColor 
-    ? `linear-gradient(135deg, ${ambientColor} 30%, ${gradientColor} 100%)`
-    : getGrayColor(isLightMode);
+  const { imgRef, ambient } = useAmbientColor(backdropUrl, hasBackdrop, isLightMode);
 
   const mediaTitle = data?.title || data?.name || "Media";
 
-  // Handle image error
-  const handleImageError = useCallback(() => {
-    setHasError(true);
-  }, []);
+  const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
+  const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
+  const solidColor = ambient?.solid ?? fallbackSolid;
+  const rgbColor = ambient?.rgb ?? fallbackRgb;
 
-  // Prevent right-click on image
-  const handleImageContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-  }, []);
+  // Full-backdrop overlay — tints the ENTIRE image with the ambient color.
+  // Keeps the image visible but washes it with the dominant palette.
+  // Opacity is intentionally low (0.55) so the image still shows through.
+  const fullTint = `rgba(${rgbColor}, 0.55)`;
 
-  // Handle successful image load
-  const handleImageLoad = useCallback(() => {
-    setHasError(false);
-  }, []);
+  // Left panel: fully opaque → transparent. Content lives here.
+  const layerLeft = `linear-gradient(
+    to right,
+    rgba(${rgbColor}, 1)   0%,
+    rgba(${rgbColor}, 1)   20%,
+    rgba(${rgbColor}, 0.85) 35%,
+    rgba(${rgbColor}, 0.5)  50%,
+    rgba(${rgbColor}, 0.15) 68%,
+    rgba(${rgbColor}, 0)    82%
+  )`;
+
+  // Bottom fade
+  const layerBottom = `linear-gradient(
+    to top,
+    rgba(${rgbColor}, 1)   0%,
+    rgba(${rgbColor}, 0.7) 10%,
+    rgba(${rgbColor}, 0.3) 22%,
+    rgba(${rgbColor}, 0)   38%
+  )`;
+
+  // Top vignette
+  const layerTop = `linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.4) 0%,
+    rgba(0,0,0,0)   15%
+  )`;
+
+  const textScheme: "light" | "dark" = isLightMode ? "dark" : "light";
 
   return (
     <section
-      className="relative w-full min-h-screen overflow-hidden transition-colors duration-[1200ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
-      style={{ background: gradientBg }}
+      className="relative w-full min-h-screen overflow-hidden"
+      style={{
+        backgroundColor: solidColor,
+        transition: "background-color 700ms ease-in-out",
+      }}
     >
-      {/* Background Layer */}
-      <div className="absolute inset-0 overflow-hidden">
-        {hasBackdrop ? (
-          <>
-            <div className="relative w-full h-full">
-              <Image
-                ref={imgRef}
-                src={getBackdropSrc(backdropUrl)}
-                alt={`${mediaTitle} backdrop`}
-                fill
-                quality={BACKDROP_QUALITY}
-                priority
-                onError={handleImageError}
-                onLoad={handleImageLoad}
-                onContextMenu={handleImageContextMenu}
-                className="object-cover object-center opacity-80 transition-opacity duration-700 ease-in-out"
-                sizes="100vw"
-                placeholder="blur"
-                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-              />
-            </div>
-            <div
-              className="absolute inset-0 transition-all duration-700 ease-in-out"
-              style={{
-                backgroundColor: overlayBg,
-                backdropFilter: OVERLAY_BLUR,
-              }}
-            />
-          </>
-        ) : (
-          <div className={`absolute inset-0 ${fallbackBg}`} />
-        )}
-      </div>
+      {hasBackdrop && (
+        <div className="absolute inset-0">
+          {/* Backdrop image */}
+          <Image
+            ref={imgRef}
+            src={getBackdropSrc(backdropUrl)}
+            alt={`${mediaTitle} backdrop`}
+            fill
+            quality={BACKDROP_QUALITY}
+            priority
+            onError={() => setHasError(true)}
+            onLoad={() => setHasError(false)}
+            onContextMenu={(e) => e.preventDefault()}
+            className="object-cover object-center"
+            sizes="100vw"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+          />
 
-      {/* Content Layer */}
+          {/* Full-backdrop ambient tint — colors the whole image */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundColor: fullTint,
+              transition: "background-color 700ms ease-in-out",
+            }}
+          />
+
+          {/* Left panel gradient — content side */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: layerLeft,
+              transition: "background 700ms ease-in-out",
+            }}
+          />
+
+          {/* Bottom fade */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: layerBottom,
+              transition: "background 700ms ease-in-out",
+            }}
+          />
+
+          {/* Top vignette */}
+          <div
+            className="absolute inset-0"
+            style={{ background: layerTop }}
+          />
+        </div>
+      )}
+
+      {/* Content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
-          {/* Poster */}
           <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">
-            {isLoading ? <MediaPosterSkeleton /> : <MediaPoster data={data} />}
+            {isLoading ? <MediaPosterSkeleton /> : <MediaPoster data={data} textScheme={textScheme} />}
           </div>
-
-          {/* Info */}
           <div className="w-full lg:w-2/3 xl:w-3/4">
-            {isLoading ? <MediaInfoSkeleton /> : <MediaInfo data={data} />}
+            {isLoading ? <MediaInfoSkeleton /> : <MediaInfo data={data} textScheme={textScheme} />}
           </div>
         </div>
       </div>

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MediaItem, GAP, MOBILE_GAP, ITEM_WIDTH_DESKTOP, ITEM_WIDTH_TABLET } from "./types";
 
-// Window dimensions and responsive calculations
 export function useResponsiveConfig() {
   const [windowWidth, setWindowWidth] = useState(0);
   const [isClient, setIsClient] = useState(false);
@@ -9,7 +8,6 @@ export function useResponsiveConfig() {
   useEffect(() => {
     setIsClient(true);
     const updateWidth = () => setWindowWidth(window.innerWidth);
-
     updateWidth();
     window.addEventListener("resize", updateWidth);
     return () => window.removeEventListener("resize", updateWidth);
@@ -22,7 +20,6 @@ export function useResponsiveConfig() {
   return { windowWidth, isMobile, isTablet, isDesktop, isClient };
 }
 
-// Carousel logic
 export function useCarousel(mediaLength: number, visibleCount: number) {
   const [index, setIndex] = useState(0);
   const maxIndexRef = useRef(0);
@@ -40,79 +37,70 @@ export function useCarousel(mediaLength: number, visibleCount: number) {
   }, [mediaLength, visibleCount]);
 
   const scrollLeft = useCallback(() => {
-    if (isReady) {
-      setIndex((prev) => Math.max(0, prev - 1));
-    }
+    if (isReady) setIndex((prev) => Math.max(0, prev - 1));
   }, [isReady]);
 
   const scrollRight = useCallback(() => {
-    if (isReady) {
-      setIndex((prev) => Math.min(maxIndexRef.current, prev + 1));
-    }
+    if (isReady) setIndex((prev) => Math.min(maxIndexRef.current, prev + 1));
   }, [isReady]);
-
-  const canGoLeft = isReady && index > 0;
-  const canGoRight = isReady && index < maxIndexRef.current;
 
   return {
     index,
     setIndex,
     scrollLeft,
     scrollRight,
-    canGoLeft,
-    canGoRight,
+    canGoLeft: isReady && index > 0,
+    canGoRight: isReady && index < maxIndexRef.current,
     maxIndex: maxIndexRef.current,
     isReady,
   };
 }
 
-// Carousel dimensions
 export function useCarouselDimensions(containerRef: React.RefObject<HTMLDivElement | null>) {
-  const [dimensions, setDimensions] = useState({
-    visibleCount: 4,
-    itemWidth: 260,
-  });
+  // Start at 0 so the parent can gate rendering until we have a real measurement
+  const [dimensions, setDimensions] = useState({ visibleCount: 0, itemWidth: 0 });
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateDimensions = useCallback(() => {
     if (!containerRef.current) return;
-
     const containerWidth = containerRef.current.offsetWidth;
+    if (containerWidth === 0) return;
+
     let calculatedItemWidth: number;
     let newCount: number;
 
     if (containerWidth < 768) {
       newCount = 3;
       calculatedItemWidth = (containerWidth - MOBILE_GAP * 2) / 3;
-    } else if (containerWidth >= 768 && containerWidth < 1024) {
+    } else if (containerWidth < 1024) {
       calculatedItemWidth = Math.min(ITEM_WIDTH_TABLET, containerWidth * 0.33);
-      newCount = Math.max(
-        1,
-        Math.floor((containerWidth + GAP) / (calculatedItemWidth + GAP))
-      );
+      newCount = Math.max(1, Math.floor((containerWidth + GAP) / (calculatedItemWidth + GAP)));
     } else {
       calculatedItemWidth = Math.min(ITEM_WIDTH_DESKTOP, containerWidth * 0.4);
-      newCount = Math.max(
-        1,
-        Math.floor((containerWidth + GAP) / (calculatedItemWidth + GAP))
-      );
+      newCount = Math.max(1, Math.floor((containerWidth + GAP) / (calculatedItemWidth + GAP)));
     }
 
     setDimensions({ visibleCount: newCount, itemWidth: calculatedItemWidth });
   }, [containerRef]);
 
   useEffect(() => {
+    // Call immediately on mount — this is the key fix
+    updateDimensions();
+
     const handleResize = () => {
       if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
       resizeTimeoutRef.current = setTimeout(updateDimensions, 150);
     };
 
-    const observer = new ResizeObserver(handleResize);
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) updateDimensions();
+      }
+    });
 
+    if (containerRef.current) observer.observe(containerRef.current);
     window.addEventListener("resize", handleResize);
+
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", handleResize);
@@ -123,7 +111,6 @@ export function useCarouselDimensions(containerRef: React.RefObject<HTMLDivEleme
   return dimensions;
 }
 
-// Fetch trending media
 export function useTrendingMedia() {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,11 +121,7 @@ export function useTrendingMedia() {
       try {
         setLoading(true);
         const response = await fetch("/api/trending");
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch trending media: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Failed to fetch trending media: ${response.status}`);
         const data = await response.json();
         setMedia(data.results || []);
       } catch (err) {
@@ -148,7 +131,6 @@ export function useTrendingMedia() {
         setLoading(false);
       }
     };
-
     fetchTrendingMedia();
   }, []);
 

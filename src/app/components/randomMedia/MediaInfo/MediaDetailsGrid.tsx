@@ -5,9 +5,16 @@ import { ProductionList } from "./ProductionList";
 interface MediaDetailsGridProps {
   data: any;
   displayTitle: string;
+  primaryClass?: string;
+  secondaryClass?: string;
 }
 
-export default function MediaDetailsGrid({ data, displayTitle }: MediaDetailsGridProps) {
+export default function MediaDetailsGrid({
+  data,
+  displayTitle,
+  primaryClass = "text-white",
+  secondaryClass = "text-white/75",
+}: MediaDetailsGridProps) {
   const isMovie = data.media_type === "movie";
   const originalTitle = data.original_title || data.original_name || "";
   const releaseDate = data.release_date || data.first_air_date || data.premiered || "";
@@ -22,15 +29,18 @@ export default function MediaDetailsGrid({ data, displayTitle }: MediaDetailsGri
       return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
     }
     if (Array.isArray(data.episode_run_time) && data.episode_run_time.length) {
-      const avgRuntime = Math.round(
-        data.episode_run_time.reduce((a: number, b: number) => a + b, 0) / data.episode_run_time.length
+      const avg = Math.round(
+        data.episode_run_time.reduce((a: number, b: number) => a + b, 0) /
+          data.episode_run_time.length
       );
-      return `${avgRuntime}m per episode`;
+      return `${avg}m per episode`;
     }
     if (!isMovie) {
       const parts = [];
-      if (data.number_of_seasons) parts.push(`${data.number_of_seasons} Season${data.number_of_seasons !== 1 ? "s" : ""}`);
-      if (data.number_of_episodes) parts.push(`${data.number_of_episodes} Episode${data.number_of_episodes !== 1 ? "s" : ""}`);
+      if (data.number_of_seasons)
+        parts.push(`${data.number_of_seasons} Season${data.number_of_seasons !== 1 ? "s" : ""}`);
+      if (data.number_of_episodes)
+        parts.push(`${data.number_of_episodes} Episode${data.number_of_episodes !== 1 ? "s" : ""}`);
       return parts.length ? parts.join(", ") : "";
     }
     return "";
@@ -55,42 +65,38 @@ export default function MediaDetailsGrid({ data, displayTitle }: MediaDetailsGri
     return map[data.status] || data.status || "";
   };
 
-  const shouldShowOriginalTitle =
-    originalTitle.trim() &&
-    originalTitle !== displayTitle;
+  const shouldShowOriginalTitle = originalTitle.trim() && originalTitle !== displayTitle;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         {shouldShowOriginalTitle && (
-          <DetailItem label="Original Title" value={originalTitle} />
+          <DetailItem label="Original Title" value={originalTitle} primaryClass={primaryClass} secondaryClass={secondaryClass} />
         )}
         {releaseDate && (
-          <DetailItem label={isMovie ? "Release Date" : "First Aired"} value={releaseDate} />
+          <DetailItem label={isMovie ? "Release Date" : "First Aired"} value={releaseDate} primaryClass={primaryClass} secondaryClass={secondaryClass} />
         )}
       </div>
 
       <div className="space-y-6">
-        {year && <DetailItem label="Year" value={year} />}
-        {getDuration() && <DetailItem label="Duration" value={getDuration()} />}
-        {getStatus() && <DetailItem label="Status" value={getStatus()} />}
+        {year && <DetailItem label="Year" value={year} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
+        {getDuration() && <DetailItem label="Duration" value={getDuration()} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
+        {getStatus() && <DetailItem label="Status" value={getStatus()} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
       </div>
 
       <div className="space-y-6">
-        {getScore() && <DetailItem label="Score" value={getScore()} />}
+        {getScore() && <DetailItem label="Score" value={getScore()} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
 
         {genres.length > 0 && (
           <div>
-            <h4 className="text-sm font-semibold text-light-secondary-text dark:text-dark-secondary-text mb-1">
-              Genres
-            </h4>
+            <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>Genres</h4>
             <GenreTags genres={genres} />
           </div>
         )}
 
         {companies.length > 0 && (
           <div>
-            <h4 className="text-sm font-semibold text-light-secondary-text dark:text-dark-secondary-text mb-1">
+            <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>
               {isMovie ? "Production" : "Studio"}
             </h4>
             <ProductionList companies={companies} />

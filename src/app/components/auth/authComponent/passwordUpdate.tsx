@@ -116,7 +116,7 @@ export default function PasswordUpdate({ user, handlePasswordUpdate }: Props) {
             disabled={isSaving}
             className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${
               isSaving
-                ? "bg-light-disabled dark:bg-dark-disabled cursor-not-allowed cursor-progress"
+                ? "bg-light-disabled dark:bg-dark-disabled cursor-progress"
                 : "bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg"
             }`}
           >
