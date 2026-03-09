@@ -4,17 +4,21 @@ export const dynamic = "force-dynamic";
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faFilm, faTv, faStar, faCalendar, faTag } from "@fortawesome/free-solid-svg-icons";
+import { faSearch, faFilm, faTv, faStar, faCalendar, faTag, faBan, faToggleOn, faToggleOff, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { DualRangeSlider, SectionLabel, GenreChip, SliderStyles, type GenreState } from "../components/filter/component";
 
 interface Filters {
   mediaType: "movie" | "tv";
   genres: number[];
+  excludeGenres: number[];
+  excludeKeywords: string[];
   yearRange: [number, number];
   ratingRange: [number, number];
   keyword: string;
   minSeasons: string; maxSeasons: string;
   minEpisodes: string; maxEpisodes: string;
   sortBy: string;
+  strictMode: boolean;
 }
 
 const MOVIE_GENRES: Record<string, number> = {
@@ -38,16 +42,26 @@ const SORT_OPTIONS = [
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1950;
 
+const DEFAULT_FILTERS: Filters = {
+  mediaType: "movie", genres: [], excludeGenres: [], excludeKeywords: [],
+  yearRange: [MIN_YEAR, CURRENT_YEAR], ratingRange: [0, 10],
+  keyword: "", minSeasons: "", maxSeasons: "", minEpisodes: "", maxEpisodes: "",
+  sortBy: "popularity.desc", strictMode: false,
+};
+
 function parseFiltersFromURL(params: URLSearchParams): Filters {
   return {
-    mediaType:   (params.get("mediaType") as "movie" | "tv") || "movie",
-    genres:      params.get("genres") ? params.get("genres")!.split(",").map(Number) : [],
-    yearRange:   [Number(params.get("minYear") || MIN_YEAR), Number(params.get("maxYear") || CURRENT_YEAR)],
-    ratingRange: [Number(params.get("minRating") || 0), Number(params.get("maxRating") || 10)],
-    keyword:     params.get("keyword") || "",
-    minSeasons:  params.get("minSeasons") || "", maxSeasons: params.get("maxSeasons") || "",
-    minEpisodes: params.get("minEpisodes") || "", maxEpisodes: params.get("maxEpisodes") || "",
-    sortBy:      params.get("sortBy") || "popularity.desc",
+    mediaType:       (params.get("mediaType") as "movie" | "tv") || "movie",
+    genres:          params.get("genres") ? params.get("genres")!.split(",").map(Number) : [],
+    excludeGenres:   params.get("excludeGenres") ? params.get("excludeGenres")!.split(",").map(Number) : [],
+    excludeKeywords: params.get("excludeKeywords") ? params.get("excludeKeywords")!.split(",") : [],
+    yearRange:       [Number(params.get("minYear") || MIN_YEAR), Number(params.get("maxYear") || CURRENT_YEAR)],
+    ratingRange:     [Number(params.get("minRating") || 0), Number(params.get("maxRating") || 10)],
+    keyword:         params.get("keyword") || "",
+    minSeasons:      params.get("minSeasons") || "", maxSeasons: params.get("maxSeasons") || "",
+    minEpisodes:     params.get("minEpisodes") || "", maxEpisodes: params.get("maxEpisodes") || "",
+    sortBy:          params.get("sortBy") || "popularity.desc",
+    strictMode:      params.get("strict") === "true",
   };
 }
 
@@ -57,8 +71,11 @@ function filtersToParams(f: Filters): URLSearchParams {
     minYear: String(f.yearRange[0]), maxYear: String(f.yearRange[1]),
     minRating: String(f.ratingRange[0]), maxRating: String(f.ratingRange[1]),
   });
-  if (f.genres.length)  p.set("genres",  f.genres.join(","));
-  if (f.keyword.trim()) p.set("keyword", f.keyword.trim());
+  if (f.genres.length)          p.set("genres",          f.genres.join(","));
+  if (f.excludeGenres.length)   p.set("excludeGenres",   f.excludeGenres.join(","));
+  if (f.excludeKeywords.length) p.set("excludeKeywords", f.excludeKeywords.join(","));
+  if (f.keyword.trim())         p.set("keyword",         f.keyword.trim());
+  if (f.strictMode)             p.set("strict",          "true");
   if (f.mediaType === "tv") {
     if (f.minSeasons)  p.set("minSeasons",  f.minSeasons);
     if (f.maxSeasons)  p.set("maxSeasons",  f.maxSeasons);
@@ -68,70 +85,80 @@ function filtersToParams(f: Filters): URLSearchParams {
   return p;
 }
 
-function DualRangeSlider({ min, max, step = 1, value, onChange, formatLabel }: {
-  min: number; max: number; step?: number; value: [number, number];
-  onChange: (v: [number, number]) => void; formatLabel?: (v: number) => string;
-}) {
-  const [low, high] = value;
-  const pct = (v: number) => ((v - min) / (max - min)) * 100;
-  const fmt = formatLabel ?? String;
-  return (
-    <div className="w-full space-y-2">
-      <div className="flex justify-between text-xs font-semibold">
-        <span>{fmt(low)}</span><span>{fmt(high)}</span>
-      </div>
-      <div className="relative h-6 flex items-center">
-        <div className="absolute w-full h-1.5 rounded-full bg-light-border dark:bg-dark-border" />
-        <div className="absolute h-1.5 rounded-full bg-light-accent dark:bg-dark-accent"
-          style={{ left: `${pct(low)}%`, right: `${100 - pct(high)}%` }} />
-        <input type="range" min={min} max={max} step={step} value={low}
-          onChange={e => onChange([Math.min(Number(e.target.value), high - step), high])}
-          className="dual-thumb absolute w-full appearance-none bg-transparent pointer-events-none"
-          style={{ zIndex: low > max - (max - min) * 0.1 ? 5 : 3 }} />
-        <input type="range" min={min} max={max} step={step} value={high}
-          onChange={e => onChange([low, Math.max(Number(e.target.value), low + step)])}
-          className="dual-thumb absolute w-full appearance-none bg-transparent pointer-events-none"
-          style={{ zIndex: 4 }} />
-      </div>
-    </div>
-  );
-}
-
-function SectionLabel({ icon, children }: { icon?: typeof faStar; children: React.ReactNode }) {
-  return (
-    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-light-secondary-text dark:text-dark-secondary-text mb-2">
-      {icon && <FontAwesomeIcon icon={icon} className="h-3 text-light-accent dark:text-dark-accent" />}
-      {children}
-    </p>
-  );
-}
-
 export default function FindPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
-  // Pre-fill from URL so filters are restored when user hits back from results
   const [filters, setFilters] = useState<Filters>(() => parseFiltersFromURL(searchParams));
+  const [kwInput, setKwInput] = useState("");
 
-  const toggleGenre = (id: number) =>
-    setFilters(prev => ({
-      ...prev,
-      genres: prev.genres.includes(id) ? prev.genres.filter(g => g !== id) : [...prev.genres, id],
-    }));
+  const genres = filters.mediaType === "movie" ? MOVIE_GENRES : TV_GENRES;
+  const hasExclusions = filters.excludeGenres.length > 0 || filters.excludeKeywords.length > 0;
 
-  // Navigate to a completely separate results page
+  const genreState = (id: number): GenreState => {
+    if (filters.genres.includes(id)) return "include";
+    if (filters.excludeGenres.includes(id)) return "exclude";
+    return "neutral";
+  };
+
+  const cycleGenre = (id: number) => {
+    const current = genreState(id);
+    setFilters(prev => {
+      const g  = prev.genres.filter(x => x !== id);
+      const eg = prev.excludeGenres.filter(x => x !== id);
+      if (current === "neutral") return { ...prev, genres: [...g, id], excludeGenres: eg };
+      if (current === "include") return { ...prev, genres: g, excludeGenres: [...eg, id] };
+      return { ...prev, genres: g, excludeGenres: eg };
+    });
+  };
+
+  const addKeyword = () => {
+    const kw = kwInput.trim().toLowerCase();
+    if (!kw || filters.excludeKeywords.includes(kw)) { setKwInput(""); return; }
+    setFilters(prev => ({ ...prev, excludeKeywords: [...prev.excludeKeywords, kw] }));
+    setKwInput("");
+  };
+  const removeKeyword = (kw: string) =>
+    setFilters(prev => ({ ...prev, excludeKeywords: prev.excludeKeywords.filter(k => k !== kw) }));
+
   const handleSearch = useCallback(() => {
     router.push(`/find/results?${filtersToParams(filters).toString()}`);
   }, [filters, router]);
 
-  const genres = filters.mediaType === "movie" ? MOVIE_GENRES : TV_GENRES;
-
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
       <div className="w-full max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-5 sm:space-y-7">
-        <h1 className="text-xl sm:text-2xl font-bold">Find Media</h1>
+
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold">Find Media</h1>
+          <button
+            onClick={() => setFilters(DEFAULT_FILTERS)}
+            className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2"
+          >
+            Reset
+          </button>
+        </div>
 
         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-4 sm:p-6 space-y-6">
+
+          {/* Strict Mode */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
+            <div>
+              <p className="text-sm font-semibold text-light-text dark:text-dark-text">Strict Mode</p>
+              <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-0.5">
+                {filters.strictMode ? "All selected filters apply together (AND)" : "Any matching filter counts (OR)"}
+              </p>
+            </div>
+            <button
+              onClick={() => setFilters(prev => ({ ...prev, strictMode: !prev.strictMode }))}
+              className="text-2xl transition-colors ml-4 shrink-0 bg-transparent hover:bg-light-secondary-text/20 dark:hover:bg-dark-secondary-text/20 p-1 rounded-full"
+            >
+              <FontAwesomeIcon
+                icon={filters.strictMode ? faToggleOn : faToggleOff}
+                className={filters.strictMode ? "text-light-accent dark:text-dark-accent" : "text-light-secondary-text dark:text-dark-secondary-text"}
+              />
+            </button>
+          </div>
 
           {/* Keyword */}
           <div>
@@ -152,7 +179,7 @@ export default function FindPage() {
             <div className="grid grid-cols-2 gap-3">
               {(["movie", "tv"] as const).map(type => (
                 <button key={type}
-                  onClick={() => setFilters(prev => ({ ...prev, mediaType: type, genres: [] }))}
+                  onClick={() => setFilters(prev => ({ ...prev, mediaType: type, genres: [], excludeGenres: [] }))}
                   className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
                     filters.mediaType === type
                       ? "bg-light-accent dark:bg-dark-accent text-white border-transparent shadow-md"
@@ -167,17 +194,13 @@ export default function FindPage() {
 
           {/* Genres */}
           <div>
-            <SectionLabel>Genres</SectionLabel>
+            <SectionLabel icon={faTag}>Genres</SectionLabel>
+            <p className="inline text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2 -mt-1 leading-snug">
+              Tap once to <span className="inline text-light-accent dark:text-dark-accent font-semibold">include</span>{", "}twice to <span className="inline text-red-400 font-semibold">exclude</span>{", "}again to clear.
+            </p>
             <div className="flex flex-wrap gap-2">
               {Object.entries(genres).map(([name, id]) => (
-                <button key={id} onClick={() => toggleGenre(id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    filters.genres.includes(id)
-                      ? "bg-light-accent dark:bg-dark-accent text-white border-transparent scale-105"
-                      : "bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text hover:border-light-accent dark:hover:border-dark-accent"
-                  }`}>
-                  {name}
-                </button>
+                <GenreChip key={id} name={name} state={genreState(id)} onClick={() => cycleGenre(id)} />
               ))}
             </div>
           </div>
@@ -221,6 +244,52 @@ export default function FindPage() {
             </div>
           )}
 
+          {/* Blacklist Keywords */}
+          <div>
+            <SectionLabel icon={faBan}>Blacklist Keywords</SectionLabel>
+            <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2 -mt-1">
+              Exclude media containing these words in title, description, or tags.
+            </p>
+            <div className="flex gap-2 mb-3">
+              <input type="text" placeholder="e.g. violence, war, zombies…"
+                value={kwInput}
+                onChange={e => setKwInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addKeyword()}
+                className="flex-1 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent" />
+              <button onClick={addKeyword}
+                className="px-3 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold transition hover:opacity-90">
+                <FontAwesomeIcon icon={faPlus} className="h-3.5" />
+              </button>
+            </div>
+            {hasExclusions ? (
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {filters.excludeGenres.map(id => {
+                  const name = Object.entries(genres).find(([, gid]) => gid === id)?.[0];
+                  if (!name) return null;
+                  return (
+                    <button key={id} onClick={() => cycleGenre(id)}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/25 transition">
+                      {name}
+                    </button>
+                  );
+                })}
+                {filters.excludeKeywords.map(kw => (
+                  <button key={kw} onClick={() => removeKeyword(kw)}
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/25 transition">
+                    {kw}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setFilters(prev => ({ ...prev, excludeGenres: [], excludeKeywords: [] }))}
+                  className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2">
+                  clear all
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-light-secondary-text/50 dark:text-dark-secondary-text/50 italic">No exclusions yet.</p>
+            )}
+          </div>
+
           {/* Sort + Search */}
           <div className="flex flex-col sm:flex-row gap-3 pt-1">
             <select value={filters.sortBy}
@@ -237,19 +306,7 @@ export default function FindPage() {
         </div>
       </div>
 
-      <style>{`
-        .dual-thumb::-webkit-slider-thumb {
-          -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
-          background: var(--color-light-card, #7c3aed); border: 2.5px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.25); pointer-events: all; cursor: pointer; transition: transform 0.15s;
-        }
-        .dual-thumb::-webkit-slider-thumb:hover { transform: scale(1.2); }
-        .dual-thumb::-moz-range-thumb {
-          width: 20px; height: 20px; border-radius: 50%;
-          background: var(--color-light-card, #7c3aed); border: 2.5px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.25); pointer-events: all; cursor: pointer;
-        }
-      `}</style>
+      <SliderStyles />
     </div>
   );
 }

@@ -17,7 +17,8 @@ export default function BackToTop() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const scrollY = window.scrollY;
-          const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+          const docHeight =
+            document.documentElement.scrollHeight - window.innerHeight;
           setIsVisible(scrollY > 300);
           setProgress(docHeight > 0 ? Math.min(scrollY / docHeight, 1) : 0);
           ticking = false;
@@ -71,9 +72,10 @@ export default function BackToTop() {
           relative group flex items-center justify-center
           transition-all duration-500 ease-out
           focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50
-          ${isVisible
-            ? "opacity-100 translate-y-0 pointer-events-auto"
-            : "opacity-0 translate-y-4 pointer-events-none"
+          ${
+            isVisible
+              ? "opacity-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 translate-y-4 pointer-events-none"
           }
         `}
         style={{ width: `${size}px`, height: `${size}px` }}
@@ -111,15 +113,18 @@ export default function BackToTop() {
         {/* Button background */}
         <span
           className="
-            absolute inset-1 rounded-full
+            absolute rounded-full
             bg-gray-900/80 dark:bg-gray-800/80
             backdrop-blur-sm
             shadow-lg shadow-black/30
             transition-all duration-200
             group-hover:bg-gray-800/90 dark:group-hover:bg-gray-700/90
-            group-hover:inset-0.75
             group-active:scale-90
           "
+          style={{
+            width: `${size - strokeWidth * 2 - 4}px`,
+            height: `${size - strokeWidth * 2 - 4}px`,
+          }}
         />
 
         {/* Icon */}

@@ -1,0 +1,1 @@
+export type ListStatus = "completed" | "plan_to_watch" | "favourite";

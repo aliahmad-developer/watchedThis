@@ -14,24 +14,23 @@ interface MediaInfoProps {
     certification?: string;
     tagline?: string;
     media_type?: "movie" | "tv";
+    poster_path?: string;
   };
   textScheme?: "light" | "dark";
 }
 
-export default function MediaInfo({ data, textScheme = "light" }: MediaInfoProps) {
+export default function MediaInfo({
+  data,
+  textScheme = "light",
+}: MediaInfoProps) {
   const [showTrailer, setShowTrailer] = useState(false);
   const displayTitle = data.title || data.name || "Untitled";
   const overview = data.overview || "No overview available.";
   const mediaType = data.media_type || "movie";
 
-  // Text classes derived from backdrop luminance, not site theme.
-  // This ensures readability regardless of what image TMDB returns.
   const textClasses = {
-    // Primary text — titles, main content
     primary: textScheme === "light" ? "text-white" : "text-gray-900",
-    // Secondary text — taglines, labels, muted info
     secondary: textScheme === "light" ? "text-white/75" : "text-gray-700",
-    // Body text — overview paragraph
     body: textScheme === "light" ? "text-white/90" : "text-gray-800",
   };
 
@@ -49,12 +48,11 @@ export default function MediaInfo({ data, textScheme = "light" }: MediaInfoProps
           <ActionButtons
             mediaId={data.id}
             mediaType={mediaType}
+            title={displayTitle}
+            poster_path={data.poster_path ?? ""}
             onPlayTrailer={() => setShowTrailer(true)}
           />
-          <OverviewSection
-            overview={overview}
-            bodyClass={textClasses.body}
-          />
+          <OverviewSection overview={overview} bodyClass={textClasses.body} />
         </div>
         <div className="flex-1">
           <MediaDetailsGrid

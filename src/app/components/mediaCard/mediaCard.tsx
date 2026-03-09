@@ -27,14 +27,14 @@ export default function MediaCard({ item, displayTitle }: MediaCardProps) {
       draggable
     >
       {/* Poster */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl">
+      <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl">
         <div className="absolute inset-0 transition-transform duration-200 group-hover:scale-[1.03] transform-gpu will-change-transform">
           <MediaPoster data={item} />
         </div>
       </div>
 
       {/* Title */}
-      <div className="mt-2 text-sm font-semibold text-center line-clamp-1 break-words">
+      <div className="mt-2 text-sm font-semibold text-center line-clamp-1 wrap-break-word">
         {title}
       </div>
 
