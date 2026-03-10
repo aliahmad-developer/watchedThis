@@ -130,7 +130,7 @@ export default function Footer() {
             </h3>
             <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm sm:text-base">
               This website is ad-free. You're a visitor, not a customer. If you
-              are able, consider supporting my work.
+              are able, consider supporting our work.
             </p>
             <Link
               href="/about"

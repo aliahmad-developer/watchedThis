@@ -2,12 +2,44 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, use } from "react";
-
 import Loading from "@/app/components/utilities/loading";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import Image from "next/image";
 import Link from "next/link";
 import { createSlug } from "@/app/components/utilities/createSlug";
+
+const ProductionPageSkeleton = () => (
+  <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen animate-pulse">
+    {/* Banner */}
+    <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl border border-light-border dark:border-dark-border shadow-md">
+      <div className="w-[140px] h-[140px] rounded-xl bg-gray-300 dark:bg-gray-700 shrink-0" />
+      <div className="flex-1 space-y-3 w-full">
+        <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
+        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/3" />
+        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/4" />
+        <div className="flex gap-3 pt-1">
+          <div className="h-6 w-20 bg-gray-300 dark:bg-gray-700 rounded-full" />
+          <div className="h-6 w-16 bg-gray-300 dark:bg-gray-700 rounded-full" />
+        </div>
+      </div>
+    </div>
+    {/* Toggles */}
+    <div className="flex gap-3">
+      <div className="h-10 w-28 bg-gray-300 dark:bg-gray-700 rounded-full" />
+      <div className="h-10 w-28 bg-gray-300 dark:bg-gray-700 rounded-full" />
+    </div>
+    {/* Grid */}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <div className="aspect-2/3 bg-gray-300 dark:bg-gray-700 rounded-xl" />
+          <div className="h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-3/4" />
+          <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export default function ProductionPage({
   params,
@@ -28,14 +60,11 @@ export default function ProductionPage({
 
   const fetchData = useCallback(
     async (pageNum: number, type: string) => {
-      if (pageNum === 1) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
+      if (pageNum === 1) setLoading(true);
+      else setLoadingMore(true);
 
       const res = await fetch(
-        `/api/company/${id}?mediaType=${type}&page=${pageNum}`
+        `/api/company/${id}?mediaType=${type}&page=${pageNum}`,
       );
       const data = await res.json();
 
@@ -50,19 +79,16 @@ export default function ProductionPage({
       setLoading(false);
       setLoadingMore(false);
     },
-    [id]
+    [id],
   );
 
-  // First load & when media type changes
   useEffect(() => {
     setPage(1);
     fetchData(1, mediaType);
   }, [mediaType, fetchData]);
 
-  // Infinite scroll observer
   useEffect(() => {
     if (!loaderRef.current) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (
@@ -70,146 +96,138 @@ export default function ProductionPage({
           !loading &&
           !loadingMore &&
           page < totalPages
-        ) {
+        )
           setPage((prev) => prev + 1);
-        }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "200px" },
     );
-
     observer.observe(loaderRef.current);
     return () => observer.disconnect();
   }, [loading, loadingMore, page, totalPages]);
 
   useEffect(() => {
-    if (page > 1) {
-      fetchData(page, mediaType);
-    }
+    if (page > 1) fetchData(page, mediaType);
   }, [page, mediaType, fetchData]);
 
-  if (loading) {
-    return (
-      <div className="min-h-[100vh] flex items-center justify-center">
-        <Loading fullScreen />
-      </div>
-    );
-  }
+  if (loading) return <ProductionPageSkeleton />;
 
-  if (!company) {
+  if (!company)
     return (
-      <div className="min-h-[100vh] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-light-secondary-text dark:text-dark-secondary-text">
-            Company not found
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-light-secondary-text dark:text-dark-secondary-text">
+          Company not found
+        </p>
       </div>
     );
-  }
 
   return (
-    <div className="p-6 space-y-8 min-h-[100vh]">
-      {/* Company Banner */}
-      <div className="flex flex-col md:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-md border border-light-border dark:border-dark-border">
-        {company.logo_path ? (
-          <Image
-            src={`https://image.tmdb.org/t/p/w300${company.logo_path}`}
-            alt={company.name}
-            width={150}
-            height={150}
-            className="object-contain bg-white p-2 rounded-lg shadow-sm"
-          />
-        ) : (
-          <div className="w-[150px] h-[150px] flex items-center justify-center rounded-lg bg-light-disabled dark:bg-dark-disabled text-light-secondary-text dark:text-dark-secondary-text">
-            No Logo
-          </div>
-        )}
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-light-header dark:text-dark-body-text">
+    <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen">
+      {/* ── Company Banner ─────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-md border border-light-border dark:border-dark-border">
+        {/* Logo */}
+        <div className="shrink-0 w-[140px] h-[140px] flex items-center justify-center bg-white dark:bg-white/5 rounded-xl shadow-sm border border-light-border dark:border-dark-border p-3">
+          {company.logo_path ? (
+            <Image
+              src={`https://image.tmdb.org/t/p/w300${company.logo_path}`}
+              alt={company.name}
+              width={120}
+              height={120}
+              className="object-contain w-full h-full"
+            />
+          ) : (
+            <span className="text-light-secondary-text dark:text-dark-secondary-text text-sm text-center">
+              No Logo
+            </span>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 text-center sm:text-left space-y-1.5">
+          <h1 className="text-3xl font-bold text-light-header dark:text-white">
             {company.name}
           </h1>
-          <p className="text-sm mb-1 text-light-secondary-text dark:text-dark-secondary-text">
-            Origin Country: {company.origin_country || "Unknown"}
-          </p>
+          {company.origin_country && (
+            <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text">
+              Origin: {company.origin_country}
+            </p>
+          )}
           {company.headquarters && (
-            <p className="text-sm mb-1 text-light-body-text dark:text-dark-body-text">
+            <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text">
               HQ: {company.headquarters}
             </p>
           )}
+          {/* Stat pills */}
+          <div className="flex gap-2 pt-2 flex-wrap justify-center sm:justify-start">
+            <span className="text-xs px-3 py-1 rounded-full bg-light-border dark:bg-dark-border text-light-secondary-text dark:text-dark-secondary-text">
+              {items.length} titles
+            </span>
+            <span className="text-xs px-3 py-1 rounded-full bg-light-border dark:bg-dark-border text-light-secondary-text dark:text-dark-secondary-text">
+              {mediaType === "movie" ? "Movies" : "TV Shows"}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Toggle Buttons */}
-      <div className="flex space-x-4 mb-4">
-        <button
-          onClick={() => setMediaType("movie")}
-          className={`px-6 py-2 rounded-full ${
-            mediaType === "movie"
-              ? "bg-light-accent text-white"
-              : "bg-light-card dark:bg-dark-card"
-          }`}
-        >
-          Movies
-        </button>
-        <button
-          onClick={() => setMediaType("tv")}
-          className={`px-6 py-2 rounded-full ${
-            mediaType === "tv"
-              ? "bg-light-accent text-white"
-              : "bg-light-card dark:bg-dark-card"
-          }`}
-        >
-          TV Shows
-        </button>
+      {/* ── Toggle Buttons ─────────────────────────────────────────────── */}
+      <div className="flex gap-3">
+        {(["movie", "tv"] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setMediaType(type)}
+            className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
+              mediaType === type
+                ? "bg-light-accent dark:bg-dark-accent text-white border-transparent shadow-sm"
+                : "bg-transparent border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text hover:border-light-accent dark:hover:border-dark-accent"
+            }`}
+          >
+            {type === "movie" ? "Movies" : "TV Shows"}
+          </button>
+        ))}
       </div>
 
-      {/* Media Grid */}
+      {/* ── Media Grid ─────────────────────────────────────────────────── */}
       {items.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {items.map((item, index) => (
             <Link
               key={`${mediaType}-${item.id}-${index}`}
-              href={`/${mediaType}/${createSlug(
-                item.title || item.name || "untitled"
-              )}/${item.id}`}
+              href={`/${mediaType}/${createSlug(item.title || item.name || "untitled")}/${item.id}`}
             >
               <MediaCard item={{ ...item, media_type: mediaType }} />
             </Link>
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <p className="text-light-secondary-text dark:text-dark-secondary-text">
+        <div className="flex items-center justify-center py-20">
+          <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
             No {mediaType === "movie" ? "movies" : "TV shows"} found for this
             company.
           </p>
         </div>
       )}
 
-      {/* Loader for infinite scroll */}
-      <div ref={loaderRef} className="h-20 flex justify-center items-center">
-        {loadingMore && (
-          <div className="w-full flex justify-center py-8">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2 w-full">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div key={`loading-${index}`} className="animate-pulse">
-                  <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-[2/3] w-full mb-2"></div>
-                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
-                  <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* ── Infinite scroll loader ─────────────────────────────────────── */}
+      {/* ── Infinite scroll sentinel (invisible) ─────────────────────────── */}
+      <div ref={loaderRef} className="h-4" />
 
-      {/* End of results message */}
-      {!loadingMore && page >= totalPages && items.length > 0 && (
-        <div className="text-center py-6">
-          <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
-            You've reached the end of the results.
-          </p>
+      {/* ── Loading more skeletons ────────────────────────────────────────── */}
+      {loadingMore && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-pulse">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="aspect-2/3 bg-gray-300 dark:bg-gray-700 rounded-xl" />
+              <div className="h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-3/4" />
+              <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
+            </div>
+          ))}
         </div>
+      )}
+
+      {/* ── End of results ─────────────────────────────────────────────── */}
+      {!loadingMore && page >= totalPages && items.length > 0 && (
+        <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-sm pb-4">
+          You've reached the end of the results.
+        </p>
       )}
     </div>
   );

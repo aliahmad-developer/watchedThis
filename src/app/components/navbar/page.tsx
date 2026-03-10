@@ -282,7 +282,7 @@ export default function Navbar() {
 
       {/* Search Input */}
       {hasMounted && searchVisible && (
-        <div className="absolute left-0 right-0 top-14 z-40 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
+        <div className="absolute left-0 right-0 top-14 z-50 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
           <div className="relative w-full">
             <SearchInput
               clearInput={handleClearInput}
