@@ -141,7 +141,7 @@ function SceneResultCard({
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1280px"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
+          <div className="absolute inset-0 bg-linear-to-br from-gray-700 to-gray-900" />
         )}
 
         <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />

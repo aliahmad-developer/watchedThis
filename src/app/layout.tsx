@@ -44,14 +44,12 @@ export default function RootLayout({
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Navbar />
-          <BackButton
-            className={`
-          flex items-center justify-center
-          w-11 h-11 sm:w-12 sm:h-12  
-          rounded-full mt-2 ml-4
-        `}
-          />
-          <div>{children}</div>
+          <div className="relative">
+            <div className="absolute top-2 left-3 z-40">
+              <BackButton />
+            </div>
+            <div>{children}</div>
+          </div>
           <Membership />
           <Footer />
         </ThemeProvider>
