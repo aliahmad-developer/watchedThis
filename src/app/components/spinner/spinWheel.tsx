@@ -63,6 +63,14 @@ export default function SpinWheel({
   const r = size / 2 - 10;
   const innerR = 12;
 
+  // Pointer dims — identical in both skeleton and real wheel
+  const ptrH = 28;
+  const ptrW = 24;
+  // Pointer tip sits exactly at the rim: cy - r
+  const ptrTipY = cy - r;
+  // Group is translated so that the tip point (0, ptrH) lands at (cx, ptrTipY)
+  const ptrTransY = ptrTipY - ptrH;
+
   const toRad = (d: number) => d * (Math.PI / 180);
 
   const slicePath = (i: number, customR = r, customInner = innerR) => {
@@ -86,12 +94,38 @@ export default function SpinWheel({
       "Z",
     ].join(" ");
   };
-  const ptrH = 28;
-  const ptrW = 24;
+
+  // ── Shared Pointer markup (same transform for both skeleton + real) ──────
+  const PointerEl = ({ faded = false }: { faded?: boolean }) => (
+    <g transform={`translate(${cx}, ${ptrTransY})`}>
+      {/* Drop shadow */}
+      <polygon
+        points={`0,${ptrH + 2} ${-ptrW / 2 - 1},-1 ${ptrW / 2 + 1},-1`}
+        fill={faded ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.35)"}
+        transform="translate(1,2)"
+      />
+      {/* Main body */}
+      <polygon
+        points={`0,${ptrH} ${-ptrW / 2},0 ${ptrW / 2},0`}
+        style={{ fill: faded ? undefined : "var(--color-light-nav)" }}
+        fill={faded ? "rgba(128,128,128,0.35)" : undefined}
+        className={faded ? "" : "dark:fill-dark-card"}
+        stroke={faded ? "rgba(128,128,128,0.2)" : "rgba(255,255,255,0.15)"}
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
+      {/* Highlight */}
+      <polygon
+        points={`0,${ptrH - 6} ${-ptrW / 2 + 4},3 ${ptrW / 2 - 4},3`}
+        fill={faded ? "rgba(128,128,128,0.08)" : "rgba(255,255,255,0.08)"}
+      />
+    </g>
+  );
 
   // ── SKELETON ──────────────────────────────────────────────────────────────
   if (loading) {
     const skeletonSlices = Array.from({ length: SKELETON_COUNT }, (_, i) => i);
+
     return (
       <div
         className="relative w-full max-w-120 mx-auto"
@@ -104,7 +138,8 @@ export default function SpinWheel({
           style={{ display: "block", overflow: "visible" }}
         >
           <defs>
-            <linearGradient id="shimmer" x1="0%" y1="0%" x2="100%" y2="0%">
+            {/* Dark mode shimmer */}
+            <linearGradient id="shimmerDark" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="rgba(255,255,255,0.03)" />
               <stop offset="50%" stopColor="rgba(255,255,255,0.10)" />
               <stop offset="100%" stopColor="rgba(255,255,255,0.03)" />
@@ -117,69 +152,101 @@ export default function SpinWheel({
                 repeatCount="indefinite"
               />
             </linearGradient>
+            {/* Light mode shimmer */}
+            <linearGradient id="shimmerLight" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(0,0,0,0.03)" />
+              <stop offset="50%" stopColor="rgba(0,0,0,0.08)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0.03)" />
+              <animateTransform
+                attributeName="gradientTransform"
+                type="translate"
+                from="-1 0"
+                to="1 0"
+                dur="1.6s"
+                repeatCount="indefinite"
+              />
+            </linearGradient>
           </defs>
+
           {skeletonSlices.map((i) => {
             const path = slicePath(i);
             const midDeg = degPerSlice * i - 90 + degPerSlice / 2;
             const midRad = toRad(midDeg);
-            const tx = cx + (r - 20) * Math.cos(midRad);
-            const ty = cy + (r - 20) * Math.sin(midRad);
+            const tx =
+              Math.round((cx + (r - 20) * Math.cos(midRad)) * 1000) / 1000;
+            const ty =
+              Math.round((cy + (r - 20) * Math.sin(midRad)) * 1000) / 1000;
             const barW = 40 + (i % 3) * 12;
             const barH = 6;
+
             return (
               <g key={i}>
+                {/* Base fill — visible in both light and dark */}
                 <path
                   d={path}
-                  fill={
+                  className={
                     i % 2 === 0
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(255,255,255,0.03)"
+                      ? "fill-[rgba(0,0,0,0.08)] dark:fill-[rgba(255,255,255,0.06)]"
+                      : "fill-[rgba(0,0,0,0.05)] dark:fill-[rgba(255,255,255,0.03)]"
                   }
-                  stroke="rgba(255,255,255,0.05)"
+                  stroke="rgba(128,128,128,0.15)"
                   strokeWidth="1"
                 />
-                <path d={path} fill="url(#shimmer)" />
+                {/* Shimmer overlay — light mode */}
+                <path
+                  d={path}
+                  fill="url(#shimmerLight)"
+                  className="dark:hidden"
+                />
+                {/* Shimmer overlay — dark mode */}
+                <path
+                  d={path}
+                  fill="url(#shimmerDark)"
+                  className="hidden dark:block"
+                />
+                {/* Text bar placeholder */}
                 <rect
                   x={-barW / 2}
                   y={-barH / 2}
                   width={barW}
                   height={barH}
                   rx={barH / 2}
-                  fill="rgba(255,255,255,0.12)"
+                  className="fill-[rgba(0,0,0,0.12)] dark:fill-[rgba(255,255,255,0.12)]"
                   transform={`translate(${tx},${ty}) rotate(${midDeg + 180})`}
                 />
               </g>
             );
           })}
+
+          {/* Rim */}
           <circle
             cx={cx}
             cy={cy}
             r={r}
             fill="none"
-            stroke="rgba(255,255,255,0.08)"
+            className="stroke-[rgba(0,0,0,0.12)] dark:stroke-[rgba(255,255,255,0.08)]"
             strokeWidth="5"
           />
-          <g transform={`translate(${cx}, ${cy - r - ptrH + 10})`}>
-            <polygon
-              points={`${ptrW / 2},${ptrH} 0,0 ${ptrW},0`}
-              fill="rgba(255,255,255,0.08)"
-              stroke="rgba(255,255,255,0.05)"
-              strokeWidth="1"
-            />
-          </g>
+
+          {/* Pointer — same position as real wheel */}
+          <PointerEl faded />
+
+          {/* Centre cap */}
           <circle
             cx={cx}
             cy={cy}
             r={innerR}
-            fill="rgba(255,255,255,0.06)"
-            stroke="rgba(255,255,255,0.1)"
+            className="fill-[rgba(0,0,0,0.08)] dark:fill-[rgba(255,255,255,0.06)]"
+            stroke="rgba(128,128,128,0.2)"
             strokeWidth="2"
           />
+
+          {/* Loading label */}
           <text
             x={cx}
             y={cy + r + 28}
             textAnchor="middle"
-            fill="rgba(255,255,255,0.3)"
+            className="fill-[rgba(0,0,0,0.3)] dark:fill-[rgba(255,255,255,0.3)]"
             fontSize="13"
             fontFamily="system-ui, sans-serif"
             fontWeight="500"
@@ -233,7 +300,6 @@ export default function SpinWheel({
               floodColor="rgba(0,0,0,0.5)"
             />
           </filter>
-          {/* Per-slice clip paths */}
           {slots.map((_, i) => (
             <clipPath key={i} id={`cp-${i}`}>
               <path d={slicePath(i)} />
@@ -258,8 +324,10 @@ export default function SpinWheel({
             const url = item ? imgUrl(item) : null;
 
             const txtDist = r - 16;
-            const tx = cx + txtDist * Math.cos(midRad);
-            const ty = cy + txtDist * Math.sin(midRad);
+            const tx =
+              Math.round((cx + txtDist * Math.cos(midRad)) * 1000) / 1000;
+            const ty =
+              Math.round((cy + txtDist * Math.sin(midRad)) * 1000) / 1000;
             const txtRot = midDeg + 180;
 
             const label = item?.title
@@ -270,23 +338,11 @@ export default function SpinWheel({
 
             return (
               <g key={i}>
-                {/* 1. Base colour */}
                 <path
                   d={path}
                   fill={COLORS[i % COLORS.length]}
                   opacity={item ? 1 : 0.35}
                 />
-
-                {/*
-                  2. Image — rotate this <g> so that 12 o'clock lines up with
-                     this slice's midpoint. The template clipPath (also at
-                     12 o'clock) is now in the exact same coordinate space as
-                     the image tile, so they always align perfectly.
-                     midDeg already accounts for the -90° offset (it's the
-                     true angle to this slice's centre from the top), so we
-                     just add 90° back to compensate for the tile starting at
-                     -90° (pointing straight up).
-                */}
                 {url && (
                   <image
                     href={url}
@@ -298,19 +354,13 @@ export default function SpinWheel({
                     clipPath={`url(#cp-${i})`}
                   />
                 )}
-
-                {/* 3. Readability overlay */}
                 {url && <path d={path} fill="rgba(0,0,0,0.28)" />}
-
-                {/* 4. Slice border */}
                 <path
                   d={path}
                   fill="none"
                   stroke="rgba(0,0,0,0.4)"
                   strokeWidth="1"
                 />
-
-                {/* 5. Title */}
                 <text
                   x={tx}
                   y={ty}
@@ -333,7 +383,6 @@ export default function SpinWheel({
             );
           })}
 
-          {/* Light mode tint only */}
           <circle
             cx={cx}
             cy={cy}
@@ -358,28 +407,8 @@ export default function SpinWheel({
           />
         </g>
 
-        {/* ── Pointer ─────────────────────────────────────────────────────── */}
-        {/* ── Pointer ─────────────────────────────────────────────────────── */}
-        {/* Tip is at local (0, ptrH), base centred on x=0 → global tip lands exactly at (cx, cy-r+10) */}
-        <g transform={`translate(${cx}, ${cy - r - ptrH + 10})`}>
-          <polygon
-            points={`0,${ptrH + 2} ${-ptrW / 2 - 1},-1 ${ptrW / 2 + 1},-1`}
-            fill="rgba(0,0,0,0.35)"
-            transform="translate(1,2)"
-          />
-          <polygon
-            points={`0,${ptrH} ${-ptrW / 2},0 ${ptrW / 2},0`}
-            style={{ fill: "var(--color-light-nav)" }}
-            className="dark:fill-dark-card"
-            stroke="rgba(255,255,255,0.15)"
-            strokeWidth="1"
-            strokeLinejoin="round"
-          />
-          <polygon
-            points={`0,${ptrH - 6} ${-ptrW / 2 + 4},3 ${ptrW / 2 - 4},3`}
-            fill="rgba(255,255,255,0.08)"
-          />
-        </g>
+        {/* ── Pointer — same component, same position ──────────────────── */}
+        <PointerEl />
 
         {/* ── Centre cap ──────────────────────────────────────────────────── */}
         <circle

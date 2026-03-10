@@ -166,13 +166,6 @@ export default function FindResultsPage() {
 
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm  text-light-btn-text dark:text-shadow-dark-btn-text hover:text-light-btn-hover-text hover:dark:text-dark-btn-hover-text transition-colors shrink-0"
-          >
-            <FontAwesomeIcon icon={faArrowLeft} className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline bg-transparent text-light-btn-text dark:text-shadow-dark-btn-text hover:text-light-btn-hover-text hover:dark:text-dark-btn-hover-text transition-colors">Back to filters</span>
-          </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-sm sm:text-lg lg:text-xl font-bold capitalize truncate">
               {mediaType === "tv" ? "TV Shows" : "Movies"}
@@ -241,7 +234,7 @@ export default function FindResultsPage() {
         {/* Pagination */}
         {!loading && results.length > 0 && page < totalPages && (
           <button onClick={handleLoadMore}
-            className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium hover:bg-light-card dark:hover:bg-dark-card transition-colors">
+            className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors">
             Load more
           </button>
         )}

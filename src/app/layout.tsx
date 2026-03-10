@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
+import BackButton from "./components/utilities/backButton";
 import Navbar from "./components/navbar/page";
 import Membership from "./components/MemberShips/paid";
 import PushUp from "./components/utilities/pushUp";
@@ -43,6 +44,13 @@ export default function RootLayout({
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Navbar />
+          <BackButton
+            className={`
+          flex items-center justify-center
+          w-11 h-11 sm:w-12 sm:h-12  
+          rounded-full mt-2 ml-4
+        `}
+          />
           <div>{children}</div>
           <Membership />
           <Footer />
