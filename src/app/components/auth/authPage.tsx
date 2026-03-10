@@ -58,17 +58,6 @@ export default function AuthPage() {
   const router = useRouter();
   const lastVerifiedRef = useRef(false);
 
-  // Pick up OAuth redirect result on mobile after page reload
-  useEffect(() => {
-    checkRedirectResult().then((result) => {
-      if (result.success && result.user) {
-        // onAuthStateChanged will fire and update user state automatically
-      } else if (result.message) {
-        showMessage(result.message, true);
-      }
-    });
-  }, []);
-
   const showMessage = (text: string, isError = false) => {
     setMessage(text);
     if (isError) setError(text);
@@ -120,48 +109,71 @@ export default function AuthPage() {
     }
   };
 
+  // Single unified effect: check redirect first, THEN subscribe to auth state.
+  // This prevents onAuthStateChanged from firing before getRedirectResult resolves,
+  // which was causing mobile OAuth logins to be silently dropped.
   useEffect(() => {
     let interval: number | null = null;
+    let unsubscribe: (() => void) | undefined;
+
     setIsLoading(true);
 
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      try {
-        if (!u) {
-          setUser(null);
-          setIsVerified(false);
-          setNewUsername("");
-          setCreatedDate(null);
-          lastVerifiedRef.current = false;
-          setIsLoading(false);
-          return;
+    const init = async () => {
+      // 1. Resolve any pending OAuth redirect (mobile) before attaching the listener
+      const redirectResult = await checkRedirectResult();
+      if (!redirectResult.success && redirectResult.message) {
+        showMessage(redirectResult.message, true);
+      }
+
+      // 2. Now it's safe to subscribe — the redirect credential is already consumed
+      unsubscribe = onAuthStateChanged(auth, async (u) => {
+        // Clear any previous polling interval when auth state changes
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
         }
 
-        await fetchUserInfo(u);
-
-        interval = window.setInterval(async () => {
-          try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) return;
-            await currentUser.reload();
-            if (!lastVerifiedRef.current && currentUser.emailVerified) {
-              setIsVerified(true);
-              showMessage("Email verified successfully!");
-              if (interval) clearInterval(interval);
-            }
-            lastVerifiedRef.current = currentUser.emailVerified;
-          } catch (err) {
-            console.error("Error during email verification polling:", err);
+        try {
+          if (!u) {
+            setUser(null);
+            setIsVerified(false);
+            setNewUsername("");
+            setCreatedDate(null);
+            lastVerifiedRef.current = false;
+            setIsLoading(false);
+            return;
           }
-        }, 5000);
-      } catch (err) {
-        console.error("Error in auth state change:", err);
-        showMessage("Failed to authenticate user", true);
-        setIsLoading(false);
-      }
-    });
+
+          await fetchUserInfo(u);
+
+          // Poll for email verification status every 5 seconds
+          interval = window.setInterval(async () => {
+            try {
+              const currentUser = auth.currentUser;
+              if (!currentUser) return;
+              await currentUser.reload();
+              if (!lastVerifiedRef.current && currentUser.emailVerified) {
+                setIsVerified(true);
+                showMessage("Email verified successfully!");
+                if (interval) clearInterval(interval);
+              }
+              lastVerifiedRef.current = currentUser.emailVerified;
+            } catch (err) {
+              console.error("Error during email verification polling:", err);
+            }
+          }, 5000);
+        } catch (err) {
+          console.error("Error in auth state change:", err);
+          showMessage("Failed to authenticate user", true);
+          setIsLoading(false);
+        }
+      });
+    };
+
+    init();
 
     return () => {
-      unsubscribe();
+      unsubscribe?.();
       if (interval) clearInterval(interval);
     };
   }, []);

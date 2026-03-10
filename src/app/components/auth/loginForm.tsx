@@ -1,6 +1,6 @@
 "use client";
-import { useState,useEffect } from "react";
-import { login, signInWithGoogle, signInWithApple,checkRedirectResult } from "./auth";
+import { useState } from "react";
+import { login, signInWithGoogle, signInWithApple} from "./auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
@@ -76,17 +76,6 @@ export default function LoginForm({
       setOauthLoading(null);
     }
   };
-  useEffect(() => {
-    const handleRedirect = async () => {
-      const result = await checkRedirectResult();
-
-      if (result.success) {
-        if (onSuccess) onSuccess();
-      }
-    };
-
-    handleRedirect();
-  }, []);
 
   return (
     <form
