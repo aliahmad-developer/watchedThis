@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { signup } from "./auth";
+import { useState, useRef } from "react";
+import { signup, signInWithGoogle, signInWithApple } from "./auth";
 import type { User } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -8,527 +8,405 @@ import {
   faEyeSlash,
   faCheckCircle,
   faTimesCircle,
-  faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
+import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
 
 type SignupFormProps = {
   onSuccess?: (newUser: User, username: string) => void;
   onError?: (error: string) => void;
+  onSwitchToLogin?: () => void;
 };
 
-// Input validation functions
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validateUsername = (username: string) => /^[a-zA-Z0-9_-]{3,20}$/.test(username);
+const sanitizeInput = (input: string) => input.replace(/[<>]/g, "").trim();
 
-const validateUsername = (username: string): boolean => {
-  const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
-  return usernameRegex.test(username);
-};
+const validatePassword = (password: string) => ({
+  minLength: password.length >= 8,
+  hasUpperCase: /[A-Z]/.test(password),
+  hasLowerCase: /[a-z]/.test(password),
+  hasNumber: /\d/.test(password),
+});
 
-const validatePassword = (
-  password: string
-): { valid: boolean; requirements: Record<string, boolean> } => {
-  const requirements = {
-    minLength: password.length >= 8,
-    hasUpperCase: /[A-Z]/.test(password),
-    hasLowerCase: /[a-z]/.test(password),
-    hasNumber: /\d/.test(password),
-  };
+const Spinner = () => (
+  <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+  </svg>
+);
 
-  const valid = Object.values(requirements).every(Boolean);
-  return { valid, requirements };
-};
-
-const sanitizeInput = (input: string): string => {
-  return input.replace(/[<>]/g, "").trim();
-};
-
-export default function SignupForm({ onSuccess, onError }: SignupFormProps) {
+export default function SignupForm({ onSuccess, onError, onSwitchToLogin }: SignupFormProps) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [accountExists, setAccountExists] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showPasswordRequirements, setShowPasswordRequirements] =
-    useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [shakeTerms, setShakeTerms] = useState(false);
+  const termsRef = useRef<HTMLDivElement>(null);
+
+  const reqs = validatePassword(password);
+  const allReqsMet = Object.values(reqs).every(Boolean);
+  const passwordsMatch = password === confirmPassword;
+  const anyLoading = loading || oauthLoading !== null;
+
+  const triggerTermsError = () => {
+    setValidationErrors((prev) => ({ ...prev, terms: "You must accept the terms of service" }));
+    setShakeTerms(true);
+    setTimeout(() => setShakeTerms(false), 600);
+    termsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-
-    if (!username) {
-      errors.username = "Username is required";
-    } else if (!validateUsername(username)) {
-      errors.username =
-        "Username must be 3-20 characters and can only contain letters, numbers, underscores, or hyphens";
-    }
-
-    if (!email) {
-      errors.email = "Email is required";
-    } else if (!validateEmail(email)) {
-      errors.email = "Please enter a valid email address";
-    }
-
-    if (!password) {
-      errors.password = "Password is required";
-    } else {
-      const passwordValidation = validatePassword(password);
-      if (!passwordValidation.valid) {
-        errors.password = "Password does not meet requirements";
-      }
-    }
-
-    if (password !== confirmPassword) {
-      errors.confirmPassword = "Passwords do not match";
-    }
-
-    if (!acceptedTerms) {
-      errors.terms = "You must accept the terms of service";
-    }
-
+    if (!username) errors.username = "Required";
+    else if (!validateUsername(username)) errors.username = "3–20 chars, letters/numbers/_/-";
+    if (!email) errors.email = "Required";
+    else if (!validateEmail(email)) errors.email = "Invalid email";
+    if (!password) errors.password = "Required";
+    else if (!allReqsMet) errors.password = "Password does not meet requirements";
+    if (password !== confirmPassword) errors.confirmPassword = "Passwords do not match";
+    if (!acceptedTerms) errors.terms = "You must accept the terms of service";
     setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    const isValid = Object.keys(errors).length === 0;
+    if (!isValid && errors.terms) triggerTermsError();
+    return isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
-
-    if (!validateForm()) {
-      return;
-    }
-
+    setAccountExists(false);
+    if (!validateForm()) return;
     setLoading(true);
-
     try {
-      const sanitizedUsername = sanitizeInput(username);
-      const sanitizedEmail = sanitizeInput(email);
-
-      const result = await signup(sanitizedEmail, password, sanitizedUsername);
+      const result = await signup(sanitizeInput(email), password, sanitizeInput(username));
       if (result.success && result.user && onSuccess) {
         setMessage(result.message);
         onSuccess(result.user, result.username);
       } else {
         setMessage(result.message);
+        if (result.accountExists) setAccountExists(true);
         if (onError) onError(result.message);
       }
     } catch (error: any) {
-      const errorMessage = error.message || "Sign up failed. Please try again.";
-      setMessage(errorMessage);
-      if (onError) onError(errorMessage);
+      const msg = error.message || "Sign up failed. Please try again.";
+      setMessage(msg);
+      if (onError) onError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const passwordValidation = validatePassword(password);
-  const passwordsMatch = password === confirmPassword;
+  const handleOAuth = async (provider: "google" | "apple") => {
+    if (!acceptedTerms) { triggerTermsError(); return; }
+    setOauthLoading(provider);
+    setMessage("");
+    setAccountExists(false);
+    try {
+      const result = provider === "google" ? await signInWithGoogle() : await signInWithApple();
+      if (result.success && result.user && onSuccess) {
+        onSuccess(result.user, result.user.displayName ?? "");
+      } else {
+        const msg = result.message ?? "OAuth sign-in failed.";
+        setMessage(msg);
+        if (onError) onError(msg);
+      }
+    } catch (error: any) {
+      const msg = error.message || "OAuth sign-in failed.";
+      setMessage(msg);
+      if (onError) onError(msg);
+    } finally {
+      setOauthLoading(null);
+    }
+  };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-3 max-w-md w-full bg-light-card dark:bg-dark-card p-5 rounded-xl shadow-md border border-light-border dark:border-dark-border"
-    >
-      <h2 className="text-lg font-bold text-light-header dark:text-dark-header mb-1">
-        Create Account
-      </h2>
+    <>
+      <style>{`
+        @keyframes shake {
+          0%,100%{transform:translateX(0)}
+          15%{transform:translateX(-5px)}
+          30%{transform:translateX(5px)}
+          45%{transform:translateX(-3px)}
+          60%{transform:translateX(3px)}
+          75%{transform:translateX(-2px)}
+          90%{transform:translateX(2px)}
+        }
+        .shake{animation:shake 0.6s ease}
+      `}</style>
 
-      {/* Username */}
-      <div>
-        <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
-          Username
-        </label>
-        <input
-          type="text"
-          placeholder="Choose username"
-          value={username}
-          onChange={(e) => {
-            setUsername(e.target.value);
-            if (validationErrors.username)
-              setValidationErrors({ ...validationErrors, username: "" });
-          }}
-          required
-          disabled={loading}
-          autoComplete="username"
-          className={`mt-1 w-full border rounded-md p-2 text-xs h-9
-                     ${
-                       validationErrors.username
-                         ? "border-red-500"
-                         : "border-light-border dark:border-dark-border"
-                     }
-                     bg-light-bg dark:bg-dark-bg
-                     text-light-body-text dark:text-dark-body-text
-                     focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
-        />
-        {validationErrors.username && (
-          <p className="text-red-500 text-xs mt-1">
-            {validationErrors.username}
-          </p>
-        )}
-      </div>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-2.5 w-full bg-light-card dark:bg-dark-card"
+      >
+        <h2 className="text-base font-bold text-light-header dark:text-dark-header">
+          Create Account
+        </h2>
 
-      {/* Email */}
-      <div>
-        <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
-          Email
-        </label>
-        <input
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            if (validationErrors.email)
-              setValidationErrors({ ...validationErrors, email: "" });
-          }}
-          required
-          disabled={loading}
-          autoComplete="email"
-          className={`mt-1 w-full border rounded-md p-2 text-xs h-9
-                     ${
-                       validationErrors.email
-                         ? "border-red-500"
-                         : "border-light-border dark:border-dark-border"
-                     }
-                     bg-light-bg dark:bg-dark-bg
-                     text-light-body-text dark:text-dark-body-text
-                     focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
-        />
-      </div>
-
-      {/* Password */}
-      <div>
-        <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
-          Password
-        </label>
-        <div className="relative mt-1">
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="Create password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (validationErrors.password)
-                setValidationErrors({ ...validationErrors, password: "" });
-              if (e.target.value.length > 0) setShowPasswordRequirements(true);
-            }}
-            onFocus={() =>
-              password.length > 0 && setShowPasswordRequirements(true)
-            }
-            required
-            minLength={8}
-            disabled={loading}
-            autoComplete="new-password"
-            className={`w-full border rounded-md p-2 pr-8 text-xs h-9
-                       ${
-                         validationErrors.password
-                           ? "border-red-500"
-                           : "border-light-border dark:border-dark-border"
-                       }
-                       bg-light-bg dark:bg-dark-bg
-                       text-light-body-text dark:text-dark-body-text
-                       focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((prev) => !prev)}
-            className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
-            disabled={loading}
-          >
-            <FontAwesomeIcon
-              icon={showPassword ? faEyeSlash : faEye}
-              className="w-3 h-3"
-            />
-          </button>
+        {/* OAuth Buttons — side by side on all sizes */}
+        <div className="flex gap-2">
+          {(["google", "apple"] as const).map((provider) => (
+            <button
+              key={provider}
+              type="button"
+              onClick={() => handleOAuth(provider)}
+              disabled={anyLoading}
+              className="flex items-center justify-center gap-1.5 flex-1 h-8 px-2 rounded-md border
+                         border-light-border dark:border-dark-border
+                         bg-light-bg dark:bg-dark-bg
+                         text-light-body-text dark:text-dark-body-text
+                         hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text
+                         dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         text-xs font-medium transition-colors"
+            >
+              {oauthLoading === provider ? (
+                <Spinner />
+              ) : (
+                <FontAwesomeIcon
+                  icon={provider === "google" ? faGoogle : faApple}
+                  className="w-3 h-3"
+                />
+              )}
+              <span className="hidden sm:inline">
+                {provider === "google" ? "Google" : "Apple"}
+              </span>
+              <span className="sm:hidden">
+                {provider === "google" ? "Google" : "Apple"}
+              </span>
+            </button>
+          ))}
         </div>
 
-        {/* Password requirements - Collapsible */}
-        {password && showPasswordRequirements && (
-          <div className="mt-2 text-xs bg-light-bg dark:bg-dark-bg p-2 rounded-md border border-light-border dark:border-dark-border">
-            <div
-              className="flex justify-between items-center cursor-pointer"
-              onClick={() =>
-                setShowPasswordRequirements(!showPasswordRequirements)
-              }
-            >
-              <p className="font-medium text-light-body-text dark:text-dark-body-text">
-                Password requirements:
-              </p>
-              <FontAwesomeIcon
-                icon={faChevronDown}
-                className={`w-3 h-3 text-light-secondary-text dark:text-dark-secondary-text transition-transform ${
-                  showPasswordRequirements ? "rotate-180" : ""
-                }`}
-              />
-            </div>
+        {/* Divider */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+          <span className="text-xs text-light-secondary-text dark:text-dark-secondary-text">or</span>
+          <div className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+        </div>
 
-            {showPasswordRequirements && (
-              <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-                <div className="flex items-center">
-                  <FontAwesomeIcon
-                    icon={
-                      passwordValidation.requirements.minLength
-                        ? faCheckCircle
-                        : faTimesCircle
-                    }
-                    className={`w-3 h-3 mr-1 ${
-                      passwordValidation.requirements.minLength
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  />
-                  <span
-                    className={
-                      passwordValidation.requirements.minLength
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-light-secondary-text dark:text-dark-secondary-text"
-                    }
-                  >
-                    8+ characters
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <FontAwesomeIcon
-                    icon={
-                      passwordValidation.requirements.hasUpperCase
-                        ? faCheckCircle
-                        : faTimesCircle
-                    }
-                    className={`w-3 h-3 mr-1 ${
-                      passwordValidation.requirements.hasUpperCase
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  />
-                  <span
-                    className={
-                      passwordValidation.requirements.hasUpperCase
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-light-secondary-text dark:text-dark-secondary-text"
-                    }
-                  >
-                    Uppercase letter
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <FontAwesomeIcon
-                    icon={
-                      passwordValidation.requirements.hasLowerCase
-                        ? faCheckCircle
-                        : faTimesCircle
-                    }
-                    className={`w-3 h-3 mr-1 ${
-                      passwordValidation.requirements.hasLowerCase
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  />
-                  <span
-                    className={
-                      passwordValidation.requirements.hasLowerCase
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-light-secondary-text dark:text-dark-secondary-text"
-                    }
-                  >
-                    Lowercase letter
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <FontAwesomeIcon
-                    icon={
-                      passwordValidation.requirements.hasNumber
-                        ? faCheckCircle
-                        : faTimesCircle
-                    }
-                    className={`w-3 h-3 mr-1 ${
-                      passwordValidation.requirements.hasNumber
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  />
-                  <span
-                    className={
-                      passwordValidation.requirements.hasNumber
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-light-secondary-text dark:text-dark-secondary-text"
-                    }
-                  >
-                    Number
-                  </span>
-                </div>
-              </div>
+        {/* Username + Email side by side on sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* Username */}
+          <div>
+            <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+              Username
+            </label>
+            <input
+              type="text"
+              placeholder="Choose username"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (validationErrors.username) setValidationErrors({ ...validationErrors, username: "" });
+              }}
+              required
+              disabled={anyLoading}
+              autoComplete="username"
+              className={`mt-1 w-full border rounded-md p-2 text-xs h-8
+                         ${validationErrors.username ? "border-red-500" : "border-light-border dark:border-dark-border"}
+                         bg-light-bg dark:bg-dark-bg text-light-body-text dark:text-dark-body-text
+                         focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
+            />
+            {validationErrors.username && (
+              <p className="text-red-500 text-xs mt-0.5">{validationErrors.username}</p>
             )}
           </div>
-        )}
 
-        {validationErrors.password && (
-          <p className="text-red-500 text-xs mt-1">
-            {validationErrors.password}
-          </p>
-        )}
-      </div>
-
-      {/* Confirm Password */}
-      <div>
-        <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
-          Confirm Password
-        </label>
-        <div className="relative mt-1">
-          <input
-            type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirm password"
-            value={confirmPassword}
-            onChange={(e) => {
-              setConfirmPassword(e.target.value);
-              if (validationErrors.confirmPassword)
-                setValidationErrors({
-                  ...validationErrors,
-                  confirmPassword: "",
-                });
-            }}
-            required
-            disabled={loading}
-            autoComplete="new-password"
-            className={`w-full border rounded-md p-2 pr-8 text-xs h-9
-                       ${
-                         validationErrors.confirmPassword
-                           ? "border-red-500"
-                           : "border-light-border dark:border-dark-border"
-                       }
-                       bg-light-bg dark:bg-dark-bg
-                       text-light-body-text dark:text-dark-body-text
-                       focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword((prev) => !prev)}
-            className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
-            disabled={loading}
-          >
-            <FontAwesomeIcon
-              icon={showConfirmPassword ? faEyeSlash : faEye}
-              className="w-3 h-3"
+          {/* Email */}
+          <div>
+            <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+              Email
+            </label>
+            <input
+              type="email"
+              placeholder="Your email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setAccountExists(false);
+                setMessage("");
+                if (validationErrors.email) setValidationErrors({ ...validationErrors, email: "" });
+              }}
+              required
+              disabled={anyLoading}
+              autoComplete="email"
+              className={`mt-1 w-full border rounded-md p-2 text-xs h-8
+                         ${validationErrors.email || accountExists ? "border-red-500" : "border-light-border dark:border-dark-border"}
+                         bg-light-bg dark:bg-dark-bg text-light-body-text dark:text-dark-body-text
+                         focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
             />
-          </button>
+            {validationErrors.email && (
+              <p className="text-red-500 text-xs mt-0.5">{validationErrors.email}</p>
+            )}
+          </div>
         </div>
-        {confirmPassword && (
-          <p
-            className={`text-xs mt-1 ${
-              passwordsMatch
-                ? "text-green-600 dark:text-green-400"
-                : "text-red-500"
-            }`}
-          >
-            {!passwordsMatch && "Passwords do not match"}
-          </p>
-        )}
-        {validationErrors.confirmPassword && (
-          <p className="text-red-500 text-xs mt-1">
-            {validationErrors.confirmPassword}
-          </p>
-        )}
-      </div>
 
-      {/* Terms of Service */}
-      <div className="flex items-start mt-1">
-        <div className="flex items-center h-4 mt-0.5">
+        {/* Password */}
+        <div>
+          <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+            Password
+          </label>
+          <div className="relative mt-1">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Create password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (validationErrors.password) setValidationErrors({ ...validationErrors, password: "" });
+              }}
+              required
+              minLength={8}
+              disabled={anyLoading}
+              autoComplete="new-password"
+              className={`w-full border rounded-md p-2 pr-8 text-xs h-8
+                         ${validationErrors.password ? "border-red-500" : "border-light-border dark:border-dark-border"}
+                         bg-light-bg dark:bg-dark-bg text-light-body-text dark:text-dark-body-text
+                         focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((p) => !p)}
+              className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
+              disabled={anyLoading}
+            >
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Compact inline requirements — only shown while typing */}
+          {password.length > 0 && (
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
+              {[
+                { key: "minLength" as const, label: "8+ chars" },
+                { key: "hasUpperCase" as const, label: "Uppercase" },
+                { key: "hasLowerCase" as const, label: "Lowercase" },
+                { key: "hasNumber" as const, label: "Number" },
+              ].map(({ key, label }) => (
+                <span
+                  key={key}
+                  className={`flex items-center gap-1 text-xs ${
+                    reqs[key] ? "text-green-600 dark:text-green-400" : "text-light-secondary-text dark:text-dark-secondary-text"
+                  }`}
+                >
+                  <FontAwesomeIcon
+                    icon={reqs[key] ? faCheckCircle : faTimesCircle}
+                    className={`w-2.5 h-2.5 ${reqs[key] ? "text-green-500" : "text-red-400"}`}
+                  />
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
+          {validationErrors.password && (
+            <p className="text-red-500 text-xs mt-0.5">{validationErrors.password}</p>
+          )}
+        </div>
+
+        {/* Confirm Password */}
+        <div>
+          <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+            Confirm Password
+          </label>
+          <div className="relative mt-1">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (validationErrors.confirmPassword)
+                  setValidationErrors({ ...validationErrors, confirmPassword: "" });
+              }}
+              required
+              disabled={anyLoading}
+              autoComplete="new-password"
+              className={`w-full border rounded-md p-2 pr-8 text-xs h-8
+                         ${validationErrors.confirmPassword || (confirmPassword && !passwordsMatch) ? "border-red-500" : "border-light-border dark:border-dark-border"}
+                         bg-light-bg dark:bg-dark-bg text-light-body-text dark:text-dark-body-text
+                         focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent outline-none transition-colors`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((p) => !p)}
+              className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
+              disabled={anyLoading}
+            >
+              <FontAwesomeIcon icon={showConfirmPassword ? faEyeSlash : faEye} className="w-3 h-3" />
+            </button>
+          </div>
+          {confirmPassword && !passwordsMatch && (
+            <p className="text-red-500 text-xs mt-0.5">Passwords do not match</p>
+          )}
+        </div>
+
+        {/* Terms */}
+        <div ref={termsRef} className={`flex items-start ${shakeTerms ? "shake" : ""}`}>
           <input
             id="terms"
             type="checkbox"
             checked={acceptedTerms}
             onChange={(e) => {
               setAcceptedTerms(e.target.checked);
-              if (validationErrors.terms)
-                setValidationErrors({ ...validationErrors, terms: "" });
+              if (validationErrors.terms) setValidationErrors({ ...validationErrors, terms: "" });
             }}
-            className="w-3 h-3 text-light-accent dark:text-dark-accent bg-light-bg border-light-border rounded focus:ring-light-accent dark:focus:ring-dark-accent dark:ring-offset-dark-bg focus:ring-1 dark:bg-dark-bg dark:border-dark-border"
+            className={`mt-0.5 w-3 h-3 rounded text-light-accent dark:text-dark-accent bg-light-bg border-light-border
+                       focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent dark:bg-dark-bg dark:border-dark-border transition-all
+                       ${validationErrors.terms ? "ring-1 ring-red-500 border-red-500" : ""}`}
           />
+          <label htmlFor="terms" className="ml-2 text-xs text-light-secondary-text dark:text-dark-secondary-text leading-tight">
+            I agree to the{" "}
+            <a href="/terms" className="text-light-accent dark:text-dark-accent hover:underline">Terms</a>
+            {" "}and{" "}
+            <a href="/privacy" className="text-light-accent dark:text-dark-accent hover:underline">Privacy Policy</a>
+          </label>
         </div>
-        <label
-          htmlFor="terms"
-          className="pt-0.5 ml-2 text-xs text-light-secondary-text dark:text-dark-secondary-text"
-        >
-          I agree to the{" "}
-          <a
-            href="/terms"
-            className="text-light-accent dark:text-dark-accent hover:underline"
-          >
-            Terms
-          </a>{" "}
-          and{" "}
-          <a
-            href="/privacy"
-            className="text-light-accent dark:text-dark-accent hover:underline"
-          >
-            Privacy Policy
-          </a>
-        </label>
-      </div>
-      {validationErrors.terms && (
-        <p className="text-red-500 text-xs mt-1">{validationErrors.terms}</p>
-      )}
-
-      {/* Submit button */}
-      <button
-        type="submit"
-        disabled={loading}
-        className="px-4 py-2 rounded-md font-medium text-xs mt-2 h-9
-                   bg-light-btn-bg text-light-btn-text 
-                   hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text
-                   dark:bg-dark-btn-bg dark:text-dark-btn-text
-                   dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text
-                   disabled:opacity-50 disabled:cursor-not-allowed 
-                   transition-colors flex items-center justify-center"
-      >
-        {loading ? (
-          <>
-            <svg
-              className="animate-spin -ml-1 mr-2 h-3 w-3 text-light-btn-text dark:text-dark-btn-text"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Creating...
-          </>
-        ) : (
-          "Create Account"
+        {validationErrors.terms && (
+          <p className="text-red-500 text-xs -mt-1.5">{validationErrors.terms}</p>
         )}
-      </button>
 
-      {/* Message */}
-      {message && (
-        <div
-          className={`p-2 rounded-md text-xs ${
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={anyLoading}
+          className="flex items-center justify-center gap-2 w-full h-8 rounded-md font-medium text-xs mt-1
+                     bg-light-btn-bg text-light-btn-text
+                     hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text
+                     dark:bg-dark-btn-bg dark:text-dark-btn-text
+                     dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text
+                     disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? <><Spinner /> Creating...</> : "Create Account"}
+        </button>
+
+        {/* Message */}
+        {message && (
+          <div className={`p-2 rounded-md text-xs ${
             message.toLowerCase().includes("success")
               ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
               : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-          }`}
-        >
-          {message}
-        </div>
-      )}
-    </form>
+          }`}>
+            {message}
+            {accountExists && onSwitchToLogin && (
+              <button
+                type="button"
+                onClick={onSwitchToLogin}
+                className="block mt-1 underline font-medium bg-transparent text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors"
+              >
+                Go to login →
+              </button>
+            )}
+          </div>
+        )}
+      </form>
+    </>
   );
 }
