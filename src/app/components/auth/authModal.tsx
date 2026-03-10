@@ -86,14 +86,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-9999 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Sheet — pinned to bottom on mobile, centered on desktop */}
       <div
         className={[
-          "fixed z-[10000]",
+          "fixed z-10000",
           "bg-light-card dark:bg-dark-card shadow-xl",
           // Mobile: full width, pinned to bottom, rounded top
           "bottom-0 left-0 right-0 rounded-t-2xl",
