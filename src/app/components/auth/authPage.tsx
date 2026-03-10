@@ -57,6 +57,8 @@ export default function AuthPage() {
 
   const router = useRouter();
   const lastVerifiedRef = useRef(false);
+  // Holds the cleanup fn returned by runInit so pageshow can tear down and restart
+  const cleanupRef = useRef<(() => void) | undefined>(undefined);
 
   const showMessage = (text: string, isError = false) => {
     setMessage(text);
@@ -109,72 +111,103 @@ export default function AuthPage() {
     }
   };
 
-  // Single unified effect: check redirect first, THEN subscribe to auth state.
-  // This prevents onAuthStateChanged from firing before getRedirectResult resolves,
-  // which was causing mobile OAuth logins to be silently dropped.
-  useEffect(() => {
+  // Extracted so it can be re-run when the page is restored from bfcache
+  const runInit = async (): Promise<() => void> => {
     let interval: number | null = null;
-    let unsubscribe: (() => void) | undefined;
 
-    setIsLoading(true);
+    // 1. Consume any pending OAuth redirect result FIRST (critical for mobile)
+    const redirectResult = await checkRedirectResult();
+    if (!redirectResult.success && redirectResult.message) {
+      showMessage(redirectResult.message, true);
+    }
 
-    const init = async () => {
-      // 1. Resolve any pending OAuth redirect (mobile) before attaching the listener
-      const redirectResult = await checkRedirectResult();
-      if (!redirectResult.success && redirectResult.message) {
-        showMessage(redirectResult.message, true);
+    // 2. Subscribe to auth state AFTER redirect is resolved
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
       }
 
-      // 2. Now it's safe to subscribe — the redirect credential is already consumed
-      unsubscribe = onAuthStateChanged(auth, async (u) => {
-        // Clear any previous polling interval when auth state changes
-        if (interval) {
-          clearInterval(interval);
-          interval = null;
-        }
-
-        try {
-          if (!u) {
-            setUser(null);
-            setIsVerified(false);
-            setNewUsername("");
-            setCreatedDate(null);
-            lastVerifiedRef.current = false;
-            setIsLoading(false);
-            return;
-          }
-
-          await fetchUserInfo(u);
-
-          // Poll for email verification status every 5 seconds
-          interval = window.setInterval(async () => {
-            try {
-              const currentUser = auth.currentUser;
-              if (!currentUser) return;
-              await currentUser.reload();
-              if (!lastVerifiedRef.current && currentUser.emailVerified) {
-                setIsVerified(true);
-                showMessage("Email verified successfully!");
-                if (interval) clearInterval(interval);
-              }
-              lastVerifiedRef.current = currentUser.emailVerified;
-            } catch (err) {
-              console.error("Error during email verification polling:", err);
-            }
-          }, 5000);
-        } catch (err) {
-          console.error("Error in auth state change:", err);
-          showMessage("Failed to authenticate user", true);
+      try {
+        if (!u) {
+          setUser(null);
+          setIsVerified(false);
+          setNewUsername("");
+          setCreatedDate(null);
+          lastVerifiedRef.current = false;
           setIsLoading(false);
+          return;
         }
-      });
-    };
 
-    init();
+        await fetchUserInfo(u);
+
+        // Poll every 5s to detect email verification
+        interval = window.setInterval(async () => {
+          try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) return;
+            await currentUser.reload();
+            if (!lastVerifiedRef.current && currentUser.emailVerified) {
+              setIsVerified(true);
+              showMessage("Email verified successfully!");
+              if (interval) clearInterval(interval);
+            }
+            lastVerifiedRef.current = currentUser.emailVerified;
+          } catch (err) {
+            console.error("Error during email verification polling:", err);
+          }
+        }, 5000);
+      } catch (err) {
+        console.error("Error in auth state change:", err);
+        showMessage("Failed to authenticate user", true);
+        setIsLoading(false);
+      }
+    });
 
     return () => {
-      unsubscribe?.();
+      unsubscribe();
       if (interval) clearInterval(interval);
+    };
+  };
+
+  useEffect(() => {
+    setIsLoading(true);
+    runInit().then((fn) => {
+      cleanupRef.current = fn;
+    });
+
+    // ─────────────────────────────────────────────────────────────
+    // MOBILE bfcache FIX
+    //
+    // On mobile (Safari/Chrome), after signInWithRedirect, Google
+    // redirects the user back to the app. The browser often restores
+    // the previous page from the back-forward cache (bfcache) instead
+    // of doing a full reload. When this happens:
+    //   - The page JS is frozen/resumed, NOT re-executed
+    //   - onAuthStateChanged has already fired with null (before login)
+    //   - checkRedirectResult is never called again
+    //   - Result: user is authenticated in Firebase but UI shows login form
+    //
+    // The `pageshow` event fires on EVERY page display including bfcache
+    // restores. When `e.persisted === true`, the page came from bfcache,
+    // so we tear down stale listeners and re-run the full init to pick
+    // up the authenticated user correctly.
+    // ─────────────────────────────────────────────────────────────
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        cleanupRef.current?.();
+        setIsLoading(true);
+        runInit().then((fn) => {
+          cleanupRef.current = fn;
+        });
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => {
+      cleanupRef.current?.();
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, []);
 
