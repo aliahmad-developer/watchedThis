@@ -111,6 +111,10 @@ export default function SignupForm({ onSuccess, onError, onSwitchToLogin }: Sign
     setAccountExists(false);
     try {
       const result = provider === "google" ? await signInWithGoogle() : await signInWithApple();
+      if (result.redirect) {
+        // Mobile redirect — page will reload, nothing more to do here
+        return;
+      }
       if (result.success && result.user && onSuccess) {
         onSuccess(result.user, result.user.displayName ?? "");
       } else {

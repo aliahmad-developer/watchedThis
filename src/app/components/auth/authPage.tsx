@@ -6,7 +6,7 @@ import LoginForm from "./loginForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
 import { auth, sendEmailVerification, db } from "../../firebase/firebaseConfig";
 import { onAuthStateChanged, updateProfile, User } from "firebase/auth";
-import { logout } from "./auth";
+import { logout, checkRedirectResult } from "./auth";
 import { doc, getDoc } from "firebase/firestore";
 
 import EmailVerification from "./authComponent/emailVerification";
@@ -57,6 +57,17 @@ export default function AuthPage() {
 
   const router = useRouter();
   const lastVerifiedRef = useRef(false);
+
+  // Pick up OAuth redirect result on mobile after page reload
+  useEffect(() => {
+    checkRedirectResult().then((result) => {
+      if (result.success && result.user) {
+        // onAuthStateChanged will fire and update user state automatically
+      } else if (result.message) {
+        showMessage(result.message, true);
+      }
+    });
+  }, []);
 
   const showMessage = (text: string, isError = false) => {
     setMessage(text);

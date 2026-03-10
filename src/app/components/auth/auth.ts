@@ -5,6 +5,8 @@ import {
   signOut,
   updateProfile,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendEmailVerification,
   sendPasswordResetEmail,
   GoogleAuthProvider,
@@ -15,12 +17,19 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 const googleProvider = new GoogleAuthProvider();
 const appleProvider = new OAuthProvider("apple.com");
 
+// Detect mobile — popups are unreliable on mobile browsers
+const isMobile = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+    navigator.userAgent
+  );
+};
+
 // Friendly messages for Firebase auth error codes
 const friendlyAuthError = (
   code: string
 ): { message: string; accountExists?: boolean; noAccount?: boolean } => {
   switch (code) {
-    // Signup errors
     case "auth/email-already-in-use":
       return {
         message: "An account with this email already exists. Try logging in instead.",
@@ -30,8 +39,6 @@ const friendlyAuthError = (
       return { message: "Please enter a valid email address." };
     case "auth/weak-password":
       return { message: "Password is too weak. Please choose a stronger one." };
-
-    // Login errors
     case "auth/user-not-found":
     case "auth/invalid-credential":
       return {
@@ -44,12 +51,9 @@ const friendlyAuthError = (
       return { message: "Too many failed attempts. Please wait a moment and try again." };
     case "auth/user-disabled":
       return { message: "This account has been disabled. Please contact support." };
-
-    // OAuth errors
     case "auth/popup-blocked":
       return { message: "Popup was blocked by your browser. Please allow popups and try again." };
     case "auth/popup-closed-by-user":
-      return { message: "Sign-in was cancelled." };
     case "auth/cancelled-popup-request":
       return { message: "Sign-in was cancelled." };
     case "auth/account-exists-with-different-credential":
@@ -57,7 +61,6 @@ const friendlyAuthError = (
         message: "An account already exists with this email using a different sign-in method.",
         accountExists: true,
       };
-
     default:
       return { message: "Something went wrong. Please try again." };
   }
@@ -109,25 +112,45 @@ export const logout = async () => {
   }
 };
 
-export async function signInWithGoogle() {
+// On mobile: redirect (page reloads, result picked up by checkRedirectResult)
+// On desktop: popup
+async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    return { success: true, user: result.user };
+    if (isMobile()) {
+      await signInWithRedirect(auth, provider);
+      // Page will reload — result handled by checkRedirectResult()
+      return { success: true, redirect: true, user: null };
+    } else {
+      const result = await signInWithPopup(auth, provider);
+      return { success: true, redirect: false, user: result.user };
+    }
   } catch (error: any) {
-    console.error("Google sign-in error:", error.code, error.message);
+    console.error("OAuth error:", error.code, error.message);
     const { message } = friendlyAuthError(error.code);
-    return { success: false, message };
+    return { success: false, redirect: false, user: null, message };
   }
 }
 
+export async function signInWithGoogle() {
+  return oauthSignIn(googleProvider);
+}
+
 export async function signInWithApple() {
+  return oauthSignIn(appleProvider);
+}
+
+// Call this once on app mount to pick up the result after a mobile redirect
+export async function checkRedirectResult() {
   try {
-    const result = await signInWithPopup(auth, appleProvider);
-    return { success: true, user: result.user };
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      return { success: true, user: result.user };
+    }
+    return { success: false, user: null };
   } catch (error: any) {
-    console.error("Apple sign-in error:", error.code, error.message);
+    console.error("Redirect result error:", error.code, error.message);
     const { message } = friendlyAuthError(error.code);
-    return { success: false, message };
+    return { success: false, user: null, message };
   }
 }
 
