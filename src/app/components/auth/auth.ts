@@ -188,6 +188,7 @@ export async function signInWithApple() {
   return oauthSignIn(appleProvider);
 }
 
+
 // Handle redirect result (important for mobile login)
 export async function checkRedirectResult() {
   try {
@@ -196,11 +197,12 @@ export async function checkRedirectResult() {
     if (result?.user) {
       return {
         success: true,
+        redirect: false,
         user: result.user,
       };
     }
 
-    return { success: false, user: null };
+    return { success: false, redirect: false, user: null };
   } catch (error: any) {
     console.error("Redirect result error:", error.code, error.message);
 
@@ -208,12 +210,12 @@ export async function checkRedirectResult() {
 
     return {
       success: false,
+      redirect: false,
       user: null,
       message,
     };
   }
 }
-
 // Forgot password
 export async function forgotPassword(email: string) {
   try {
