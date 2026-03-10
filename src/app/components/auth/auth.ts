@@ -5,8 +5,6 @@ import {
   signOut,
   updateProfile,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   sendEmailVerification,
   sendPasswordResetEmail,
   GoogleAuthProvider,
@@ -22,16 +20,6 @@ googleProvider.setCustomParameters({
 const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
-
-// Detect mobile devices
-const isMobile = () => {
-  if (typeof navigator === "undefined") return false;
-
-  return (
-    /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent) ||
-    navigator.maxTouchPoints > 2
-  );
-};
 
 // Friendly messages for Firebase auth error codes
 const friendlyAuthError = (
@@ -73,7 +61,7 @@ const friendlyAuthError = (
     case "auth/popup-blocked":
       return {
         message:
-          "Popup was blocked by your browser. Please allow popups and try again.",
+          "Popup was blocked. Please allow popups for this site and try again.",
       };
     case "auth/popup-closed-by-user":
     case "auth/cancelled-popup-request":
@@ -147,18 +135,14 @@ export const logout = async () => {
   }
 };
 
-// OAuth login (Google / Apple)
+// OAuth via popup on ALL devices (desktop + mobile).
+// signInWithRedirect is intentionally removed — it fails silently on mobile
+// browsers (Safari/Chrome) hosted on Vercel because cross-origin cookie
+// restrictions block Firebase from reading back the redirect credential.
+// Popups work reliably on all modern mobile browsers.
 async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
   try {
-    if (isMobile()) {
-      await signInWithRedirect(auth, provider);
-
-      // page reloads after redirect
-      return { success: true, redirect: true, user: null };
-    }
-
     const result = await signInWithPopup(auth, provider);
-
     return {
       success: true,
       redirect: false,
@@ -166,9 +150,7 @@ async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
     };
   } catch (error: any) {
     console.error("OAuth error:", error.code, error.message);
-
     const { message } = friendlyAuthError(error.code);
-
     return {
       success: false,
       redirect: false,
@@ -188,46 +170,21 @@ export async function signInWithApple() {
   return oauthSignIn(appleProvider);
 }
 
-
-// Handle redirect result (important for mobile login)
+// Kept as a no-op for API compatibility — redirect is no longer used.
 export async function checkRedirectResult() {
-  try {
-    const result = await getRedirectResult(auth);
-
-    if (result?.user) {
-      return {
-        success: true,
-        redirect: false,
-        user: result.user,
-      };
-    }
-
-    return { success: false, redirect: false, user: null };
-  } catch (error: any) {
-    console.error("Redirect result error:", error.code, error.message);
-
-    const { message } = friendlyAuthError(error.code);
-
-    return {
-      success: false,
-      redirect: false,
-      user: null,
-      message,
-    };
-  }
+  return { success: false, redirect: false, user: null, message: undefined };
 }
+
 // Forgot password
 export async function forgotPassword(email: string) {
   try {
     await sendPasswordResetEmail(auth, email);
-
     return {
       success: true,
       message: "Password reset email sent!",
     };
   } catch (error: any) {
     const { message } = friendlyAuthError(error.code);
-
     return {
       success: false,
       message,
