@@ -24,7 +24,14 @@ function useCrop(imgSrc: string | null) {
   useEffect(() => {
     if (!imgSrc) return;
     const img = new window.Image();
-    img.onload = () => { imgRef.current = img; setOffset({ x: 0, y: 0 }); setScale(1); };
+    img.onload = () => {
+      imgRef.current = img;
+      setOffset({ x: 0, y: 0 });
+      // Auto-fit: scale so the shorter side fills the circle (cover behaviour)
+      const SIZE = canvasRef.current?.width ?? 260;
+      const fitScale = Math.max(SIZE / img.naturalWidth, SIZE / img.naturalHeight);
+      setScale(fitScale);
+    };
     img.src = imgSrc;
   }, [imgSrc]);
 
@@ -109,6 +116,11 @@ function CropModal({ imgSrc, onApply, onCancel }: {
   onApply: (blob: Blob) => void;
   onCancel: () => void;
 }) {
+  // Responsive canvas size: fill screen width on small devices, cap at 280
+  const canvasSize = typeof window !== "undefined"
+    ? Math.min(280, window.innerWidth - 48)
+    : 260;
+
   const crop = useCrop(imgSrc);
 
   // lock body scroll
@@ -151,8 +163,8 @@ function CropModal({ imgSrc, onApply, onCancel }: {
           {/* canvas */}
           <canvas
             ref={crop.canvasRef}
-            width={260}
-            height={260}
+            width={canvasSize}
+            height={canvasSize}
             className="rounded-full cursor-grab active:cursor-grabbing touch-none"
             onMouseDown={crop.onMouseDown}
             onMouseMove={crop.onMouseMove}
