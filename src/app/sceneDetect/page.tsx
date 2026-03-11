@@ -11,9 +11,11 @@ import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 type Movie = {
   id?: number;
   title: string;
+  media_type?: "movie" | "tv";
   poster_path: string | null;
   backdrop_path: string | null;
   release_date?: string;
+  first_air_date?: string;
   overview?: string;
   vote_average?: number;
   genres: string[];
@@ -152,7 +154,11 @@ function SceneResultCard({
 
   return (
     <Link
-      href={movie.id ? `/movie/${createSlug(movie.title)}/${movie.id}` : "#"}
+      href={
+        movie.id
+          ? `/${movie.media_type ?? "movie"}/${createSlug(movie.title)}/${movie.id}`
+          : "#"
+      }
       className="block group w-full rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-light-border dark:border-dark-border overflow-hidden"
       style={{
         backgroundColor: solidColor,
@@ -193,7 +199,10 @@ function SceneResultCard({
               Best Match
             </span>
           )}
-          <span className="bg-black/50 backdrop-blur-sm text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
+          <span className="bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wide">
+            {movie.media_type === "tv" ? "TV" : "Movie"}
+          </span>
+          <span className="bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
             {confidence}%
           </span>
         </div>
@@ -269,7 +278,20 @@ export default function SceneDetectPage() {
       router.replace("/find");
       return;
     }
-    setMovies(JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+
+    // Deduplicate
+    const seen = new Map();
+    for (const m of parsed) {
+      const key = m.id ?? m.title;
+      if (!seen.has(key) || seen.get(key).votes < m.votes) {
+        seen.set(key, m);
+      }
+    }
+
+    // Sort by votes descending so Best Match = actually highest confidence
+    const sorted = Array.from(seen.values()).sort((a, b) => b.votes - a.votes);
+    setMovies(sorted);
     setReady(true);
   }, []);
 
@@ -286,7 +308,9 @@ export default function SceneDetectPage() {
             </h1>
             {ready && (
               <p className="text-[11px] sm:text-xs text-light-secondary-text dark:text-dark-secondary-text mt-0.5">
-                {movies.length} movies matched your scene
+                {movies.filter((m) => m.media_type !== "tv").length} Movies ·{" "}
+                {movies.filter((m) => m.media_type === "tv").length} TV shows
+                matched
               </p>
             )}
           </div>
@@ -298,7 +322,7 @@ export default function SceneDetectPage() {
             ? Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)
             : movies.map((movie, i) => (
                 <SceneResultCard
-                  key={movie.id ?? i}
+                  key={`${movie.media_type}-${movie.id ?? movie.title}-${i}`}
                   movie={movie}
                   totalVotes={totalVotes}
                   isTopMatch={i === 0}

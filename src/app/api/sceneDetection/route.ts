@@ -4,7 +4,7 @@ export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from "next/server";
 
-const HF_URL = "https://missypenguin-movie-scene-detector.hf.space/predict";
+const HF_URL    = "https://missypenguin-movie-scene-detector.hf.space/predict";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
 function cleanTitle(title: string): string {
@@ -21,6 +21,85 @@ async function fetchWithWakeup(formData: FormData): Promise<Response> {
   return attempt;
 }
 
+// ── Enrich a movie result ─────────────────────────────────────────────────────
+async function enrichMovie(title: string, votes: number, key: string) {
+  const cleanedTitle = cleanTitle(title);
+  try {
+    const searchRes  = await fetch(
+      `${TMDB_BASE}/search/movie?query=${encodeURIComponent(cleanedTitle)}&api_key=${key}`
+    );
+    const searchData = await searchRes.json();
+    const match      = searchData.results?.[0];
+    if (!match) throw new Error("no match");
+
+    const [detailRes, kwRes] = await Promise.all([
+      fetch(`${TMDB_BASE}/movie/${match.id}?api_key=${key}`),
+      fetch(`${TMDB_BASE}/movie/${match.id}/keywords?api_key=${key}`),
+    ]);
+    const detail = await detailRes.json();
+    const kwData = await kwRes.json();
+
+    const genres: string[]   = (detail.genres ?? []).map((g: { name: string }) => g.name);
+    const keywords: string[] = (kwData.keywords ?? []).slice(0, 5).map((k: { name: string }) => k.name);
+
+    return {
+      id:            match.id,
+      media_type:    "movie",
+      title:         match.title,
+      poster_path:   match.poster_path,
+      backdrop_path: match.backdrop_path ?? null,
+      release_date:  match.release_date,
+      overview:      match.overview,
+      vote_average:  match.vote_average,
+      genres,
+      keywords,
+      votes,
+    };
+  } catch {
+    return { title: cleanedTitle, media_type: "movie", votes, poster_path: null, backdrop_path: null, genres: [], keywords: [] };
+  }
+}
+
+// ── Enrich a TV result ────────────────────────────────────────────────────────
+async function enrichTV(title: string, votes: number, key: string) {
+  const cleanedTitle = cleanTitle(title);
+  try {
+    const searchRes  = await fetch(
+      `${TMDB_BASE}/search/tv?query=${encodeURIComponent(cleanedTitle)}&api_key=${key}`
+    );
+    const searchData = await searchRes.json();
+    const match      = searchData.results?.[0];
+    if (!match) throw new Error("no match");
+
+    const [detailRes, kwRes] = await Promise.all([
+      fetch(`${TMDB_BASE}/tv/${match.id}?api_key=${key}`),
+      fetch(`${TMDB_BASE}/tv/${match.id}/keywords?api_key=${key}`),
+    ]);
+    const detail = await detailRes.json();
+    const kwData = await kwRes.json();
+
+    const genres: string[]   = (detail.genres ?? []).map((g: { name: string }) => g.name);
+    const keywords: string[] = (kwData.keywords ?? []).slice(0, 5).map((k: { name: string }) => k.name);
+
+    return {
+      id:            match.id,
+      media_type:    "tv",
+      title:         match.name,
+      poster_path:   match.poster_path,
+      backdrop_path: match.backdrop_path ?? null,
+      first_air_date: match.first_air_date,
+      overview:      match.overview,
+      vote_average:  match.vote_average,
+      genres,
+      keywords,
+      votes,
+    };
+  } catch {
+    return { title: cleanedTitle, media_type: "tv", votes, poster_path: null, backdrop_path: null, genres: [], keywords: [] };
+  }
+}
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -52,49 +131,15 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    const key = process.env.TMDB_API_KEY;
+    const key  = process.env.TMDB_API_KEY;
 
     const enriched = await Promise.all(
-      data.movies.map(async (item: { title: string; votes: number }) => {
-        const cleanedTitle = cleanTitle(item.title);
-
-        try {
-          // 1. Search for movie
-          const searchRes = await fetch(
-            `${TMDB_BASE}/search/movie?query=${encodeURIComponent(cleanedTitle)}&api_key=${key}`
-          );
-          const searchData = await searchRes.json();
-          const match = searchData.results?.[0];
-          if (!match) throw new Error("no match");
-
-          // 2. Fetch genres + keywords in parallel
-          const [detailRes, kwRes] = await Promise.all([
-            fetch(`${TMDB_BASE}/movie/${match.id}?api_key=${key}`),
-            fetch(`${TMDB_BASE}/movie/${match.id}/keywords?api_key=${key}`),
-          ]);
-          const detail = await detailRes.json();
-          const kwData = await kwRes.json();
-
-          const genres: string[] = (detail.genres ?? []).map((g: { name: string }) => g.name);
-          const keywords: string[] = (kwData.keywords ?? [])
-            .slice(0, 5)
-            .map((k: { name: string }) => k.name);
-
-          return {
-            id: match.id,
-            title: match.title,
-            poster_path: match.poster_path,
-            backdrop_path: match.backdrop_path ?? null,
-            release_date: match.release_date,
-            overview: match.overview,
-            vote_average: match.vote_average,
-            genres,
-            keywords,
-            votes: item.votes,
-          };
-        } catch {
-          return { title: cleanedTitle, votes: item.votes, poster_path: null, backdrop_path: null, genres: [], keywords: [] };
+      data.movies.map(async (item: { title: string; media_type: string; votes: number }) => {
+        const mediaType = item.media_type ?? "movie";
+        if (mediaType === "tv") {
+          return enrichTV(item.title, item.votes, key!);
         }
+        return enrichMovie(item.title, item.votes, key!);
       })
     );
 
