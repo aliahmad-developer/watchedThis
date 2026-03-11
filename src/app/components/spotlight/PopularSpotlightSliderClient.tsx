@@ -177,7 +177,7 @@ export default function PopularSpotlightSliderClient({
   return (
     <>
       <div
-        className={`mt-14 sm:mt-12 relative w-full max-w-screen-2xl mx-auto overflow-hidden border-none text-white bg-light-bg dark:bg-dark-bg ${className}`}
+        className={`relative w-full max-w-screen-2xl mx-auto overflow-hidden border-none text-white bg-light-bg dark:bg-dark-bg ${className}`}
         {...swipeHandlers}
         style={{ touchAction: "pan-y", height: containerHeight }}
       >

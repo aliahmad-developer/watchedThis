@@ -372,6 +372,7 @@ export default function Navbar() {
           </div>
         </>
       )}
+      <div className="h-18 sm:h-16" />
     </>
   );
 }
