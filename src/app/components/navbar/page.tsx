@@ -91,7 +91,6 @@ export default function Navbar() {
   // Scroll-aware show/hide — 10px threshold, pinned while search is open
   useEffect(() => {
     const handleScroll = () => {
-      if (searchVisible) return;
       const currentY = window.scrollY;
       const delta = currentY - lastScrollY.current;
       if (Math.abs(delta) < 10) return;
@@ -100,11 +99,6 @@ export default function Navbar() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [searchVisible]);
-
-  // Always keep nav visible while search is open
-  useEffect(() => {
-    if (searchVisible) setNavVisible(true);
   }, [searchVisible]);
 
   // Debounced search — multi-variant fetch + Fuse re-rank
@@ -220,16 +214,17 @@ export default function Navbar() {
   return (
     <>
       {/*
-        Fixed wrapper that slides with scroll.
-        The navbar + search input + dropdown all live here so they
-        move together. Content below is NOT pushed — it overlaps.
+        `sticky top-0` means:
+        - At page top: sits in normal flow, pushes content down like a regular element
+        - Once scrolled past: sticks to top of viewport
+        `transition-transform` + navVisible handles the hide-on-scroll-down behaviour.
       */}
       <div
-        className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
+        className={`sticky top-0 z-50 transition-transform duration-300 ease-in-out ${
           navVisible ? "translate-y-0" : "-translate-y-full"
         }`}
       >
-        {/* ── Main Navbar — layout identical to original ── */}
+        {/* ── Main Navbar ── */}
         <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center justify-between w-full sm:w-auto">
@@ -283,10 +278,10 @@ export default function Navbar() {
           </div>
         </nav>
 
-        {/* ── Search Input — directly below navbar, overlaps page content ── */}
+        {/* ── Search Input + Dropdown — absolute so they float over page content ── */}
         {hasMounted && searchVisible && (
-          <div className="w-full bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
-            <div className="relative w-full">
+          <div className="absolute left-0 right-0 top-full">
+            <div className="w-full bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
               <SearchInput
                 clearInput={handleClearInput}
                 searchQuery={searchQuery}
@@ -301,18 +296,17 @@ export default function Navbar() {
                 }}
               />
             </div>
-          </div>
-        )}
 
-        {/* ── Search Results Dropdown — floats over page content ── */}
-        {searchVisible && isFocused && searchQuery.length >= 2 && (
-          <div ref={dropdownRef} className="px-4">
-            <SearchResultsDropdown
-              results={searchResults}
-              searchQuery={searchQuery}
-              isLoading={isSearchLoading}
-              onClose={handleCloseDropdown}
-            />
+            {isFocused && searchQuery.length >= 2 && (
+              <div ref={dropdownRef} className="px-4">
+                <SearchResultsDropdown
+                  results={searchResults}
+                  searchQuery={searchQuery}
+                  isLoading={isSearchLoading}
+                  onClose={handleCloseDropdown}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -322,7 +316,7 @@ export default function Navbar() {
         <>
           <div
             onClick={() => setDrawerOpen(false)}
-            className={`sm:hidden fixed inset-0 z-50 bg-black transition-opacity duration-300 ${
+            className={`sm:hidden fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
               drawerOpen ? "opacity-50 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
           />
@@ -367,12 +361,10 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
-              
             </nav>
           </div>
         </>
       )}
-      <div className="h-16" />
     </>
   );
 }

@@ -9,7 +9,7 @@ export default function Home() {
     <>
       <div>
         <SpotLightServer />
-        <div className="lg:mx-5 ">
+        <div className="lg:mx-5 min-h-400 ">
           <Random />
           <RecommendationShelf />
           <Trending />
