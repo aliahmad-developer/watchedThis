@@ -33,7 +33,7 @@ export default function ResultModal({ item, onClose }: ResultModalProps) {
           <p className="text-xs font-medium text-light-accent dark:text-dark-accent uppercase tracking-wider mb-1">
             The wheel chose
           </p>
-          <h2 className="text-2xl font-bold text-light-text dark:text-dark-text mb-4">{item.title}</h2>
+          <h2 className="text-light-text dark:text-dark-text mb-4">{item.title}</h2>
           <div className="flex gap-3">
             <button
               onClick={() => { router.push(href); onClose(); }}

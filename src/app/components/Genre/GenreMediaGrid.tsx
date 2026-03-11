@@ -53,7 +53,7 @@ export function GenreMediaGrid({
         {Array.from({ length: 10 }).map((_, idx) => (
           <div
             key={idx}
-            className="w-full aspect-[2/3] bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
+            className="w-full aspect-2/3 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
           />
         ))}
       </div>

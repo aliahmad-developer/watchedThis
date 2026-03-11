@@ -195,7 +195,7 @@ export default function AuthPage() {
               user={user}
               onUpdated={(newPhotoURL) => setDisplayPhotoURL(newPhotoURL)}
             />
-            <h2 className="text-sm sm:text-base font-semibold text-light-header dark:text-dark-header text-center">
+            <h2 className="text-sm sm:text-base font-semibold text-center">
               {`Welcome, ${newUsername || user.email?.split("@")[0]}!`}
             </h2>
           </div>

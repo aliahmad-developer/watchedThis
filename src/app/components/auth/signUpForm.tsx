@@ -199,7 +199,7 @@ export default function SignupForm({
         onSubmit={handleSubmit}
         className="flex flex-col gap-2.5 w-full bg-light-card dark:bg-dark-card"
       >
-        <h2 className="text-base font-bold text-light-header dark:text-dark-header">
+        <h2 className="text-base">
           Create Account
         </h2>
 

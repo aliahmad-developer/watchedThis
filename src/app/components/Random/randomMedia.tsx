@@ -175,7 +175,7 @@ export default function randomMedia() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
       <header className="mb-6">
-        <h2 className="px-4 text-2xl font-bold mb-6">Random Media of the Day.</h2>
+        <h2 className="px-4 mb-6">Random Media of the Day.</h2>
       </header>
 
       {/* Desktop (≥1024px) */}

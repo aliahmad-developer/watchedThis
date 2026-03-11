@@ -41,7 +41,7 @@ export default function ForgotPasswordForm({ onBack, onSuccess }: ForgotPassword
     >
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold text-light-header dark:text-dark-header">
+        <h2 className="text-lg font-semibold">
           Reset Password
         </h2>
         <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1">

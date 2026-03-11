@@ -61,10 +61,10 @@ export default function CastScroll({
         {showGradient && (
           <div
             className="absolute right-0 top-0 h-full w-20 pointer-events-none 
-               bg-gradient-to-l from-[var(--color-light-bg)]/95 
-               dark:from-[var(--color-dark-bg)]/95 
-               via-[var(--color-light-bg)]/80 
-               dark:via-[var(--color-dark-bg)]/80 
+               bg-linear-to-l from-light-bg/95 
+               dark:from-dark-bg/95 
+               via-light-bg/80 
+               dark:via-dark-bg/80 
                to-transparent"
           />
         )}

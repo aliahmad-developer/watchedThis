@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import {trackSearch} from "../../components/Recommendation/behaviourTracker";
 import AuthButton from "../../components/auth/navButton/authButton";
 import { useState, useEffect, FormEvent, ChangeEvent, useRef } from "react";
 import Link from "next/link";
@@ -115,6 +116,7 @@ export default function Navbar() {
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    trackSearch(searchQuery);
     const query = searchQuery.trim();
     if (query) {
       setSearchQuery("");

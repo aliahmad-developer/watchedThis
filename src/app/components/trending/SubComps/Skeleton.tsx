@@ -3,32 +3,41 @@
 import { useEffect, useState } from "react";
 import { ITEM_WIDTH_TABLET, GAP, MOBILE_GAP } from "./types";
 
+const SIDEBAR_WIDTH = 32 + 12; // w-8 (32px) + mr-3 (12px)
+
 interface Dims {
   isMobile: boolean;
   itemWidth: number;
   itemHeight: number;
+  posterWidth: number;
+  posterHeight: number;
   gap: number;
 }
 
 export function TrendingCarouselSkeleton() {
-  // null on SSR and first render — both server and client agree, no mismatch
   const [dims, setDims] = useState<Dims | null>(null);
 
   useEffect(() => {
     const measure = () => {
       const isMobile = window.innerWidth < 768;
-      // Use the same logic as useCarouselDimensions for consistency
-      const containerWidth = window.innerWidth - (isMobile ? 0 : 32); // account for px-4
+      const containerWidth = window.innerWidth - (isMobile ? 0 : 32);
       let itemWidth: number;
       if (isMobile) {
         itemWidth = (containerWidth - MOBILE_GAP * 2) / 3;
       } else {
         itemWidth = Math.min(ITEM_WIDTH_TABLET, containerWidth * 0.33);
       }
+      const itemHeight = (itemWidth * 3) / 2;
+      // On desktop the poster is narrower because sidebar takes space
+      const posterWidth = isMobile ? itemWidth : itemWidth - SIDEBAR_WIDTH;
+      const posterHeight = (posterWidth * 3) / 2;
+
       setDims({
         isMobile,
         itemWidth,
-        itemHeight: (itemWidth * 3) / 2,
+        itemHeight,
+        posterWidth,
+        posterHeight,
         gap: isMobile ? MOBILE_GAP : GAP,
       });
     };
@@ -38,7 +47,7 @@ export function TrendingCarouselSkeleton() {
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // SSR / pre-mount: pure CSS skeleton, no pixel values, hydration-safe
+  // SSR / pre-mount: pure CSS skeleton, hydration-safe
   if (!dims) {
     return (
       <section className="relative w-full px-4" aria-label="Trending skeleton">
@@ -55,7 +64,7 @@ export function TrendingCarouselSkeleton() {
     );
   }
 
-  const { isMobile, itemWidth, itemHeight, gap } = dims;
+  const { isMobile, itemWidth, itemHeight, posterWidth, posterHeight, gap } = dims;
 
   return (
     <section
@@ -74,22 +83,28 @@ export function TrendingCarouselSkeleton() {
                 style={{ width: `${itemWidth}px` }}
               >
                 <div className="flex">
-                  <div
-                    className="hidden md:flex flex-col justify-between mr-3 w-8"
-                    style={{ height: `${itemHeight}px` }}
-                  >
-                    <div className="flex-1 flex justify-center pt-4">
-                      <div className="w-4 h-20 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
+                  {/* Sidebar — desktop only, matches real CarouselItem sidebar */}
+                  {!isMobile && (
+                    <div
+                      className="hidden md:flex flex-col justify-between mr-3 w-8"
+                      style={{ height: `${posterHeight}px` }}
+                    >
+                      <div className="flex-1 flex justify-center pt-4">
+                        <div className="w-4 h-20 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
+                      </div>
+                      <div className="h-12.5 flex items-center justify-center bg-gray-400 dark:bg-gray-600 rounded animate-pulse">
+                        <div className="w-6 h-6 bg-gray-300 dark:bg-gray-500 rounded" />
+                      </div>
                     </div>
-                    <div className="h-12.5 bg-gray-400 dark:bg-gray-600 rounded animate-pulse">
-                      <div className="w-6 h-6 bg-gray-300 dark:bg-gray-500 rounded" />
-                    </div>
-                  </div>
+                  )}
+
+                  {/* Poster — matches real Link dimensions exactly */}
                   <div
                     className="relative rounded-lg overflow-hidden shadow-xl bg-gray-300 dark:bg-gray-700 animate-pulse"
-                    style={{ width: `${itemWidth}px`, height: `${itemHeight}px` }}
+                    style={{ width: `${posterWidth}px`, height: `${posterHeight}px` }}
                   >
-                    <div className="absolute top-3 left-3 z-10 md:hidden w-8 h-8 bg-gray-400 dark:bg-gray-600 rounded-sm" />
+                    {/* Mobile rank badge */}
+                    <div className="absolute top-0 left-0 z-10 md:hidden w-8 h-8 bg-gray-400 dark:bg-gray-600" />
                   </div>
                 </div>
               </div>
@@ -97,12 +112,13 @@ export function TrendingCarouselSkeleton() {
           </div>
         </div>
 
+        {/* Arrow buttons placeholder */}
         <div className="hidden md:flex flex-col gap-4 ml-2 shrink-0">
           {Array.from({ length: 2 }).map((_, idx) => (
             <div
               key={idx}
               className="w-14 bg-gray-300 dark:bg-gray-700 rounded-md animate-pulse"
-              style={{ height: `${(itemHeight - 16) / 2}px` }}
+              style={{ height: `${(posterHeight - 16) / 2}px` }}
             />
           ))}
         </div>

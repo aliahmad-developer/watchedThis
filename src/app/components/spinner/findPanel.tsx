@@ -177,7 +177,7 @@ export default function FindPanel({ isOpen, onClose, onAdd }: FindPanelProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-light-border dark:border-dark-border shrink-0">
-          <h2 className="font-bold text-light-text dark:text-dark-text text-base">Find Media</h2>
+          <h2 className="text-base">Find Media</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-light-border dark:hover:bg-dark-border transition text-light-secondary-text dark:text-dark-secondary-text"

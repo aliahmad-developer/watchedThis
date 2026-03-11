@@ -133,7 +133,7 @@ export default function SceneCameraModal({ open, onClose }: Props) {
           {mode === "chooser" && (
             <div className="p-6 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-light-header dark:text-dark-header">
+                <h2 className="text-base font-semibold">
                   Identify a Scene
                 </h2>
                 <button

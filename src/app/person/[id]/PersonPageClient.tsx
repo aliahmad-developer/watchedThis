@@ -191,7 +191,7 @@ export default function PersonPageClient({ id }: { id: string }) {
           <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text mb-4">
             {details.known_for_department}
           </p>
-          <h2 className="text-2xl font-semibold text-light-header dark:text-white mb-4">
+          <h2 className="mb-4">
             Biography
           </h2>
           {/* Scrollable bio — never stretches the card */}
@@ -251,7 +251,7 @@ export default function PersonPageClient({ id }: { id: string }) {
       {/* Gallery */}
       {images && images.profiles.length > 0 && (
         <div className="bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md">
-          <h2 className="text-2xl font-semibold text-light-header dark:text-white mb-6">Gallery</h2>
+          <h2 className="mb-6">Gallery</h2>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
             {images.profiles.map((image) => (
               <div key={image.file_path} className="overflow-hidden rounded-lg shadow-md">

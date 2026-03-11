@@ -101,7 +101,7 @@ export default function TrendingCarouselClient() {
         ref={carouselRef}
         aria-label="Trending media carousel"
       >
-        <h2 className="text-2xl font-bold mb-6 px-4">Trending</h2>
+        <h2 className="mb-6 px-4">Trending</h2>
 
         <div className="flex w-full items-start" ref={containerRef}>
           <div className="relative overflow-hidden flex-1">

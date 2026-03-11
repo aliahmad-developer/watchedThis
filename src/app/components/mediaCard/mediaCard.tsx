@@ -1,4 +1,5 @@
 import MediaPoster from "../randomMedia/mediaPoster";
+import { trackClick } from "../Recommendation/behaviourTracker";
 
 interface MediaCardProps {
   item: {
@@ -9,11 +10,13 @@ interface MediaCardProps {
     media_type?: string;
     runtime?: number;
     episode_run_time?: number[];
+    
   };
   displayTitle?: string; 
+  hideMetaData?: boolean; 
 }
 
-export default function MediaCard({ item, displayTitle }: MediaCardProps) {
+export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCardProps) {
   const title = item.title || item.name || "Untitled";
   const mediaType = item.media_type || "movie";
   const duration =
@@ -25,6 +28,7 @@ export default function MediaCard({ item, displayTitle }: MediaCardProps) {
     <div
       className="p-2 group cursor-pointer rounded-xl hover:shadow-md transition"
       draggable
+      onClick={() => trackClick(item.id, mediaType === "tv" ? "tv" : "movie")} 
     >
       {/* Poster */}
       <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl">
@@ -48,10 +52,12 @@ export default function MediaCard({ item, displayTitle }: MediaCardProps) {
       }
 
       {/* Metadata */}
-      <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2">
-        <span className="capitalize">{mediaType}</span>
-        {duration ? <span>{duration} m</span> : null}
-      </div>
+      {!hideMetaData && (
+        <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2">
+          <span className="capitalize">{mediaType}</span>
+          {duration ? <span>{duration} m</span> : null}
+        </div>
+      )}
     </div>
   );
 }

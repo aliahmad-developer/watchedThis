@@ -82,7 +82,7 @@ export default function LoginForm({
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 max-w-sm w-full bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md border border-light-border dark:border-dark-border"
     >
-      <h2 className="text-lg font-semibold text-light-header dark:text-dark-header">
+      <h2 className="text-lg font-semibold">
         Login
       </h2>
 
