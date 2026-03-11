@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import ColorThief from "color-thief-browser";
 import { createSlug } from "../components/utilities/createSlug";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import SceneCameraModal from "../components/sceneDetection/cameraModal";
 
 type Movie = {
   id?: number;
@@ -23,130 +23,76 @@ type Movie = {
   votes: number;
 };
 
-// ── Ambient helpers (identical to FindResultsPage) ────────────────────────────
 const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
+const calculateLuminance = (r: number, g: number, b: number) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-const calculateLuminance = (r: number, g: number, b: number) =>
-  (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-const buildAmbientColor = (
-  r: number,
-  g: number,
-  b: number,
-  isLightMode: boolean,
-) => {
+const buildAmbientColor = (r: number, g: number, b: number, isLightMode: boolean) => {
   const lum = calculateLuminance(r, g, b);
   if (isLightMode) {
     const f = lum < 0.5 ? 1.5 : 1.2;
     const clamp = (v: number) => Math.min(Math.floor(v * f + 50), 235);
-    return {
-      solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
-      rgb: `${clamp(r)},${clamp(g)},${clamp(b)}`,
-    };
+    return { solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`, rgb: `${clamp(r)},${clamp(g)},${clamp(b)}` };
   } else {
     const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
     const clamp = (v: number) => Math.max(Math.floor(v * f), 0);
-    return {
-      solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
-      rgb: `${clamp(r)},${clamp(g)},${clamp(b)}`,
-    };
+    return { solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`, rgb: `${clamp(r)},${clamp(g)},${clamp(b)}` };
   }
 };
 
 const useThemeDetection = () => {
   const [isLightMode, setIsLightMode] = useState(false);
   const check = useCallback(() => {
-    setIsLightMode(
-      document.documentElement.classList.contains("light") ||
-        window.matchMedia(COLOR_SCHEME_MEDIA_QUERY).matches,
-    );
+    setIsLightMode(document.documentElement.classList.contains("light") || window.matchMedia(COLOR_SCHEME_MEDIA_QUERY).matches);
   }, []);
   useEffect(() => {
     check();
     const mq = window.matchMedia(COLOR_SCHEME_MEDIA_QUERY);
     mq.addEventListener("change", check);
     const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => {
-      mq.removeEventListener("change", check);
-      obs.disconnect();
-    };
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => { mq.removeEventListener("change", check); obs.disconnect(); };
   }, [check]);
   return isLightMode;
 };
 
 const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
-  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(
-    null,
-  );
+  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const extractingRef = useRef(false);
-
   const extract = useCallback(() => {
     if (!imgRef.current || extractingRef.current) return;
     const img = imgRef.current;
     if (img.naturalWidth === 0) return;
     extractingRef.current = true;
-    try {
-      const ct = new ColorThief();
-      const [r, g, b] = ct.getColor(img);
-      setAmbient(buildAmbientColor(r, g, b, isLightMode));
-    } catch {
-      setAmbient(null);
-    } finally {
-      extractingRef.current = false;
-    }
+    try { const ct = new ColorThief(); const [r, g, b] = ct.getColor(img); setAmbient(buildAmbientColor(r, g, b, isLightMode)); }
+    catch { setAmbient(null); } finally { extractingRef.current = false; }
   }, [isLightMode]);
-
-  useEffect(() => {
-    setAmbient(null);
-  }, [imageUrl, isLightMode]);
-
+  useEffect(() => { setAmbient(null); }, [imageUrl, isLightMode]);
   useEffect(() => {
     if (!imgRef.current) return;
     const img = imgRef.current;
     const handle = () => setTimeout(extract, 80);
-    if (img.complete) {
-      handle();
-    } else {
-      img.addEventListener("load", handle);
-    }
+    if (img.complete) { handle(); } else { img.addEventListener("load", handle); }
     return () => img.removeEventListener("load", handle);
   }, [extract, imageUrl]);
-
   return { imgRef, ambient };
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
-function SceneResultCard({
-  movie,
-  totalVotes,
-  isTopMatch,
-}: {
-  movie: Movie;
-  totalVotes: number;
-  isTopMatch: boolean;
-}) {
+function SceneResultCard({ movie, totalVotes, isTopMatch }: { movie: Movie; totalVotes: number; isTopMatch: boolean }) {
   const isLightMode = useThemeDetection();
   const confidence = Math.round((movie.votes / totalVotes) * 100);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const badgeRef = useRef<HTMLSpanElement>(null);
 
-  // Prefer backdrop for the wide card image, fall back to poster
   const imageUrl = movie.backdrop_path
     ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`
-    : movie.poster_path
-      ? `https://image.tmdb.org/t/p/w780${movie.poster_path}`
-      : null;
+    : movie.poster_path ? `https://image.tmdb.org/t/p/w780${movie.poster_path}` : null;
 
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
-
   const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
   const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
   const solidColor = ambient?.solid ?? fallbackSolid;
   const rgbColor = ambient?.rgb ?? fallbackRgb;
-
   const fullTint = `rgba(${rgbColor}, 0.45)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
   const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
@@ -154,97 +100,93 @@ function SceneResultCard({
 
   return (
     <Link
-      href={
-        movie.id
-          ? `/${movie.media_type ?? "movie"}/${createSlug(movie.title)}/${movie.id}`
-          : "#"
-      }
-      className="block group w-full rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-light-border dark:border-dark-border overflow-hidden"
-      style={{
-        backgroundColor: solidColor,
-        transition: "background-color 700ms ease-in-out",
-      }}
+      href={movie.id ? `/${movie.media_type ?? "movie"}/${createSlug(movie.title)}/${movie.id}` : "#"}
+      className="block w-full rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-light-border dark:border-dark-border overflow-hidden"
+      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
     >
-      {/* Image */}
-      <div className="relative w-full aspect-4/3 sm:aspect-16/6 lg:aspect-16/5 overflow-hidden">
-        {imageUrl ? (
-          <Image
-            ref={imgRef}
-            src={imageUrl}
-            alt={movie.title}
-            fill
-            crossOrigin="anonymous"
-            className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1280px"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-gray-700 to-gray-900" />
-        )}
-
-        <div
-          className="absolute inset-0 transition-all duration-700"
-          style={{ backgroundColor: fullTint }}
-        />
-        <div
-          className="absolute inset-0 transition-all duration-700"
-          style={{ background: layerBottom }}
-        />
-        <div className="absolute inset-0" style={{ background: layerTop }} />
-        <div className="absolute inset-0" style={{ background: layerCenter }} />
-
-        {/* Badges — top left */}
-        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-1.5">
-          {isTopMatch && (
-            <span className="bg-light-btn-bg dark:bg-dark-btn-bg backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
-              Best Match
-            </span>
+      <div className="relative w-full aspect-4/3 sm:aspect-16/6 lg:aspect-16/5">
+        {/* Image in its own named group — scale only fires on this div's hover */}
+        <div className="group/img absolute inset-0 overflow-hidden">
+          {imageUrl ? (
+            <Image ref={imgRef} src={imageUrl} alt={movie.title} fill crossOrigin="anonymous"
+              className="object-cover object-center transition-transform duration-500 group-hover/img:scale-105"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1280px" />
+          ) : (
+            <div className="absolute inset-0 bg-linear-to-br from-gray-700 to-gray-900" />
           )}
-          <span className="bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wide">
-            {movie.media_type === "tv" ? "TV" : "Movie"}
-          </span>
-          <span className="bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
-            {confidence}%
-          </span>
+          <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
+          <div className="absolute inset-0 transition-all duration-700" style={{ background: layerBottom }} />
+          <div className="absolute inset-0" style={{ background: layerTop }} />
+          <div className="absolute inset-0" style={{ background: layerCenter }} />
         </div>
 
-        {/* Rating — top right (same position as FindResultsPage) */}
-        {movie.vote_average && movie.vote_average > 0 && (
-          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-light-btn-bg dark:bg-dark-btn-bg backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
-            ★ {movie.vote_average.toFixed(1)}
+        {/* Overlay — pointer-events-none so mouse falls through to image group */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Badges top-left */}
+          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-1.5 pointer-events-auto">
+            {isTopMatch && (
+              <span className="bg-light-btn-bg dark:bg-dark-btn-bg backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
+                Best Match
+              </span>
+            )}
+            <span className="bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wide">
+              {movie.media_type === "tv" ? "TV" : "Movie"}
+            </span>
+            <span
+              ref={badgeRef}
+              className="bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full cursor-default"
+              onMouseEnter={(e) => {
+                e.stopPropagation();
+                if (!badgeRef.current) return;
+                const r = badgeRef.current.getBoundingClientRect();
+                setTooltipPos({ x: r.left + r.width / 2, y: r.top });
+              }}
+              onMouseLeave={() => setTooltipPos(null)}
+            >
+              {confidence}%
+            </span>
           </div>
-        )}
 
-        {/* Title centered */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-8 lg:px-12 gap-1">
-          <h3 className="text-white text-base sm:text-2xl lg:text-3xl font-bold text-center drop-shadow-lg line-clamp-2 group-hover:text-light-border dark:group-hover:text-dark-secondary-text transition-colors leading-snug">
-            {movie.title}
-          </h3>
-          <p className="text-white/50 text-[10px] sm:text-sm italic">
-            Click for full details
-          </p>
+          {/* Rating top-right */}
+          {movie.vote_average && movie.vote_average > 0 && (
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 pointer-events-auto bg-light-btn-bg dark:bg-dark-btn-bg backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
+              ★ {movie.vote_average.toFixed(1)}
+            </div>
+          )}
+
+          {/* Title centered */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-8 lg:px-12 gap-1">
+            <h3 className="text-white text-base sm:text-2xl lg:text-3xl font-bold text-center drop-shadow-lg line-clamp-2 leading-snug">
+              {movie.title}
+            </h3>
+            <p className="text-white/50 text-[10px] sm:text-sm italic">Click for full details</p>
+          </div>
         </div>
       </div>
 
-      {/* Info bar — genres + keywords, same as FindResultsPage */}
-      <div
-        className="px-3 sm:px-4 py-2 sm:py-3 space-y-1 transition-all duration-700"
-        style={{ backgroundColor: solidColor }}
-      >
-        {/* Genres row */}
+      {/* Portal tooltip */}
+      {tooltipPos && typeof document !== "undefined" && createPortal(
+        <div className="pointer-events-none fixed z-[9999]"
+          style={{ left: tooltipPos.x, top: tooltipPos.y - 8, transform: "translate(-50%, -100%)" }}>
+          <div className="relative bg-black/90 backdrop-blur-sm text-white text-[10px] leading-snug px-2.5 py-2 rounded-lg shadow-xl text-center w-44 whitespace-normal">
+            How confident the AI is that this is the correct match, based on scene analysis
+            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90" />
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* Info bar */}
+      <div className="px-3 sm:px-4 py-2 sm:py-3 space-y-1 transition-all duration-700" style={{ backgroundColor: solidColor }}>
         {movie.genres.length > 0 && (
           <p className="text-light-body-text dark:text-white/80 text-xs sm:text-sm leading-snug">
             {movie.genres.slice(0, 4).join(", ")}
           </p>
         )}
-
-        {/* Keywords row */}
         {movie.keywords.length > 0 && (
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {movie.keywords.slice(0, 5).map((kw) => (
-              <span
-                key={kw}
-                className="text-light-secondary-text dark:text-white/50 font-mono text-[10px] sm:text-xs tracking-tight"
-              >
+              <span key={kw} className="text-light-secondary-text dark:text-white/50 font-mono text-[10px] sm:text-xs tracking-tight">
                 #{kw.toLowerCase().replace(/\s+/g, "-")}
               </span>
             ))}
@@ -270,53 +212,46 @@ function CardSkeleton() {
 export default function SceneDetectPage() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [ready, setReady] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const raw = sessionStorage.getItem("sceneResults");
-    if (!raw) {
-      router.replace("/find");
-      return;
-    }
+    if (!raw) { router.replace("/find"); return; }
     const parsed = JSON.parse(raw);
-
-    // Deduplicate
     const seen = new Map();
     for (const m of parsed) {
       const key = m.id ?? m.title;
-      if (!seen.has(key) || seen.get(key).votes < m.votes) {
-        seen.set(key, m);
-      }
+      if (!seen.has(key) || seen.get(key).votes < m.votes) seen.set(key, m);
     }
-
-    // Sort by votes descending so Best Match = actually highest confidence
     const sorted = Array.from(seen.values()).sort((a, b) => b.votes - a.votes);
     setMovies(sorted);
     setReady(true);
   }, []);
+
+  const handleTryAgain = () => {
+    sessionStorage.removeItem("sceneResults");
+    setModalOpen(true);
+  };
 
   const totalVotes = movies.reduce((sum, m) => sum + m.votes, 0);
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
-        {/* Header */}
+
         <div className="text-center flex items-center gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
-              Scene Results
-            </h1>
+            <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">Scene Results</h1>
             {ready && (
               <p className="text-[11px] sm:text-xs text-light-secondary-text dark:text-dark-secondary-text mt-0.5">
                 {movies.filter((m) => m.media_type !== "tv").length} Movies ·{" "}
-                {movies.filter((m) => m.media_type === "tv").length} TV shows
-                matched
+                {movies.filter((m) => m.media_type === "tv").length} TV shows matched
               </p>
             )}
           </div>
         </div>
 
-        {/* Cards */}
         <div className="space-y-3 sm:space-y-4">
           {!ready
             ? Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)
@@ -330,38 +265,24 @@ export default function SceneDetectPage() {
               ))}
         </div>
 
-        {/* Try again */}
         {ready && (
           <button
-            onClick={() => {
-              sessionStorage.removeItem("sceneResults");
-              router.replace("/find");
-            }}
-            className="w-full py-2.5 sm:py-3 rounded-xl borderborder-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            onClick={handleTryAgain}
+            className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
-                d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
-                d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"
-              />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
             </svg>
             Try another scene
           </button>
         )}
       </div>
+
+      {/* Shared modal — no navigation needed, opens right here */}
+      <SceneCameraModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }
