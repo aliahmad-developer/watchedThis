@@ -1,7 +1,7 @@
 "use client";
 
 export const dynamic = "force-dynamic";
-import { useState, useCallback } from "react";
+import { useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faFilm, faTv, faStar, faCalendar, faTag, faBan, faToggleOn, faToggleOff, faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -14,7 +14,7 @@ interface Filters {
   excludeKeywords: string[];
   yearRange: [number, number];
   ratingRange: [number, number];
-  keyword: string;
+  keywords: string[];
   minSeasons: string; maxSeasons: string;
   minEpisodes: string; maxEpisodes: string;
   sortBy: string;
@@ -45,7 +45,7 @@ const MIN_YEAR = 1950;
 const DEFAULT_FILTERS: Filters = {
   mediaType: "movie", genres: [], excludeGenres: [], excludeKeywords: [],
   yearRange: [MIN_YEAR, CURRENT_YEAR], ratingRange: [0, 10],
-  keyword: "", minSeasons: "", maxSeasons: "", minEpisodes: "", maxEpisodes: "",
+  keywords: [], minSeasons: "", maxSeasons: "", minEpisodes: "", maxEpisodes: "",
   sortBy: "popularity.desc", strictMode: false,
 };
 
@@ -57,7 +57,7 @@ function parseFiltersFromURL(params: URLSearchParams): Filters {
     excludeKeywords: params.get("excludeKeywords") ? params.get("excludeKeywords")!.split(",") : [],
     yearRange:       [Number(params.get("minYear") || MIN_YEAR), Number(params.get("maxYear") || CURRENT_YEAR)],
     ratingRange:     [Number(params.get("minRating") || 0), Number(params.get("maxRating") || 10)],
-    keyword:         params.get("keyword") || "",
+    keywords:        params.get("keywords") ? params.get("keywords")!.split(",") : [],
     minSeasons:      params.get("minSeasons") || "", maxSeasons: params.get("maxSeasons") || "",
     minEpisodes:     params.get("minEpisodes") || "", maxEpisodes: params.get("maxEpisodes") || "",
     sortBy:          params.get("sortBy") || "popularity.desc",
@@ -74,7 +74,7 @@ function filtersToParams(f: Filters): URLSearchParams {
   if (f.genres.length)          p.set("genres",          f.genres.join(","));
   if (f.excludeGenres.length)   p.set("excludeGenres",   f.excludeGenres.join(","));
   if (f.excludeKeywords.length) p.set("excludeKeywords", f.excludeKeywords.join(","));
-  if (f.keyword.trim())         p.set("keyword",         f.keyword.trim());
+  if (f.keywords.length)        p.set("keywords",        f.keywords.join(","));
   if (f.strictMode)             p.set("strict",          "true");
   if (f.mediaType === "tv") {
     if (f.minSeasons)  p.set("minSeasons",  f.minSeasons);
@@ -85,12 +85,96 @@ function filtersToParams(f: Filters): URLSearchParams {
   return p;
 }
 
-export default function FindPage() {
+/* ─── Skeleton ──────────────────────────────────────────────────────────── */
+export function FindPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
+      <div className="w-full max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-5 sm:space-y-7">
+        {/* header */}
+        <div className="flex items-center justify-between">
+          <div className="h-7 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+          <div className="h-4 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+        </div>
+
+        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-4 sm:p-6 space-y-6">
+          {/* strict mode */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
+            <div className="space-y-1.5">
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </div>
+            <div className="h-6 w-10 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse ml-4 shrink-0" />
+          </div>
+
+          {/* keyword */}
+          <div className="space-y-2">
+            <div className="h-3.5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+          </div>
+
+          {/* type */}
+          <div className="space-y-2">
+            <div className="h-3.5 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+            </div>
+          </div>
+
+          {/* genres */}
+          <div className="space-y-2">
+            <div className="h-3.5 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-3 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[80, 64, 96, 72, 56, 88, 72, 64, 80, 96, 56, 72, 88, 64, 72, 80].map((w, i) => (
+                <div key={i} style={{ width: w }} className="h-7 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+              ))}
+            </div>
+          </div>
+
+          {/* sliders */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {["Release Year", "Rating"].map(label => (
+              <div key={label} className="space-y-3">
+                <div className="h-3.5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <div className="flex justify-between">
+                  <div className="h-3 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                </div>
+                <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+
+          {/* blacklist */}
+          <div className="space-y-2">
+            <div className="h-3.5 w-36 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-3 w-72 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="flex gap-2">
+              <div className="flex-1 h-9 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+              <div className="h-9 w-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+            </div>
+          </div>
+
+          {/* sort + search */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+            <div className="flex-1 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+            <div className="h-10 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Inner page (needs useSearchParams) ────────────────────────────────── */
+function FindPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
   const [filters, setFilters] = useState<Filters>(() => parseFiltersFromURL(searchParams));
   const [kwInput, setKwInput] = useState("");
+  const [kwIncludeInput, setKwIncludeInput] = useState("");
 
   const genres = filters.mediaType === "movie" ? MOVIE_GENRES : TV_GENRES;
   const hasExclusions = filters.excludeGenres.length > 0 || filters.excludeKeywords.length > 0;
@@ -160,17 +244,55 @@ export default function FindPage() {
             </button>
           </div>
 
-          {/* Keyword */}
+          {/* Include Keywords */}
           <div>
-            <SectionLabel icon={faTag}>Keyword</SectionLabel>
-            <div className="relative">
-              <input type="text" placeholder="e.g. heist, space, vampire..."
-                value={filters.keyword}
-                onChange={e => setFilters(prev => ({ ...prev, keyword: e.target.value }))}
-                onKeyDown={e => e.key === "Enter" && handleSearch()}
-                className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent" />
-              <FontAwesomeIcon icon={faSearch} className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 text-light-secondary-text dark:text-dark-secondary-text pointer-events-none" />
+            <SectionLabel icon={faTag}>Keywords</SectionLabel>
+            <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2 -mt-1">
+              Include media matching these words in title, description, or tags.
+            </p>
+            <div className="flex gap-2 mb-3">
+              <div className="relative flex-1">
+                <input type="text" placeholder="e.g. heist, space, vampire..."
+                  value={kwIncludeInput}
+                  onChange={e => setKwIncludeInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      const kw = kwIncludeInput.trim().toLowerCase();
+                      if (!kw || filters.keywords.includes(kw)) { setKwIncludeInput(""); return; }
+                      setFilters(prev => ({ ...prev, keywords: [...prev.keywords, kw] }));
+                      setKwIncludeInput("");
+                    }
+                  }}
+                  className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent" />
+                <FontAwesomeIcon icon={faSearch} className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 text-light-secondary-text dark:text-dark-secondary-text pointer-events-none" />
+              </div>
+              <button
+                onClick={() => {
+                  const kw = kwIncludeInput.trim().toLowerCase();
+                  if (!kw || filters.keywords.includes(kw)) { setKwIncludeInput(""); return; }
+                  setFilters(prev => ({ ...prev, keywords: [...prev.keywords, kw] }));
+                  setKwIncludeInput("");
+                }}
+                className="px-3 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold transition hover:opacity-90">
+                <FontAwesomeIcon icon={faPlus} className="h-3.5" />
+              </button>
             </div>
+            {filters.keywords.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {filters.keywords.map(kw => (
+                  <button key={kw}
+                    onClick={() => setFilters(prev => ({ ...prev, keywords: prev.keywords.filter(k => k !== kw) }))}
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-light-accent/10 dark:bg-dark-accent/10 border border-light-accent/25 dark:border-dark-accent/25 text-light-accent dark:text-dark-accent hover:bg-light-accent/20 dark:hover:bg-dark-accent/20 transition">
+                    {kw} ×
+                  </button>
+                ))}
+                <button
+                  onClick={() => setFilters(prev => ({ ...prev, keywords: [] }))}
+                  className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2">
+                  clear all
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Type */}
@@ -196,7 +318,8 @@ export default function FindPage() {
           <div>
             <SectionLabel icon={faTag}>Genres</SectionLabel>
             <p className="inline text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2 -mt-1 leading-snug">
-              Tap once to <span className="inline text-light-accent dark:text-dark-accent font-semibold">include</span>{", "}twice to <span className="inline text-red-400 font-semibold">exclude</span>{", "}again to clear.
+              Tap once to <span className="inline text-light-accent dark:text-dark-accent font-semibold">include</span>{", "}
+              twice to <span className="inline text-red-400 font-semibold">exclude</span>{", "}again to clear.
             </p>
             <div className="flex flex-wrap gap-2">
               {Object.entries(genres).map(([name, id]) => (
@@ -308,5 +431,14 @@ export default function FindPage() {
 
       <SliderStyles />
     </div>
+  );
+}
+
+/* ─── Export: wrap in Suspense so useSearchParams doesn't block ─────────── */
+export default function FindPage() {
+  return (
+    <Suspense fallback={<FindPageSkeleton />}>
+      <FindPageInner />
+    </Suspense>
   );
 }
