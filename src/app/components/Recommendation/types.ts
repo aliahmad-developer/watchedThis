@@ -13,31 +13,39 @@ export interface MediaItem {
   release_date?: string;
   first_air_date?: string;
   popularity?: number;
-  
+
   tags?: string[];
+}
+export interface FindFilterSnapshot {
+  mediaType: "movie" | "tv";
+  genres: number[];
+  excludeGenres: number[];
+  keywords: string[];
+  excludeKeywords: string[];
+  yearRange: [number, number];
+  ratingRange: [number, number];
+  sortBy: string;
+  ts: number;
 }
 
 export interface UserBehaviour {
-  
   clickLog: Array<{ id: number; media_type: "movie" | "tv" }>;
-  
-  searchHistory: string[];
 
+  searchHistory: string[];
+  findFilters?: FindFilterSnapshot[];
   updatedAt?: number;
 }
-
-
 
 export interface RecommendationProfile {
   allMedia: MediaItem[];
   favouriteIds: number[];
-  libraryIds: number[];        
-  watchedIds: number[];        
+  libraryIds: number[];
+  watchedIds: number[];
   clickLog: Array<{ id: number; media_type: "movie" | "tv" }>;
   searchHistory: string[];
   ratings: Record<number, number>;
+  findFilters?: FindFilterSnapshot[];
 }
-
 
 export interface ScoredItem extends MediaItem {
   score: number;
@@ -59,25 +67,25 @@ export interface TasteProfile {
 }
 
 export const TMDB_GENRES: Record<number, string> = {
-  28:    "Action",
-  12:    "Adventure",
-  16:    "Animation",
-  35:    "Comedy",
-  80:    "Crime",
-  99:    "Documentary",
-  18:    "Drama",
+  28: "Action",
+  12: "Adventure",
+  16: "Animation",
+  35: "Comedy",
+  80: "Crime",
+  99: "Documentary",
+  18: "Drama",
   10751: "Family",
-  14:    "Fantasy",
-  36:    "History",
-  27:    "Horror",
+  14: "Fantasy",
+  36: "History",
+  27: "Horror",
   10402: "Music",
-  9648:  "Mystery",
+  9648: "Mystery",
   10749: "Romance",
-  878:   "Sci-Fi",
+  878: "Sci-Fi",
   10770: "TV Movie",
-  53:    "Thriller",
+  53: "Thriller",
   10752: "War",
-  37:    "Western",
+  37: "Western",
   // TV genres
   10759: "Action & Adventure",
   10762: "Kids",

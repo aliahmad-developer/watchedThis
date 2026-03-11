@@ -1,19 +1,12 @@
-// ─────────────────────────────────────────────────────────────
-//  behaviourTracker.ts
-//
-//  Writes user behaviour (clicks, searches) to Firestore silently.
-//  Stored under:  users/{uid}/behaviour  (single document, merged)
-//
-//  Call these from your existing event handlers — they never throw,
-//  never block, and never affect your UI flow.
-// ─────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
 
 import { auth, db } from "../../firebase/firebaseConfig";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { UserBehaviour } from "./types";
 
-const MAX_CLICKS  = 200;
+const MAX_CLICKS   = 200;
 const MAX_SEARCHES = 50;
+const MAX_FILTERS  = 30;
 
 // ── Internal: get or init the behaviour doc ───────────────────
 
@@ -22,9 +15,9 @@ async function getBehaviourDoc(uid: string): Promise<UserBehaviour> {
     const ref  = doc(db, "users", uid, "behaviour", "log");
     const snap = await getDoc(ref);
     if (snap.exists()) return snap.data() as UserBehaviour;
-    return { clickLog: [], searchHistory: [] };
+    return { clickLog: [], searchHistory: [], findFilters: [] };
   } catch {
-    return { clickLog: [], searchHistory: [] };
+    return { clickLog: [], searchHistory: [], findFilters: [] };
   }
 }
 
@@ -78,6 +71,61 @@ export async function trackSearch(query: string): Promise<void> {
 
     const ref = doc(db, "users", uid, "behaviour", "log");
     await setDoc(ref, { searchHistory: updated, updatedAt: Date.now() }, { merge: true });
+  } catch {
+    // Silent
+  }
+}
+
+// ── Track Find-page filter usage ──────────────────────────────
+//
+//  Call this when the user hits Search on the Find page.
+//  Each entry records which genres/keywords/ranges they searched with
+//  so the recommendation engine can personalise based on repeated preferences.
+//
+//  Example (in FindPage):
+//    handleSearch() { trackFindFilters({ ... }); router.push(...) }
+
+export interface FindFilterSnapshot {
+  mediaType:       "movie" | "tv";
+  genres:          number[];          // included genre IDs
+  excludeGenres:   number[];          // excluded genre IDs
+  keywords:        string[];          // include keywords
+  excludeKeywords: string[];          // blacklisted keywords
+  yearRange:       [number, number];
+  ratingRange:     [number, number];
+  sortBy:          string;
+  ts:              number;            // unix ms
+}
+
+export async function trackFindFilters(
+  snapshot: Omit<FindFilterSnapshot, "ts">
+): Promise<void> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+
+  // Skip if nothing meaningful was actually filtered
+  const isDefault =
+    snapshot.genres.length === 0 &&
+    snapshot.excludeGenres.length === 0 &&
+    snapshot.keywords.length === 0 &&
+    snapshot.excludeKeywords.length === 0 &&
+    snapshot.yearRange[0] === 1950 &&
+    snapshot.yearRange[1] === new Date().getFullYear() &&
+    snapshot.ratingRange[0] === 0 &&
+    snapshot.ratingRange[1] === 10;
+
+  if (isDefault) return;
+
+  try {
+    const current = await getBehaviourDoc(uid);
+    const entry: FindFilterSnapshot = { ...snapshot, ts: Date.now() };
+    const updated = [
+      ...(current.findFilters ?? []),
+      entry,
+    ].slice(-MAX_FILTERS);
+
+    const ref = doc(db, "users", uid, "behaviour", "log");
+    await setDoc(ref, { findFilters: updated, updatedAt: Date.now() }, { merge: true });
   } catch {
     // Silent
   }

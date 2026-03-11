@@ -26,7 +26,7 @@ export default function CastCard({
       role="listitem"
     >
       {/* Image */}
-      <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-700">
+      <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-light-border dark:bg-dark-border">
         {actor.profile_path ? (
           <>
             <Link href={`/person/${actor.id}`}>
@@ -45,7 +45,7 @@ export default function CastCard({
             )}
           </>
         ) : (
-          <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center h-full">
+          <span className="text-xs bg-light-border dark:bg-dark-border flex items-center justify-center h-full">
             No Image
           </span>
         )}
@@ -61,7 +61,7 @@ export default function CastCard({
 
       {/* Role */}
       <p
-        className="mt-0.5 text-xs sm:text-sm leading-tight text-gray-600 dark:text-gray-400 truncate w-full"
+        className="mt-0.5 text-xs sm:text-sm leading-tight truncate w-full"
         title={characterName}
       >
         {characterName}
@@ -69,7 +69,7 @@ export default function CastCard({
 
       {/* Episodes */}
       {mediaType === "tv" && actor.total_episode_count && (
-        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-500">
+        <p className="mt-0.5 text-xs text-light-body-text dark:text-dark-body-text">
           {actor.total_episode_count} eps
         </p>
       )}

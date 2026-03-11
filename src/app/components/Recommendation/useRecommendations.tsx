@@ -165,13 +165,14 @@ export function useRecommendations(
           // ADD these two lines — guard against missing fields
           const clickLog = behaviour.clickLog ?? [];
           const searchHistory = behaviour.searchHistory ?? [];
+          const findFilters = behaviour.findFilters ?? [];
 
           console.log(
             "[Recs] listDocs:",
             listDocs.length,
             "behaviour:",
             behaviour,
-          ); // ← ADD
+          ); 
 
           if (abortRef.current) return;
 
@@ -198,9 +199,10 @@ export function useRecommendations(
             watchedIds,
             clickLog,
             searchHistory,
+            findFilters,
             ratings: {},
           };
-
+          
           const taste = deriveTasteProfile(tempProfile);
           const topGenreNames = taste.topGenres.map((g) => g.genre);
 
@@ -215,12 +217,6 @@ export function useRecommendations(
 
           // 3. Fetch candidates from TMDB
           const candidates = await fetchCandidates(topGenreIds);
-          console.log(
-            "[Recs] candidates:",
-            candidates.length,
-            "topGenreIds:",
-            topGenreIds,
-          );
           if (abortRef.current) return;
 
           // 4. Build full profile and score
@@ -231,6 +227,7 @@ export function useRecommendations(
             watchedIds,
             clickLog,
             searchHistory,
+            findFilters,
             ratings: {},
           };
 

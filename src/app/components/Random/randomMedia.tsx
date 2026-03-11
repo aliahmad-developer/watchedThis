@@ -326,7 +326,7 @@ const getDayLabel = (index: number): string => {
 
 /* ---------- Skeletons ---------- */
 const FeaturedCardSkeleton = () => (
-  <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-gray-300 dark:bg-gray-700 animate-pulse">
+  <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
     <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6">
       <div className="h-4 w-24 bg-gray-400 rounded mb-2" />
@@ -337,7 +337,7 @@ const FeaturedCardSkeleton = () => (
 );
 
 const RightStackCardSkeleton = () => (
-  <div className="relative w-full h-49 rounded-xl overflow-hidden bg-gray-300 dark:bg-gray-700 animate-pulse">
+  <div className="relative w-full h-49 rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
     <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4">
       <div className="h-3 w-16 bg-gray-400 rounded mb-1" />

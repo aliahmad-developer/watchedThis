@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faFilm, faTv, faStar, faCalendar, faTag, faBan, faToggleOn, faToggleOff, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { DualRangeSlider, SectionLabel, GenreChip, SliderStyles, type GenreState } from "../components/filter/component";
+import { trackFindFilters } from "../components/Recommendation/behaviourTracker";
 
 interface Filters {
   mediaType: "movie" | "tv";
@@ -206,6 +207,18 @@ function FindPageInner() {
     setFilters(prev => ({ ...prev, excludeKeywords: prev.excludeKeywords.filter(k => k !== kw) }));
 
   const handleSearch = useCallback(() => {
+    // Fire-and-forget — never blocks navigation
+    trackFindFilters({
+      mediaType:       filters.mediaType,
+      genres:          filters.genres,
+      excludeGenres:   filters.excludeGenres,
+      keywords:        filters.keywords,
+      excludeKeywords: filters.excludeKeywords,
+      yearRange:       filters.yearRange,
+      ratingRange:     filters.ratingRange,
+      sortBy:          filters.sortBy,
+    });
+
     router.push(`/find/results?${filtersToParams(filters).toString()}`);
   }, [filters, router]);
 
