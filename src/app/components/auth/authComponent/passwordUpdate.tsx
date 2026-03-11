@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { User, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faKey, faEye, faEyeSlash, faCircleNotch, faCheckCircle, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faKey, faEye, faEyeSlash, faCircleNotch } from "@fortawesome/free-solid-svg-icons";
+import toast from "react-hot-toast";
 
 type PasswordUpdateArgs = {
   oldPassword: string;
@@ -12,127 +12,68 @@ type PasswordUpdateArgs = {
 };
 
 type Props = {
-  user: User;
   handlePasswordUpdate: (args: PasswordUpdateArgs) => Promise<void>;
 };
 
-export default function PasswordUpdate({ user, handlePasswordUpdate }: Props) {
-  const [passwordDropdownOpen, setPasswordDropdownOpen] = useState(false);
+export default function PasswordUpdate({ handlePasswordUpdate }: Props) {
+  const [open, setOpen] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showOldPassword, setShowOldPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
 
-  const handlePasswordUpdateWrapper = async () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    setSaveStatus("idle");
-    
     try {
       await handlePasswordUpdate({
         oldPassword,
         newPassword,
         confirmPassword,
         resetFields: () => {
-          setOldPassword("");
-          setNewPassword("");
-          setConfirmPassword("");
-          setPasswordDropdownOpen(false);
+          setOldPassword(""); setNewPassword(""); setConfirmPassword(""); setOpen(false);
         },
       });
-      
-      setSaveStatus("success");
-      setTimeout(() => {
-        setSaveStatus("idle");
-        setIsSaving(false);
-      }, 2000);
-    } catch (error: any) {
-      setSaveStatus("error");
-      setErrorMessage(error.message || "Failed to update password");
+      toast.success("Password updated successfully!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update password.");
+    } finally {
       setIsSaving(false);
-      setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
 
   return (
-    <div className="flex flex-col items-start mt-2">
+    <div className="flex flex-col">
       <button
         type="button"
-        onClick={() => setPasswordDropdownOpen((prev) => !prev)}
-        className="py-2 px-4 bg-transparent text-light-body-text dark:text-dark-body-text hover:text-light-accent dark:hover:text-dark-secondary-text text-sm transition-colors"
-        aria-expanded={passwordDropdownOpen}
-        aria-controls="password-dropdown"
+        onClick={() => setOpen(p => !p)}
+        className="flex items-center gap-2 py-1.5 px-1 text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors bg-transparent w-fit"
       >
-        <FontAwesomeIcon icon={faKey} className="w-4 h-4 mr-2" />
+        <FontAwesomeIcon icon={faKey} className="w-3 h-3" />
         Change Password
       </button>
 
-      {passwordDropdownOpen && (
-        <div className="mt-2 w-full flex flex-col gap-2" id="password-dropdown">
-          {/* Old Password */}
-          <InputWithToggle
-            placeholder="Old password"
-            value={oldPassword}
-            setValue={setOldPassword}
-            show={showOldPassword}
-            setShow={setShowOldPassword}
-          />
+      {open && (
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          <InputWithToggle placeholder="Old password"        value={oldPassword}     setValue={setOldPassword}     show={showOld}     setShow={setShowOld} />
+          <InputWithToggle placeholder="New password"        value={newPassword}     setValue={setNewPassword}     show={showNew}     setShow={setShowNew}     minLength={6} />
+          <InputWithToggle placeholder="Confirm new password" value={confirmPassword} setValue={setConfirmPassword} show={showConfirm} setShow={setShowConfirm} minLength={6} />
 
-          {/* New Password */}
-          <InputWithToggle
-            placeholder="New password"
-            value={newPassword}
-            setValue={setNewPassword}
-            show={showNewPassword}
-            setShow={setShowNewPassword}
-            minLength={6}
-          />
-
-          {/* Confirm Password */}
-          <InputWithToggle
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            setValue={setConfirmPassword}
-            show={showConfirmPassword}
-            setShow={setShowConfirmPassword}
-            minLength={6}
-          />
-
-          {/* Status Message */}
-          {saveStatus === "error" && (
-            <div className="flex items-center gap-2 text-sm text-red-500 dark:text-red-400 p-2 rounded-md bg-red-50 dark:bg-red-900/20">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="w-4 h-4" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Save Button */}
           <button
-            onClick={handlePasswordUpdateWrapper}
+            onClick={handleSave}
             disabled={isSaving}
-            className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${
-              isSaving
-                ? "bg-light-disabled dark:bg-dark-disabled cursor-progress"
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors
+              ${isSaving
+                ? "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-progress"
                 : "bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg"
-            }`}
+              }`}
           >
-            {isSaving ? (
-              <>
-                <FontAwesomeIcon icon={faCircleNotch} className="w-4 h-4 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : saveStatus === "success" ? (
-              <>
-                <FontAwesomeIcon icon={faCheckCircle} className="w-4 h-4" />
-                <span>Password Updated!</span>
-              </>
-            ) : (
-              <span>Save Password</span>
-            )}
+            {isSaving
+              ? <><FontAwesomeIcon icon={faCircleNotch} className="w-3 h-3 animate-spin" /> Saving...</>
+              : "Save Password"
+            }
           </button>
         </div>
       )}
@@ -140,21 +81,9 @@ export default function PasswordUpdate({ user, handlePasswordUpdate }: Props) {
   );
 }
 
-// Reusable Input with Show/Hide toggle
-function InputWithToggle({
-  placeholder,
-  value,
-  setValue,
-  show,
-  setShow,
-  minLength,
-}: {
-  placeholder: string;
-  value: string;
-  setValue: (val: string) => void;
-  show: boolean;
-  setShow: (val: boolean) => void;
-  minLength?: number;
+function InputWithToggle({ placeholder, value, setValue, show, setShow, minLength }: {
+  placeholder: string; value: string; setValue: (v: string) => void;
+  show: boolean; setShow: (v: boolean) => void; minLength?: number;
 }) {
   return (
     <div className="relative">
@@ -163,18 +92,17 @@ function InputWithToggle({
         placeholder={placeholder}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        required
         minLength={minLength}
-        className="mt-1 w-full border rounded-lg p-2 text-sm
-                   border-light-border dark:border-dark-border
-                   bg-light-bg dark:bg-dark-bg
-                   text-light-body-text dark:text-dark-body-text
-                   focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none pr-10"
+        className="w-full border rounded-lg px-2.5 py-1.5 text-xs pr-8
+          border-light-border dark:border-dark-border
+          bg-light-bg dark:bg-dark-bg
+          text-light-body-text dark:text-dark-body-text
+          focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent outline-none"
       />
       <button
         type="button"
         onClick={() => setShow(!show)}
-        className="absolute right-2 top-2 text-gray-400 dark:text-gray-300 bg-transparent"
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-300 bg-transparent"
       >
         <FontAwesomeIcon icon={show ? faEye : faEyeSlash} className="w-3 h-3" />
       </button>

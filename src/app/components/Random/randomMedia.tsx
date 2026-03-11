@@ -26,7 +26,7 @@ const FIRESTORE_COLLECTION = "appData";
 const FIRESTORE_DOC        = "dailyMedia";
 const LOCAL_CACHE_KEY      = "dailyMediaCache_v2";
 
-export default function TwoSectionLayout() {
+export default function randomMedia() {
   const [media, setMedia]     = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -175,7 +175,7 @@ export default function TwoSectionLayout() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
       <header className="mb-6">
-        <h2 className="px-4 text-2xl font-bold mb-6">Recommended For You</h2>
+        <h2 className="px-4 text-2xl font-bold mb-6">Random Media of the Day.</h2>
       </header>
 
       {/* Desktop (≥1024px) */}
@@ -252,7 +252,7 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 66vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent" />
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 text-white z-10">
         <p className="text-xs opacity-80 mb-1">{getDayLabel(index)}</p>
@@ -296,7 +296,7 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
           }`}
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent" />
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-10">
         <p className="text-xs opacity-80 mb-1">{getDayLabel(index)}</p>
@@ -327,7 +327,7 @@ const getDayLabel = (index: number): string => {
 /* ---------- Skeletons ---------- */
 const FeaturedCardSkeleton = () => (
   <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-gray-300 dark:bg-gray-700 animate-pulse">
-    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
+    <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6">
       <div className="h-4 w-24 bg-gray-400 rounded mb-2" />
       <div className="h-6 w-3/4 bg-gray-400 rounded mb-2" />
@@ -338,7 +338,7 @@ const FeaturedCardSkeleton = () => (
 
 const RightStackCardSkeleton = () => (
   <div className="relative w-full h-49 rounded-xl overflow-hidden bg-gray-300 dark:bg-gray-700 animate-pulse">
-    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
+    <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4">
       <div className="h-3 w-16 bg-gray-400 rounded mb-1" />
       <div className="h-4 w-3/4 bg-gray-400 rounded mb-1" />

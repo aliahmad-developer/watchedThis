@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, use } from "react";
-import Loading from "@/app/components/utilities/loading";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,7 +11,7 @@ const ProductionPageSkeleton = () => (
   <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen animate-pulse">
     {/* Banner */}
     <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl border border-light-border dark:border-dark-border shadow-md">
-      <div className="w-[140px] h-[140px] rounded-xl bg-gray-300 dark:bg-gray-700 shrink-0" />
+      <div className="w-35 h-35 rounded-xl bg-gray-300 dark:bg-gray-700 shrink-0" />
       <div className="flex-1 space-y-3 w-full">
         <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
         <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/3" />
@@ -125,7 +124,7 @@ export default function ProductionPage({
       {/* ── Company Banner ─────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-md border border-light-border dark:border-dark-border">
         {/* Logo */}
-        <div className="shrink-0 w-[140px] h-[140px] flex items-center justify-center bg-white dark:bg-white/5 rounded-xl shadow-sm border border-light-border dark:border-dark-border p-3">
+        <div className="shrink-0 w-35 h-35 flex items-center justify-center bg-white dark:bg-white/5 rounded-xl shadow-sm border border-light-border dark:border-dark-border p-3">
           {company.logo_path ? (
             <Image
               src={`https://image.tmdb.org/t/p/w300${company.logo_path}`}

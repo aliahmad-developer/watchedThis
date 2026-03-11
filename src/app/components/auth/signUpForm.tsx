@@ -87,8 +87,6 @@ export default function SignupForm({
   const passwordsMatch = password === confirmPassword;
   const anyLoading = loading || oauthLoading !== null;
 
-  
-
   const triggerTermsError = () => {
     setValidationErrors((prev) => ({
       ...prev,
@@ -130,9 +128,11 @@ export default function SignupForm({
         password,
         sanitizeInput(username),
       );
+
       if (result.success && result.user && onSuccess) {
         setMessage(result.message);
         onSuccess(result.user, result.username);
+        window.dispatchEvent(new CustomEvent("signup-username-ready")); 
       } else {
         setMessage(result.message);
         if (result.accountExists) setAccountExists(true);

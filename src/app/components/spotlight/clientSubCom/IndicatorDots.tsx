@@ -30,7 +30,7 @@ const IndicatorDots = ({
           relative group rounded-full
           transition-all duration-300 ease-out
           /* Mobile & Tablet: small round dots */
-          w-2 h-2 rounded-full 
+          w-2 h-2 
           /* Large devices: slightly larger */
           lg:w-2.5 lg:h-2.5
           

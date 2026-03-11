@@ -24,7 +24,7 @@ const MobileContent = ({
           #{index + 1} Spotlight
         </div>
       )}
-      <h2 className="text-lg font-bold text-light-header dark:text-white leading-tight line-clamp-1 min-h-[1.75rem]">
+      <h2 className="text-lg font-bold text-light-header dark:text-white leading-tight line-clamp-1 min-h-7">
         {item.title || item.name}
       </h2>
       <div className="flex gap-2 pt-1">

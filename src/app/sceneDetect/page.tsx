@@ -166,10 +166,10 @@ function SceneResultCard({ movie, totalVotes, isTopMatch }: { movie: Movie; tota
 
       {/* Portal tooltip */}
       {tooltipPos && typeof document !== "undefined" && createPortal(
-        <div className="pointer-events-none fixed z-[9999]"
+        <div className="pointer-events-none fixed z-9999"
           style={{ left: tooltipPos.x, top: tooltipPos.y - 8, transform: "translate(-50%, -100%)" }}>
           <div className="relative bg-black/90 backdrop-blur-sm text-white text-[10px] leading-snug px-2.5 py-2 rounded-lg shadow-xl text-center w-44 whitespace-normal">
-            How confident the AI is that this is the correct match, based on scene analysis
+            How confident the AI is that this is the correct match, based on scene analysis.
             <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90" />
           </div>
         </div>,
