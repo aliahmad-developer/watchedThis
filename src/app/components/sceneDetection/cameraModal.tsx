@@ -19,13 +19,17 @@ export default function SceneCameraModal({ open, onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Reset to chooser every time modal opens
+  // Reset to chooser + lock body scroll when modal opens
   useEffect(() => {
     if (open) {
       setMode("chooser");
       setError("");
       setCapturing(false);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
     }
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   useEffect(() => {
