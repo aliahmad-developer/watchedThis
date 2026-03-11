@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useResponsiveConfig, useCarousel, useCarouselDimensions, useTrendingMedia } from "./SubComps/hooks";
+import {
+  useResponsiveConfig,
+  useCarousel,
+  useCarouselDimensions,
+  useTrendingMedia,
+} from "./SubComps/hooks";
 import { TrendingCarouselSkeleton } from "./SubComps/Skeleton";
 import { CarouselItem } from "./SubComps/CarouselItem";
 import { NavigationButtons } from "./SubComps/NavigationButtons";
@@ -79,10 +84,14 @@ export default function TrendingCarouselClient() {
     isHorizontal.current = null;
   };
 
-  if (error) return <ErrorState error={error} onRetry={() => window.location.reload()} />;
+  if (error)
+    return (
+      <ErrorState error={error} onRetry={() => window.location.reload()} />
+    );
   if (!loading && isClient && !media.length) return <EmptyState />;
 
-  const isReady2Render = !loading && isClient && itemWidth > 0 && media.length > 0;
+  const isReady2Render =
+    !loading && isClient && itemWidth > 0 && media.length > 0;
   const itemHeight = itemWidth > 0 ? (itemWidth * 3) / 2 : 0;
   const gap = isMobile ? MOBILE_GAP : GAP;
 
@@ -97,11 +106,11 @@ export default function TrendingCarouselClient() {
       {!isReady2Render && <TrendingCarouselSkeleton />}
 
       <section
-        className={`relative w-full ${isMobile ? "px-0" : "px-4"} ${!isReady2Render ? "invisible absolute" : ""}`}
+        className={`relative w-full ${isMobile ? "px-3" : "px-4"} ${!isReady2Render ? "invisible absolute" : ""}`}
         ref={carouselRef}
         aria-label="Trending media carousel"
       >
-        <h2 className="mb-6 px-4">Trending</h2>
+        <h2 className="mb-6 px-4 mx-4">Trending</h2>
 
         <div className="flex w-full items-start" ref={containerRef}>
           <div className="relative overflow-hidden flex-1">
@@ -121,16 +130,17 @@ export default function TrendingCarouselClient() {
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
             >
-              {isReady2Render && media.map((item, idx) => (
-                <CarouselItem
-                  key={`${item.id}-${idx}`}
-                  item={item}
-                  position={idx + 1}
-                  isPriority={idx < visibleCount}
-                  itemWidth={itemWidth}
-                  showSidebar={!isMobile}
-                />
-              ))}
+              {isReady2Render &&
+                media.map((item, idx) => (
+                  <CarouselItem
+                    key={`${item.id}-${idx}`}
+                    item={item}
+                    position={idx + 1}
+                    isPriority={idx < visibleCount}
+                    itemWidth={itemWidth}
+                    showSidebar={!isMobile}
+                  />
+                ))}
             </div>
           </div>
 

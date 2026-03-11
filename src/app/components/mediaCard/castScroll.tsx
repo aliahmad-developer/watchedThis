@@ -49,7 +49,7 @@ export default function CastScroll({
             {cast.slice(0, visibleCount).map((actor) => (
               <div
                 key={actor.id}
-                className="w-28 sm:w-32 flex-shrink-0 transition-transform hover:scale-105"
+                className="w-28 sm:w-32 shrink-0 transition-transform hover:scale-105"
               >
                 <CastCard actor={actor} mediaType={mediaType} />
               </div>

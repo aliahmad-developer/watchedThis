@@ -39,7 +39,7 @@ const DesktopContent = ({
             #{index + 1} Spotlight
           </div>
         )}
-        <h2 className="text-2xl lg:text-4xl font-bold text-light-header dark:text-white leading-tight line-clamp-2 min-h-[3rem] lg:min-h-[3.5rem]">
+        <h2 className="text-2xl lg:text-4xl font-bold text-light-header dark:text-white leading-tight line-clamp-2 min-h-12 lg:min-h-14">
           {item.title || item.name}
         </h2>
         <div className="flex flex-wrap items-center gap-3 lg:gap-6 text-sm text-light-secondary-text dark:text-dark-secondary-text">

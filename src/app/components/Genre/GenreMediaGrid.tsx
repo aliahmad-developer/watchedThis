@@ -119,7 +119,7 @@ export function GenreMediaGrid({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2 w-full">
               {Array.from({ length: 5 }).map((_, index) => (
                 <div key={`loading-${index}`} className="animate-pulse">
-                  <div className="bg-light-border dark:bg-dark-border rounded-lg aspect-[2/3] w-full mb-2"></div>
+                  <div className="bg-light-border dark:bg-dark-border rounded-lg aspect-2/3 w-full mb-2"></div>
                   <div className="h-4 bg-light-border dark:bg-dark-border rounded w-3/4 mb-1"></div>
                   <div className="h-3 bg-light-border dark:bg-dark-border rounded w-1/2"></div>
                 </div>

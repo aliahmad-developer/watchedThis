@@ -138,7 +138,7 @@ function WhyTooltip({ item }: { item: ScoredItem }) {
 
 function SkeletonCard() {
   return (
-    <div className="shrink-0 w-50 animate-pulse">
+    <div className="shrink-0 w-32 sm:w-40 md:w-44 lg:w-48 animate-pulse">
       <div className="aspect-2/3 rounded-xl bg-light-border dark:bg-dark-border" />
       <div className="mt-2 h-3 rounded bg-light-border dark:bg-dark-border w-4/5 mx-auto" />
       <div className="mt-1.5 h-2.5 rounded bg-light-border dark:bg-dark-border w-2/5 mx-auto" />
@@ -178,7 +178,7 @@ function ScoredCard({
 
   return (
     <div
-      className="shrink-0 w-50 flex flex-col cursor-pointer"
+      className="shrink-0 w-32 sm:w-40 md:w-44 lg:w-48 flex flex-col cursor-pointer"
       onClick={() => onCardClick?.(item)}
     >
       <MediaCard item={item} hideMetaData />

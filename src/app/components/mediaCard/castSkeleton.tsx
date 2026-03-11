@@ -5,7 +5,7 @@ export function CastCardSkeleton({
 }) {
   return (
     <div
-      className="flex flex-col items-center text-center p-2 w-28 sm:w-32 flex-shrink-0 animate-pulse"
+      className="flex flex-col items-center text-center p-2 w-28 sm:w-32 shrink-0 animate-pulse"
       role="listitem"
     >
       {/* Image Skeleton */}

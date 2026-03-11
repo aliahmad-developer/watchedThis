@@ -67,8 +67,7 @@ export function TrendingCarouselSkeleton() {
   const { isMobile, itemWidth, itemHeight, posterWidth, posterHeight, gap } = dims;
 
   return (
-    <section
-      className={`relative w-full ${isMobile ? "px-0" : "px-4"}`}
+    <section className={`relative w-full ${isMobile ? "px-3" : "px-4"}`}
       aria-label="Trending skeleton"
     >
       <div className="h-8 bg-light-border dark:bg-dark-border rounded w-1/4 mb-6 animate-pulse" />

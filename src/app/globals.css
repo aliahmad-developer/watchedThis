@@ -87,9 +87,9 @@ html {
   body {
     @apply bg-light-bg dark:bg-dark-bg;
   }
-  h2{
-    @apply text-light-header dark:text-dark-header text-2xl font-bold;
-  }
+  h2 {
+  @apply text-light-header dark:text-dark-header text-lg sm:text-xl lg:text-2xl font-bold;
+}
 }
 
 @layer components {

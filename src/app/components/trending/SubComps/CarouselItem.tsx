@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import { MediaItem } from "./types";
@@ -25,7 +25,8 @@ export function CarouselItem({
     .replace(/(^-|-$)/g, "");
   const href = `/${mediaType}/${mediaTitle}/${item.id}`;
 
-  const itemHeight = (itemWidth * 3) / 2; 
+  const posterWidth = showSidebar ? itemWidth - 44 : itemWidth;
+  const itemHeight = (posterWidth * 3) / 2;
 
   return (
     <div
@@ -38,7 +39,7 @@ export function CarouselItem({
         {showSidebar && (
           <div
             className="hidden md:flex flex-col justify-between mr-3 w-8"
-            style={{ height: `${itemHeight}px` }}
+            style={{ height: `${itemHeight}px` }} // now uses posterWidth-based height ✓
           >
             <div className="flex-1 flex justify-center pt-4">
               <p
@@ -58,7 +59,7 @@ export function CarouselItem({
         <Link
           href={href}
           className="relative lg:md:rounded-lg overflow-hidden shadow-xl block hover:scale-105 transition-transform duration-300 ease-out"
-          style={{ width: `${itemWidth}px`, height: `${itemHeight}px` }}
+          style={{ width: `${posterWidth}px`, height: `${itemHeight}px` }}
           prefetch={isPriority}
         >
           {/* Mobile badge */}
