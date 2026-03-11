@@ -9,24 +9,25 @@ interface NavigationButtonsProps {
 }
 
 export function NavigationButtons({ onLeft, onRight, canGoLeft, canGoRight, itemHeight }: NavigationButtonsProps) {
-  const buttonHeight = (itemHeight - 16) / 2;
+  const GAP = 16; // gap-4
+  const buttonHeight = (itemHeight - GAP) / 2;
   const baseBtnClasses =
     "w-14 rounded-md shadow-lg flex items-center justify-center transition-all duration-200";
 
   return (
     <div
-      className="hidden md:flex flex-col gap-4 ml-2 shrink-0"
-      style={{ height: `${itemHeight}px` }}
+      className="hidden md:flex flex-col ml-2 shrink-0"
+      style={{ height: `${itemHeight}px`, gap: `${GAP}px` }}
     >
       <button
         onClick={onLeft}
         disabled={!canGoLeft}
+        style={{ height: `${buttonHeight}px` }}
         className={`${baseBtnClasses} ${
           !canGoLeft
             ? "bg-gray-400 dark:bg-gray-600 opacity-40 cursor-not-allowed"
             : "bg-gray-500 dark:bg-gray-700 hover:bg-light-accent dark:hover:bg-dark-accent hover:scale-105 active:scale-95"
         }`}
-        style={{ height: `${buttonHeight}px` }}
         aria-label="Scroll left"
       >
         <ChevronLeft size={28} />
@@ -34,15 +35,15 @@ export function NavigationButtons({ onLeft, onRight, canGoLeft, canGoRight, item
       <button
         onClick={onRight}
         disabled={!canGoRight}
+        style={{ height: `${buttonHeight}px` }}
         className={`${baseBtnClasses} ${
           !canGoRight
             ? "bg-gray-400 dark:bg-gray-600 opacity-40 cursor-not-allowed"
             : "bg-gray-500 dark:bg-gray-700 hover:bg-light-accent dark:hover:bg-dark-accent hover:scale-105 active:scale-95"
         }`}
-        style={{ height: `${buttonHeight}px` }}
         aria-label="Scroll right"
       >
-        <ChevronRight size={28}  />
+        <ChevronRight size={28} />
       </button>
     </div>
   );

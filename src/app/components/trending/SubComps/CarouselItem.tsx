@@ -39,7 +39,7 @@ export function CarouselItem({
         {showSidebar && (
           <div
             className="hidden md:flex flex-col justify-between mr-3 w-8"
-            style={{ height: `${itemHeight}px` }} // now uses posterWidth-based height ✓
+            style={{ height: `${itemHeight}px` }}
           >
             <div className="flex-1 flex justify-center pt-4">
               <p

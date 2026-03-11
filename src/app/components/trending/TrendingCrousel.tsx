@@ -92,7 +92,8 @@ export default function TrendingCarouselClient() {
 
   const isReady2Render =
     !loading && isClient && itemWidth > 0 && media.length > 0;
-  const itemHeight = itemWidth > 0 ? (itemWidth * 3) / 2 : 0;
+  const posterWidth = isMobile ? itemWidth : itemWidth - 44;
+  const itemHeight = posterWidth > 0 ? (posterWidth * 3) / 2 : 0;
   const gap = isMobile ? MOBILE_GAP : GAP;
 
   // Base translate from carousel index
