@@ -35,7 +35,7 @@ const DesktopContent = ({
     <div className="flex items-center px-8 lg:px-10 w-full md:w-1/2 z-20 relative">
       <div className="space-y-4 lg:space-y-5 max-w-xl">
         {showSpotlightNumber && (
-          <div className="text-sm font-medium text-light-header dark:text-dark-disabled">
+          <div className="text-md font-medium text-light-header dark:text-dark-disabled">
             #{index + 1} Spotlight
           </div>
         )}

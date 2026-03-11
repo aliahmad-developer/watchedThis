@@ -1,24 +1,23 @@
 'use client'
 import React, { useEffect, useState, useRef, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createSlug } from "../components/utilities/createSlug";
 import MediaCard from "../components/mediaCard/mediaCard";
 import Link from "next/link";
+import { smartSearch, MediaResult } from "../components/utilities/search/searchFuse";
 
-// Skeleton component for loading state
+// ── Skeleton ──────────────────────────────────────────────────
+
 function SearchSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header skeleton */}
-      <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mb-6 animate-pulse"></div>
-      
-      {/* Results grid skeleton */}
+      <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mb-6 animate-pulse" />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2">
-        {Array.from({ length: 10 }).map((_, index) => (
-          <div key={index} className="animate-pulse">
-            <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-2/3 w-full mb-2"></div>
-            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
-            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-2/3 w-full mb-2" />
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1" />
+            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
           </div>
         ))}
       </div>
@@ -26,17 +25,19 @@ function SearchSkeleton() {
   );
 }
 
-// Inner component that uses useSearchParams
+// ── Search content ────────────────────────────────────────────
+
 function SearchContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const query = searchParams.get("q") || "";
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const searchParams  = useSearchParams();
+  const query         = searchParams.get("q") || "";
+
+  const [results,     setResults]     = useState<MediaResult[]>([]);
+  const [loading,     setLoading]     = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
+  const [page,        setPage]        = useState(1);
+  const [hasMore,     setHasMore]     = useState(true);
+
   const observer = useRef<IntersectionObserver | null>(null);
 
   const lastItemRef = useCallback(
@@ -50,8 +51,15 @@ function SearchContent() {
       });
       if (node) observer.current.observe(node);
     },
-    [loading, loadingMore, hasMore]
+    [loading, loadingMore, hasMore],
   );
+
+  // Reset to page 1 when query changes
+  useEffect(() => {
+    setPage(1);
+    setResults([]);
+    setHasMore(true);
+  }, [query]);
 
   useEffect(() => {
     if (!query) return;
@@ -65,16 +73,12 @@ function SearchContent() {
           setLoadingMore(true);
         }
 
-        const res = await fetch(
-          `/api/search?query=${encodeURIComponent(query)}&page=${page}`
-        );
-        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-        const data = await res.json();
+        const data = await smartSearch(query, page);
 
         setResults((prev) =>
-          page === 1 ? data.results : [...prev, ...data.results]
+          page === 1 ? data.results : [...prev, ...data.results],
         );
-        setHasMore(data.results.length > 0);
+        setHasMore(data.has_more);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Search failed");
       } finally {
@@ -83,28 +87,20 @@ function SearchContent() {
       }
     };
 
-    const timer = setTimeout(() => {
-      fetchResults();
-    }, 300);
-
+    const timer = setTimeout(fetchResults, 300);
     return () => clearTimeout(timer);
   }, [query, page]);
 
   useEffect(() => {
-    return () => {
-      if (observer.current) {
-        observer.current.disconnect();
-      }
-    };
+    return () => { observer.current?.disconnect(); };
   }, []);
 
   if (!query) return <p className="text-center mt-8">No query provided.</p>;
-  if (error)
-    return <div className="text-red-500 text-center mt-8">{error}</div>;
+  if (error)  return <div className="text-red-500 text-center mt-8">{error}</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Search Results for "{query}"</h1>
+    <div className="container mx-auto px-4 py-8 min-h-180">
+      <h1 className="text-center text-2xl font-bold mb-6">Search Results for "{query}"</h1>
 
       {loading ? (
         <SearchSkeleton />
@@ -121,9 +117,7 @@ function SearchContent() {
                   className="transition-opacity duration-300"
                 >
                   <Link
-                    href={`/${item.media_type}/${createSlug(
-                      item.title || item.name
-                    )}/${item.id}`}
+                    href={`/${item.media_type}/${createSlug(item.title || item.name || "")}/${item.id}`}
                     passHref
                   >
                     <MediaCard item={item} />
@@ -136,11 +130,11 @@ function SearchContent() {
           {loadingMore && (
             <div className="w-full flex justify-center py-8">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2 w-full">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div key={`loading-${index}`} className="animate-pulse">
-                    <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-2/3 w-full mb-2"></div>
-                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1"></div>
-                    <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={`loading-${i}`} className="animate-pulse">
+                    <div className="bg-gray-300 dark:bg-gray-700 rounded-lg aspect-2/3 w-full mb-2" />
+                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-1" />
+                    <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
                   </div>
                 ))}
               </div>
@@ -149,16 +143,15 @@ function SearchContent() {
         </>
       ) : (
         <div className="flex items-center justify-center min-h-[50vh]">
-          <p className="text-lg text-gray-500">
-            No results found for "{query}"
-          </p>
+          <p className="text-lg text-gray-500">No results found for "{query}"</p>
         </div>
       )}
     </div>
   );
 }
 
-// Main component with Suspense
+// ── Main export ───────────────────────────────────────────────
+
 export default function SearchClientPage() {
   return (
     <Suspense fallback={<SearchSkeleton />}>

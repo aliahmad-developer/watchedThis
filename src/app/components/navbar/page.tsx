@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import {trackSearch} from "../../components/Recommendation/behaviourTracker";
+import Fuse from "fuse.js";
+import { trackSearch } from "../../components/Recommendation/behaviourTracker";
 import AuthButton from "../../components/auth/navButton/authButton";
 import { useState, useEffect, FormEvent, ChangeEvent, useRef } from "react";
 import Link from "next/link";
@@ -18,6 +19,47 @@ import SearchInput from "../utilities/search/searchInput";
 import SearchButton from "../utilities/search/searchButton";
 import SearchResultsDropdown from "../utilities/search/searchResultsDropdown";
 import { MediaResult } from "../utilities/search/searchInput";
+
+// ── Search helpers ────────────────────────────────────────────
+
+async function fetchTMDB(query: string): Promise<MediaResult[]> {
+  try {
+    const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.results) ? data.results : [];
+  } catch {
+    return [];
+  }
+}
+
+// Fire original query + each individual meaningful word as its own TMDB search,
+// then merge all results. Handles partial/misspelled multi-word queries because
+// TMDB partial-matches individual tokens even when the full garbled string fails.
+// e.g. "gaem of thron" → also fires "gaem", "thron" → TMDB matches "thron" → Game of Thrones
+async function fetchAllVariants(query: string): Promise<MediaResult[]> {
+  const words = query
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 3);
+
+  const variants = [...new Set([query, ...words])];
+  const allResults = await Promise.all(variants.map(fetchTMDB));
+
+  const seen = new Set<number>();
+  const merged: MediaResult[] = [];
+  for (const results of allResults) {
+    for (const item of results) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        merged.push(item);
+      }
+    }
+  }
+  return merged;
+}
+
+// ── Component ─────────────────────────────────────────────────
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -50,7 +92,7 @@ export default function Navbar() {
     router.prefetch("/find");
   }, [router]);
 
-  // Debounced search
+  // Debounced search — multi-variant fetch + Fuse re-rank
   useEffect(() => {
     const fetchResults = async () => {
       if (searchQuery.length < 2) {
@@ -59,12 +101,31 @@ export default function Navbar() {
       }
       setIsSearchLoading(true);
       try {
-        const res = await fetch(
-          `/api/search?query=${encodeURIComponent(searchQuery)}`
-        );
-        const data = await res.json();
-        const list = Array.isArray(data.results) ? data.results : [];
-        setSearchResults(list.slice(0, 5));
+        // 1. Fetch all variants in parallel and merge
+        const merged = await fetchAllVariants(searchQuery);
+
+        // 2. Fuse re-ranks the merged pool against the original query
+        const fuse = new Fuse(merged, {
+          keys: [
+            { name: "title",         weight: 0.6 },
+            { name: "name",          weight: 0.6 },
+            { name: "original_name", weight: 0.3 },
+          ],
+          threshold: 0.5,       // generous — pool already came from TMDB
+          distance: 200,
+          minMatchCharLength: 2,
+          includeScore: true,
+          ignoreLocation: true,
+        });
+
+        const fuseResults = fuse.search(searchQuery);
+
+        // Use Fuse order if it matched, else fall back to merged order
+        const reranked = fuseResults.length > 0
+          ? fuseResults.map((r) => r.item)
+          : merged;
+
+        setSearchResults(reranked.slice(0, 5));
       } catch (err) {
         console.error("Search error:", err);
         setSearchResults([]);
@@ -77,7 +138,7 @@ export default function Navbar() {
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
 
-  // Close dropdown when clicking outside
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -95,14 +156,8 @@ export default function Navbar() {
 
   // Lock body scroll when drawer is open
   useEffect(() => {
-    if (drawerOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
   const handleSearchToggle = () => {
@@ -145,9 +200,9 @@ export default function Navbar() {
   };
 
   const navItems = [
-    { label: "Random", icon: faShuffle, href: "/random" },
-    { label: "Spinner", icon: faSpinner, href: "/spinner" },
-    { label: "Find", icon: faMagnifyingGlass, href: "/find" },
+    { label: "Random", icon: faShuffle,        href: "/random"  },
+    { label: "Spinner", icon: faSpinner,        href: "/spinner" },
+    { label: "Find",   icon: faMagnifyingGlass, href: "/find"    },
   ];
 
   return (
@@ -155,9 +210,7 @@ export default function Navbar() {
       <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2 top-0 z-50">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center justify-between w-full sm:w-auto">
-
             <div className="flex items-center gap-3">
-              {/* Hamburger button — mobile only */}
               <button
                 className="sm:hidden bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
                 onClick={() => setDrawerOpen(true)}
@@ -166,20 +219,13 @@ export default function Navbar() {
                 <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
               </button>
 
-              <Link
-                href="/"
-                className="text-lg font-bold text-dark-accent whitespace-nowrap"
-              >
+              <Link href="/" className="text-lg font-bold text-dark-accent whitespace-nowrap">
                 RandoMovie
               </Link>
             </div>
 
             <div className="flex items-center gap-2 sm:hidden">
-              <SearchButton
-                isActive={searchVisible}
-                onClick={handleSearchToggle}
-                size="sm"
-              />
+              <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
               <Toggle size="sm" />
               <AuthButton />
             </div>
@@ -192,9 +238,7 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={(e) =>
-                    item.label === "Random" && handleRandomClick(e)
-                  }
+                  onClick={(e) => item.label === "Random" && handleRandomClick(e)}
                   className={`flex flex-col items-center justify-center font-medium transition-colors duration-200 ${
                     pathname === item.href
                       ? "text-light-accent dark:text-dark-accent"
@@ -209,11 +253,7 @@ export default function Navbar() {
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
-            <SearchButton
-              isActive={searchVisible}
-              onClick={handleSearchToggle}
-              size="sm"
-            />
+            <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
             <Toggle size="sm" />
             <AuthButton />
           </div>
@@ -223,23 +263,17 @@ export default function Navbar() {
       {/* ── Mobile Drawer ── */}
       {hasMounted && (
         <>
-          {/* Backdrop overlay */}
           <div
             onClick={() => setDrawerOpen(false)}
             className={`sm:hidden fixed inset-0 z-50 bg-black transition-opacity duration-300 ${
-              drawerOpen
-                ? "opacity-50 pointer-events-auto"
-                : "opacity-0 pointer-events-none"
+              drawerOpen ? "opacity-50 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
           />
-
-          {/* Sliding panel */}
           <div
             className={`sm:hidden fixed top-0 left-0 z-50 h-full w-64 bg-light-nav dark:bg-dark-nav shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
               drawerOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
-            {/* Drawer header */}
             <div className="bg-transparent flex items-center justify-between px-4 py-4 border-b border-light-border dark:border-dark-border">
               <Link
                 href="/"
@@ -257,7 +291,6 @@ export default function Navbar() {
               </button>
             </div>
 
-            {/* Drawer nav links */}
             <nav className="flex flex-col gap-1 px-3 py-4 flex-1">
               {navItems.map((item) => (
                 <Link

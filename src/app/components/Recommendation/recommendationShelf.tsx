@@ -151,7 +151,7 @@ function SkeletonCard() {
 
 function ShelfSkeleton() {
   return (
-    <section className="my-8 lg:mx-5">
+    <section className="my-4 lg:mx-5">
       <div className="flex items-center gap-2 mb-4 px-1">
         <div className="w-4 h-4 rounded bg-light-border dark:bg-dark-border animate-pulse" />
         <div className="w-44 h-5 rounded bg-light-border dark:bg-dark-border animate-pulse" />
@@ -198,7 +198,7 @@ function GuestCTA() {
   const [authOpen, setAuthOpen] = useState(false);
 
   return (
-    <section className="my-8">
+    <section className="my-4">
       <div className="flex items-center gap-2 mb-6 px-1">
         <FontAwesomeIcon
           icon={faWandMagicSparkles}
@@ -297,7 +297,7 @@ export default function RecommendationShelf({
   if (!isLoading && (error || recommendations.length === 0)) return null;
 
   return (
-    <section className="my-8 lg:mx-5">
+    <section className="my-4 lg:mx-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-2">
