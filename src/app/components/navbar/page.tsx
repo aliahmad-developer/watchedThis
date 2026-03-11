@@ -33,10 +33,6 @@ async function fetchTMDB(query: string): Promise<MediaResult[]> {
   }
 }
 
-// Fire original query + each individual meaningful word as its own TMDB search,
-// then merge all results. Handles partial/misspelled multi-word queries because
-// TMDB partial-matches individual tokens even when the full garbled string fails.
-// e.g. "gaem of thron" → also fires "gaem", "thron" → TMDB matches "thron" → Game of Thrones
 async function fetchAllVariants(query: string): Promise<MediaResult[]> {
   const words = query
     .trim()
@@ -59,8 +55,6 @@ async function fetchAllVariants(query: string): Promise<MediaResult[]> {
   return merged;
 }
 
-// ── Component ─────────────────────────────────────────────────
-
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -71,9 +65,11 @@ export default function Navbar() {
   const [isFocused, setIsFocused] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const lastScrollY = useRef(0);
 
   // Route change reset
   useEffect(() => {
@@ -92,6 +88,25 @@ export default function Navbar() {
     router.prefetch("/find");
   }, [router]);
 
+  // Scroll-aware show/hide — 10px threshold, pinned while search is open
+  useEffect(() => {
+    const handleScroll = () => {
+      if (searchVisible) return;
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+      if (Math.abs(delta) < 10) return;
+      setNavVisible(currentY < 10 || delta < 0);
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [searchVisible]);
+
+  // Always keep nav visible while search is open
+  useEffect(() => {
+    if (searchVisible) setNavVisible(true);
+  }, [searchVisible]);
+
   // Debounced search — multi-variant fetch + Fuse re-rank
   useEffect(() => {
     const fetchResults = async () => {
@@ -101,17 +116,15 @@ export default function Navbar() {
       }
       setIsSearchLoading(true);
       try {
-        // 1. Fetch all variants in parallel and merge
         const merged = await fetchAllVariants(searchQuery);
 
-        // 2. Fuse re-ranks the merged pool against the original query
         const fuse = new Fuse(merged, {
           keys: [
             { name: "title",         weight: 0.6 },
             { name: "name",          weight: 0.6 },
             { name: "original_name", weight: 0.3 },
           ],
-          threshold: 0.5,       // generous — pool already came from TMDB
+          threshold: 0.5,
           distance: 200,
           minMatchCharLength: 2,
           includeScore: true,
@@ -120,7 +133,6 @@ export default function Navbar() {
 
         const fuseResults = fuse.search(searchQuery);
 
-        // Use Fuse order if it matched, else fall back to merged order
         const reranked = fuseResults.length > 0
           ? fuseResults.map((r) => r.item)
           : merged;
@@ -207,58 +219,103 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2 top-0 z-50">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center justify-between w-full sm:w-auto">
-            <div className="flex items-center gap-3">
-              <button
-                className="sm:hidden bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
-                onClick={() => setDrawerOpen(true)}
-                aria-label="Open menu"
-              >
-                <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
-              </button>
+      {/*
+        Fixed wrapper that slides with scroll.
+        The navbar + search input + dropdown all live here so they
+        move together. Content below is NOT pushed — it overlaps.
+      */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
+          navVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        {/* ── Main Navbar — layout identical to original ── */}
+        <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <div className="flex items-center gap-3">
+                <button
+                  className="sm:hidden bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
+                  onClick={() => setDrawerOpen(true)}
+                  aria-label="Open menu"
+                >
+                  <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
+                </button>
 
-              <Link href="/" className="text-lg font-bold text-dark-accent whitespace-nowrap">
-                RandoMovie
-              </Link>
+                <Link href="/" className="text-lg font-bold text-dark-accent whitespace-nowrap">
+                  RandoMovie
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-2 sm:hidden">
+                <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
+                <Toggle size="sm" />
+                <AuthButton />
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:hidden">
+            {/* Desktop nav pills */}
+            <div className="hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-65">
+              <div className="flex justify-evenly items-center gap-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1 px-2 shadow-sm text-xs sm:text-sm">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => item.label === "Random" && handleRandomClick(e)}
+                    className={`flex flex-col items-center justify-center font-medium transition-colors duration-200 ${
+                      pathname === item.href
+                        ? "text-light-accent dark:text-dark-accent"
+                        : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={item.icon} className="h-3 mb-0.5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2">
               <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
               <Toggle size="sm" />
               <AuthButton />
             </div>
           </div>
+        </nav>
 
-          {/* Desktop nav pills */}
-          <div className="hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-65">
-            <div className="flex justify-evenly items-center gap-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1 px-2 shadow-sm text-xs sm:text-sm">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={(e) => item.label === "Random" && handleRandomClick(e)}
-                  className={`flex flex-col items-center justify-center font-medium transition-colors duration-200 ${
-                    pathname === item.href
-                      ? "text-light-accent dark:text-dark-accent"
-                      : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
-                  }`}
-                >
-                  <FontAwesomeIcon icon={item.icon} className="h-3 mb-0.5" />
-                  {item.label}
-                </Link>
-              ))}
+        {/* ── Search Input — directly below navbar, overlaps page content ── */}
+        {hasMounted && searchVisible && (
+          <div className="w-full bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
+            <div className="relative w-full">
+              <SearchInput
+                clearInput={handleClearInput}
+                searchQuery={searchQuery}
+                onSearchSubmit={handleSearchSubmit}
+                onInputChange={handleInputChange}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                className="w-full text-sm"
+                inputRef={(el) => {
+                  inputRef.current = el;
+                  if (el) el.focus();
+                }}
+              />
             </div>
           </div>
+        )}
 
-          <div className="hidden sm:flex items-center gap-2">
-            <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
-            <Toggle size="sm" />
-            <AuthButton />
+        {/* ── Search Results Dropdown — floats over page content ── */}
+        {searchVisible && isFocused && searchQuery.length >= 2 && (
+          <div ref={dropdownRef} className="px-4">
+            <SearchResultsDropdown
+              results={searchResults}
+              searchQuery={searchQuery}
+              isLoading={isSearchLoading}
+              onClose={handleCloseDropdown}
+            />
           </div>
-        </div>
-      </nav>
+        )}
+      </div>
 
       {/* ── Mobile Drawer ── */}
       {hasMounted && (
@@ -310,45 +367,10 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
+              
             </nav>
           </div>
         </>
-      )}
-
-      {/* Search Input */}
-      {hasMounted && searchVisible && (
-        <div className="absolute left-0 right-0 top-14 z-50 bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
-          <div className="relative w-full">
-            <SearchInput
-              clearInput={handleClearInput}
-              searchQuery={searchQuery}
-              onSearchSubmit={handleSearchSubmit}
-              onInputChange={handleInputChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-              className="w-full text-sm"
-              inputRef={(el) => {
-                inputRef.current = el;
-                if (el) el.focus();
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Search Results Dropdown */}
-      {searchVisible && isFocused && searchQuery.length >= 2 && (
-        <div
-          ref={dropdownRef}
-          className="absolute left-0 right-0 top-26 sm:top-30 z-40 px-4"
-        >
-          <SearchResultsDropdown
-            results={searchResults}
-            searchQuery={searchQuery}
-            isLoading={isSearchLoading}
-            onClose={handleCloseDropdown}
-          />
-        </div>
       )}
     </>
   );
