@@ -9,13 +9,14 @@ import AuthPage from "../auth/authPage";
 import MediaCard from "../../components/mediaCard/mediaCard";
 
 const FILTERS: { label: string; value: ListStatus }[] = [
-  { label: "Favourites",    value: "favourite"     },
+  { label: "Favourites", value: "favourite" },
   { label: "Plan to Watch", value: "plan_to_watch" },
-  { label: "Completed",     value: "completed"     },
+  { label: "Completed", value: "completed" },
 ];
 
 export default function ListsPage() {
-  const { items, loading, isAuthenticated, authLoading, removeItem } = useUserLists();
+  const { items, loading, isAuthenticated, authLoading, removeItem } =
+    useUserLists();
   const [activeFilter, setActiveFilter] = useState<ListStatus>("favourite");
   const [removing, setRemoving] = useState<number | null>(null);
 
@@ -62,13 +63,16 @@ export default function ListsPage() {
               key={value}
               onClick={() => setActiveFilter(value)}
               className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium text-sm transition
-                ${isActive
-                  ? "bg-light-accent dark:bg-dark-accent text-white"
-                  : "bg-light-card dark:bg-dark-card text-light-secondary-text dark:text-dark-secondary-text hover:bg-light-border dark:hover:bg-dark-border"
+                ${
+                  isActive
+                    ? "bg-light-accent dark:bg-dark-accent text-white"
+                    : "bg-light-card dark:bg-dark-card text-light-secondary-text dark:text-dark-secondary-text hover:bg-light-border dark:hover:bg-dark-border"
                 }`}
             >
               {label}
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-light-border dark:bg-dark-border"}`}>
+              <span
+                className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-light-border dark:bg-dark-border"}`}
+              >
                 {count}
               </span>
             </button>
@@ -80,13 +84,17 @@ export default function ListsPage() {
       {loading ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="aspect-2/3 rounded-xl bg-light-card dark:bg-dark-card animate-pulse" />
+            <div
+              key={i}
+              className="aspect-2/3 rounded-xl bg-light-card dark:bg-dark-card animate-pulse"
+            />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
           <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
-            Nothing in {FILTERS.find((f) => f.value === activeFilter)?.label} yet
+            Nothing in {FILTERS.find((f) => f.value === activeFilter)?.label}{" "}
+            yet
           </p>
         </div>
       ) : (
@@ -102,19 +110,20 @@ export default function ListsPage() {
                   media_type: item.mediaType,
                 }}
               />
-              {/* Remove button — appears on hover */}
               <button
                 onClick={(e) => handleRemove(e, item.mediaId)}
                 disabled={removing === item.mediaId}
                 className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center
-                  rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100
-                  transition-opacity hover:bg-red-500 disabled:opacity-50"
-                title="Remove from library."
+  rounded-full bg-black/60 text-white z-10
+  opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity
+  hover:bg-red-500 disabled:opacity-50"
+                title="Remove from library"
               >
-                {removing === item.mediaId
-                  ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
-                  : <FontAwesomeIcon icon={faTimes} className="h-2.5 w-2.5" />
-                }
+                {removing === item.mediaId ? (
+                  <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
+                ) : (
+                  <FontAwesomeIcon icon={faTimes} className="h-2.5 w-2.5" />
+                )}
               </button>
             </div>
           ))}
