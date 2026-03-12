@@ -31,7 +31,7 @@ export default function ListsPage() {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
-          Sign in to view your lists
+          Sign in to visit your library.
         </p>
         <div className="w-full max-w-md">
           <AuthPage />
@@ -109,7 +109,7 @@ export default function ListsPage() {
                 className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center
                   rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100
                   transition-opacity hover:bg-red-500 disabled:opacity-50"
-                title="Remove from list"
+                title="Remove from library."
               >
                 {removing === item.mediaId
                   ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />

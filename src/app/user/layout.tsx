@@ -8,7 +8,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   const links = [
     { href: "/user/profile", label: "Profile" },
-    { href: "/user/lists",   label: "Lists"   },
+    { href: "/user/library",   label: "Library"   },
   ];
 
   return (
