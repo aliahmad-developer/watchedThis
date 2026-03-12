@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "../../firebase/firebaseConfig";
 import { doc, setDoc, deleteDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "./useAuth";
-import { ListStatus } from "../../user/lists/types";
+import { ListStatus } from "../../user/library/types";
 
 interface MediaMeta {
   mediaId: number;

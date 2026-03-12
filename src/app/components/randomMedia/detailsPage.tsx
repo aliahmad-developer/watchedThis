@@ -1,9 +1,11 @@
 "use client";
+
 import Image from "next/image";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ColorThief from "color-thief-browser";
+import KeywordsSection from "./MediaInfo/KeywordSection";
 import MediaPoster from "./mediaPoster";
-import MediaInfo from "./MediaInfo";
+import MediaInfo from "./MediaInfo/mediaInfo";
 import MediaInfoSkeleton from "./MediaInfo/Skeleton/MainInfoSkeleton";
 import MediaPosterSkeleton from "./MediaInfo/Skeleton/PosterSkeleton";
 
@@ -26,8 +28,7 @@ const getBackdropSrc = (url: string): string =>
   url.startsWith("http") ? url : `https://image.tmdb.org/t/p/original${url}`;
 
 const buildAmbientColor = (
-  r: number, g: number, b: number,
-  isLightMode: boolean
+  r: number, g: number, b: number, isLightMode: boolean,
 ): { solid: string; rgb: string } => {
   const lum = calculateLuminance(r, g, b);
   if (isLightMode) {
@@ -108,51 +109,23 @@ export default function Desc({ data, backdropUrl = "", isLoading = false }: Desc
   const solidColor = ambient?.solid ?? fallbackSolid;
   const rgbColor = ambient?.rgb ?? fallbackRgb;
 
-  // Full-backdrop overlay — tints the ENTIRE image with the ambient color.
-  // Keeps the image visible but washes it with the dominant palette.
-  // Opacity is intentionally low (0.55) so the image still shows through.
   const fullTint = `rgba(${rgbColor}, 0.55)`;
-
-  // Left panel: fully opaque → transparent. Content lives here.
-  const layerLeft = `linear-gradient(
-    to right,
-    rgba(${rgbColor}, 1)   0%,
-    rgba(${rgbColor}, 1)   20%,
-    rgba(${rgbColor}, 0.85) 35%,
-    rgba(${rgbColor}, 0.5)  50%,
-    rgba(${rgbColor}, 0.15) 68%,
-    rgba(${rgbColor}, 0)    82%
-  )`;
-
-  // Bottom fade
-  const layerBottom = `linear-gradient(
-    to top,
-    rgba(${rgbColor}, 1)   0%,
-    rgba(${rgbColor}, 0.7) 10%,
-    rgba(${rgbColor}, 0.3) 22%,
-    rgba(${rgbColor}, 0)   38%
-  )`;
-
-  // Top vignette
-  const layerTop = `linear-gradient(
-    to bottom,
-    rgba(0,0,0,0.4) 0%,
-    rgba(0,0,0,0)   15%
-  )`;
+  const layerLeft = `linear-gradient(to right, rgba(${rgbColor}, 1) 0%, rgba(${rgbColor}, 1) 20%, rgba(${rgbColor}, 0.85) 35%, rgba(${rgbColor}, 0.5) 50%, rgba(${rgbColor}, 0.15) 68%, rgba(${rgbColor}, 0) 82%)`;
+  const layerBottom = `linear-gradient(to top, rgba(${rgbColor}, 1) 0%, rgba(${rgbColor}, 0.7) 10%, rgba(${rgbColor}, 0.3) 22%, rgba(${rgbColor}, 0) 38%)`;
+  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 15%)`;
 
   const textScheme: "light" | "dark" = isLightMode ? "dark" : "light";
+
+  const keywords: { id: number; name: string }[] =
+    data?.keywords?.keywords ?? data?.keywords?.results ?? [];
 
   return (
     <section
       className="relative w-full min-h-screen overflow-hidden"
-      style={{
-        backgroundColor: solidColor,
-        transition: "background-color 700ms ease-in-out",
-      }}
+      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
     >
       {hasBackdrop && (
         <div className="absolute inset-0">
-          {/* Backdrop image */}
           <Image
             ref={imgRef}
             src={getBackdropSrc(backdropUrl)}
@@ -168,43 +141,14 @@ export default function Desc({ data, backdropUrl = "", isLoading = false }: Desc
             placeholder="blur"
             blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
           />
-
-          {/* Full-backdrop ambient tint — colors the whole image */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundColor: fullTint,
-              transition: "background-color 700ms ease-in-out",
-            }}
-          />
-
-          {/* Left panel gradient — content side */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: layerLeft,
-              transition: "background 700ms ease-in-out",
-            }}
-          />
-
-          {/* Bottom fade */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: layerBottom,
-              transition: "background 700ms ease-in-out",
-            }}
-          />
-
-          {/* Top vignette */}
-          <div
-            className="absolute inset-0"
-            style={{ background: layerTop }}
-          />
+          <div className="absolute inset-0" style={{ backgroundColor: fullTint, transition: "background-color 700ms ease-in-out" }} />
+          <div className="absolute inset-0" style={{ background: layerLeft, transition: "background 700ms ease-in-out" }} />
+          <div className="absolute inset-0" style={{ background: layerBottom, transition: "background 700ms ease-in-out" }} />
+          <div className="absolute inset-0" style={{ background: layerTop }} />
         </div>
       )}
 
-      {/* Content */}
+      {/* Main content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
           <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">
@@ -215,6 +159,13 @@ export default function Desc({ data, backdropUrl = "", isLoading = false }: Desc
           </div>
         </div>
       </div>
+
+      {/* Keywords strip — bottom of backdrop */}
+      {!isLoading && keywords.length > 0 && (
+        <div className="relative z-10 px-4 sm:px-6 pb-6">
+          <KeywordsSection keywords={keywords} />
+        </div>
+      )}
     </section>
   );
 }

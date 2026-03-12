@@ -4,29 +4,16 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug?: string[] }> }
 ) {
-  const { slug = [] } = await params; 
+  const { slug = [] } = await params;
 
-  if (!Array.isArray(slug)) {
-    return NextResponse.json(
-      { error: "Invalid route parameters" },
-      { status: 400 }
-    );
+  if (!Array.isArray(slug) || slug.length < 2) {
+    return NextResponse.json({ error: "Invalid route parameters" }, { status: 400 });
   }
 
-  if (slug.length < 2) {
-    return NextResponse.json(
-      { error: "Incomplete route parameters" },
-      { status: 400 }
-    );
-  }
-
-  const [media_type, media_name_slug, id] = slug;
+  const [media_type, , id] = slug;
 
   if (!media_type || !id) {
-    return NextResponse.json(
-      { error: "Missing media type or ID" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing media type or ID" }, { status: 400 });
   }
 
   if (!["movie", "tv"].includes(media_type)) {
@@ -39,48 +26,36 @@ export async function GET(
 
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) {
-    return NextResponse.json(
-      { error: "TMDB API key not configured" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "TMDB API key not configured" }, { status: 500 });
   }
 
-  const url = `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${apiKey}&language=en-US&append_to_response=videos,images,release_dates,content_ratings`;
+  const detailsUrl = `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${apiKey}&language=en-US&append_to_response=videos,images,release_dates,content_ratings,keywords`;
+
+  const creditsUrl =
+    media_type === "movie"
+      ? `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}&language=en-US`
+      : `https://api.themoviedb.org/3/tv/${id}/aggregate_credits?api_key=${apiKey}&language=en-US`;
 
   try {
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (!res.ok) {
-      return NextResponse.json(
-        {
-          error: `TMDB API error: ${data.status_message || res.statusText}`,
-          code: res.status,
-        },
-        { status: res.status }
-      );
-    }
-    const detailsUrl = `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${apiKey}&language=en-US&append_to_response=videos,images,release_dates,content_ratings`;
-
-    const creditsUrl =
-      media_type === "movie"
-        ? `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}&language=en-US`
-        : `https://api.themoviedb.org/3/tv/${id}/aggregate_credits?api_key=${apiKey}&language=en-US`;
-
     const [detailsRes, creditsRes] = await Promise.all([
       fetch(detailsUrl),
       fetch(creditsUrl),
     ]);
 
-    const details = await detailsRes.json();
+    const data = await detailsRes.json();
     const credits = await creditsRes.json();
+
+    if (!detailsRes.ok) {
+      return NextResponse.json(
+        { error: `TMDB API error: ${data.status_message || detailsRes.statusText}`, code: detailsRes.status },
+        { status: detailsRes.status }
+      );
+    }
 
     let certification: string | null = null;
 
     if (media_type === "movie" && data.release_dates?.results) {
-      const usRelease = data.release_dates.results.find(
-        (r: any) => r.iso_3166_1 === "US"
-      );
+      const usRelease = data.release_dates.results.find((r: any) => r.iso_3166_1 === "US");
       if (usRelease?.release_dates?.length) {
         const theatrical =
           usRelease.release_dates.find((d: any) => d.type === 3) ||
@@ -88,9 +63,7 @@ export async function GET(
         certification = theatrical?.certification?.trim() || null;
       }
     } else if (media_type === "tv" && data.content_ratings?.results) {
-      const usRating = data.content_ratings.results.find(
-        (r: any) => r.iso_3166_1 === "US"
-      );
+      const usRating = data.content_ratings.results.find((r: any) => r.iso_3166_1 === "US");
       certification = usRating?.rating?.trim() || null;
     }
 
@@ -114,14 +87,12 @@ export async function GET(
       production_companies: data.production_companies,
       certification,
       credits,
+      keywords: data.keywords ?? null,
     };
 
     return NextResponse.json(transformedData);
   } catch (error) {
     console.error("TMDB API request failed:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch media data from TMDB" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch media data from TMDB" }, { status: 500 });
   }
 }

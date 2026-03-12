@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import slugify from "slugify";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
-import Loading from "../utilities/loading";
 import { MediaItem } from "./types";
 
 interface GenreMediaGridProps {
@@ -27,10 +23,8 @@ export function GenreMediaGrid({
   fetchMore,
   hasMore,
 }: GenreMediaGridProps) {
-  const router = useRouter();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // Infinite scroll observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -89,14 +83,9 @@ export function GenreMediaGrid({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 m-2">
         {mediaItems.map((item) => {
           const title = mediaType === "movie" ? item.title : item.name;
-          const slug = slugify(title || "", { lower: true, strict: true });
 
           return (
-            <Link
-              key={`${mediaType}-${item.id}`}
-              href={`/${mediaType}/${slug}/${item.id}`}
-              passHref
-            >
+           
               <MediaCard
                 key={`${mediaType}-${item.id}`}
                 item={{
@@ -108,7 +97,6 @@ export function GenreMediaGrid({
                   poster_path: item.poster_path || "/fallback-poster.png",
                 }}
               />
-            </Link>
           );
         })}
       </div>

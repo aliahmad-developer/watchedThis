@@ -1,5 +1,7 @@
+import Link from "next/link";
 import MediaPoster from "../randomMedia/mediaPoster";
 import { trackClick } from "../Recommendation/behaviourTracker";
+import { createSlug } from "../utilities/createSlug";
 
 interface MediaCardProps {
   item: {
@@ -10,10 +12,9 @@ interface MediaCardProps {
     media_type?: string;
     runtime?: number;
     episode_run_time?: number[];
-    
   };
-  displayTitle?: string; 
-  hideMetaData?: boolean; 
+  displayTitle?: string;
+  hideMetaData?: boolean;
 }
 
 export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCardProps) {
@@ -24,11 +25,15 @@ export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCar
       ? item.runtime
       : item.episode_run_time?.[0] || item.runtime;
 
+  const slug = createSlug(title);
+  const href = `/${mediaType}/${slug}/${item.id}`;
+
   return (
-    <div
-      className="p-2 group cursor-pointer rounded-xl hover:shadow-md transition"
+    <Link
+      href={href}
       draggable
-      onClick={() => trackClick(item.id, mediaType === "tv" ? "tv" : "movie")} 
+      onClick={() => trackClick(item.id, mediaType === "tv" ? "tv" : "movie")}
+      className="p-2 group cursor-pointer rounded-xl hover:shadow-md transition block"
     >
       {/* Poster */}
       <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl">
@@ -38,18 +43,16 @@ export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCar
       </div>
 
       {/* Title */}
-      <div className="mt-2 text-sm font-semibold text-center line-clamp-1 wrap-break-word">
+      <div className="mt-2 text-sm font-semibold text-center line-clamp-2 wrap-break-word">
         {title}
       </div>
 
       {/* Extra role/job if passed */}
-      {
-        displayTitle && (
-          <div className="mt-1 text-xs text-center text-gray-600 dark:text-gray-400 line-clamp-1">
-            {displayTitle}
-          </div>
-        )
-      }
+      {displayTitle && (
+        <div className="mt-1 text-xs text-center text-gray-600 dark:text-gray-400 line-clamp-1">
+          {displayTitle}
+        </div>
+      )}
 
       {/* Metadata */}
       {!hideMetaData && (
@@ -58,6 +61,6 @@ export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCar
           {duration ? <span>{duration} m</span> : null}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

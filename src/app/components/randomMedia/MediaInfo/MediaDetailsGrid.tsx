@@ -68,41 +68,78 @@ export default function MediaDetailsGrid({
   const shouldShowOriginalTitle = originalTitle.trim() && originalTitle !== displayTitle;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-      <div className="space-y-6">
-        {shouldShowOriginalTitle && (
-          <DetailItem label="Original Title" value={originalTitle} primaryClass={primaryClass} secondaryClass={secondaryClass} />
-        )}
-        {releaseDate && (
-          <DetailItem label={isMovie ? "Release Date" : "First Aired"} value={releaseDate} primaryClass={primaryClass} secondaryClass={secondaryClass} />
-        )}
-      </div>
+    <div className="grid grid-cols-2 gap-x-8 gap-y-5 content-start">
+      {shouldShowOriginalTitle && (
+        <div className="col-span-2">
+          <DetailItem
+            label="Original Title"
+            value={originalTitle}
+            primaryClass={primaryClass}
+            secondaryClass={secondaryClass}
+          />
+        </div>
+      )}
 
-      <div className="space-y-6">
-        {year && <DetailItem label="Year" value={year} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
-        {getDuration() && <DetailItem label="Duration" value={getDuration()} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
-        {getStatus() && <DetailItem label="Status" value={getStatus()} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
-      </div>
+      {releaseDate && (
+        <DetailItem
+          label={isMovie ? "Release Date" : "First Aired"}
+          value={releaseDate}
+          primaryClass={primaryClass}
+          secondaryClass={secondaryClass}
+        />
+      )}
 
-      <div className="space-y-6">
-        {getScore() && <DetailItem label="Score" value={getScore()} primaryClass={primaryClass} secondaryClass={secondaryClass} />}
+      {year && (
+        <DetailItem
+          label="Year"
+          value={year}
+          primaryClass={primaryClass}
+          secondaryClass={secondaryClass}
+        />
+      )}
 
-        {genres.length > 0 && (
-          <div>
-            <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>Genres</h4>
-            <GenreTags genres={genres} />
-          </div>
-        )}
+      {getDuration() && (
+        <DetailItem
+          label="Duration"
+          value={getDuration()}
+          primaryClass={primaryClass}
+          secondaryClass={secondaryClass}
+        />
+      )}
 
-        {companies.length > 0 && (
-          <div>
-            <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>
-              {isMovie ? "Production" : "Studio"}
-            </h4>
-            <ProductionList companies={companies} />
-          </div>
-        )}
-      </div>
+      {getStatus() && (
+        <DetailItem
+          label="Status"
+          value={getStatus()}
+          primaryClass={primaryClass}
+          secondaryClass={secondaryClass}
+        />
+      )}
+
+      {getScore() && (
+        <DetailItem
+          label="Score"
+          value={getScore()}
+          primaryClass={primaryClass}
+          secondaryClass={secondaryClass}
+        />
+      )}
+
+      {genres.length > 0 && (
+        <div className="col-span-2">
+          <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>Genres</h4>
+          <GenreTags genres={genres} />
+        </div>
+      )}
+
+      {companies.length > 0 && (
+        <div className="col-span-2">
+          <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>
+            {isMovie ? "Production" : "Studio"}
+          </h4>
+          <ProductionList companies={companies} />
+        </div>
+      )}
     </div>
   );
 }

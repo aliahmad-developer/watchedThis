@@ -35,7 +35,7 @@ export default function MediaInfo({
   };
 
   return (
-    <div className={`flex flex-col gap-8 ${textClasses.body}`}>
+    <div className={`flex flex-col gap-6 ${textClasses.body}`}>
       <TitleSection
         title={displayTitle}
         certification={data.certification}
@@ -43,8 +43,11 @@ export default function MediaInfo({
         primaryClass={textClasses.primary}
         secondaryClass={textClasses.secondary}
       />
-      <div className="flex flex-col lg:flex-row gap-10 w-full">
-        <div className="flex-1 space-y-6">
+
+      {/* Two-column layout: left = actions + overview, right = details */}
+      <div className="flex flex-col lg:flex-row gap-8 w-full">
+        {/* Left col */}
+        <div className="flex-1 flex flex-col gap-5">
           <ActionButtons
             mediaId={data.id}
             mediaType={mediaType}
@@ -54,7 +57,9 @@ export default function MediaInfo({
           />
           <OverviewSection overview={overview} bodyClass={textClasses.body} />
         </div>
-        <div className="flex-1">
+
+        {/* Right col */}
+        <div className="lg:w-[42%] shrink-0">
           <MediaDetailsGrid
             data={data}
             displayTitle={displayTitle}

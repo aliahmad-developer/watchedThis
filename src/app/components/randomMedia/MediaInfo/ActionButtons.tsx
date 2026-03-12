@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlay, faChevronDown, faCheck, faLock } from "@fortawesome/free-solid-svg-icons";
 import { useUserList } from "../../hooks/useUserList";
-import { ListStatus } from "../../../user/lists/types";
+import { ListStatus } from "../../../user/library/types";
 import toast from "react-hot-toast";
 
 interface ActionButtonsProps {

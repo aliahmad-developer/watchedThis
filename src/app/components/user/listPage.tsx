@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { useUserLists, ListItem } from "../hooks/useUserLists";
-import { ListStatus } from "../../user/lists/types";
+import { ListStatus } from "../../user/library/types";
 import AuthPage from "../auth/authPage";
 import MediaCard from "../../components/mediaCard/mediaCard";
 

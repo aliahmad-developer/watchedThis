@@ -1,38 +1,37 @@
 import MediaDetailsGridSkeleton from "./MediaDetailsGridSkeleton";
+
 export default function MediaInfoSkeleton() {
   return (
-    <div className="flex flex-col gap-8 animate-pulse">
-      {/* Title Section Skeleton */}
+    <div className="flex flex-col gap-6 animate-pulse">
+      {/* Title */}
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-6 bg-light-border dark:bg-dark-border rounded"></div>
-          <div className="h-10 bg-light-border dark:bg-dark-border rounded w-3/4"></div>
+          <div className="w-12 h-6 bg-light-border dark:bg-dark-border rounded" />
+          <div className="h-10 bg-light-border dark:bg-dark-border rounded w-3/4" />
         </div>
-        <div className="h-5 bg-light-border dark:bg-dark-border rounded w-1/2"></div>
+        <div className="h-5 bg-light-border dark:bg-dark-border rounded w-1/2" />
       </div>
 
-      {/* Content Layout */}
-      <div className="flex flex-col lg:flex-row gap-10 w-full">
-        {/* Left Column */}
-        <div className="flex-1 space-y-6">
-          {/* Action Buttons Skeleton */}
-          <div className="flex flex-wrap gap-4">
-            <div className="w-32 h-10 bg-light-border dark:bg-dark-border rounded-full"></div>
-            <div className="w-32 h-10 bg-light-border dark:bg-dark-border rounded-full"></div>
+      {/* Two-column layout */}
+      <div className="flex flex-col lg:flex-row gap-8 w-full">
+        {/* Left col: actions + overview */}
+        <div className="flex-1 flex flex-col gap-5">
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-3">
+            <div className="w-32 h-10 bg-light-border dark:bg-dark-border rounded-full" />
+            <div className="w-32 h-10 bg-light-border dark:bg-dark-border rounded-full" />
           </div>
 
-          {/* Overview Section Skeleton */}
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <div className="h-4 bg-light-border dark:bg-dark-border rounded w-full"></div>
-              <div className="h-4 bg-light-border dark:bg-dark-border rounded w-full"></div>
-              <div className="h-4 bg-light-border dark:bg-dark-border rounded w-3/4"></div>
-            </div>
+          {/* Overview */}
+          <div className="space-y-2">
+            <div className="h-4 bg-light-border dark:bg-dark-border rounded w-full" />
+            <div className="h-4 bg-light-border dark:bg-dark-border rounded w-full" />
+            <div className="h-4 bg-light-border dark:bg-dark-border rounded w-3/4" />
           </div>
         </div>
 
-        {/* Right Column - Media Details Grid Skeleton */}
-        <div className="flex-1">
+        {/* Right col: details */}
+        <div className="lg:w-[42%] shrink-0">
           <MediaDetailsGridSkeleton />
         </div>
       </div>

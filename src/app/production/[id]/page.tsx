@@ -4,37 +4,43 @@
 import { useState, useEffect, useRef, useCallback, use } from "react";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import Image from "next/image";
-import Link from "next/link";
-import { createSlug } from "@/app/components/utilities/createSlug";
+
+// ── Skeleton card — mirrors MediaCard exactly ─────────────────
+
+function SkeletonCard() {
+  return (
+    <div className="p-2 animate-pulse">
+      <div className="aspect-2/3 w-full rounded-xl bg-light-border dark:bg-dark-border" />
+      <div className="mt-2 h-4 bg-light-border dark:bg-dark-border rounded w-4/5 mx-auto" />
+      <div className="mt-1 h-3.5 bg-light-border dark:bg-dark-border rounded w-2/5 mx-auto" />
+    </div>
+  );
+}
 
 const ProductionPageSkeleton = () => (
   <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen animate-pulse">
     {/* Banner */}
     <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl border border-light-border dark:border-dark-border shadow-md">
-      <div className="w-35 h-35 rounded-xl bg-gray-300 dark:bg-gray-700 shrink-0" />
+      <div className="w-35 h-35 rounded-xl bg-light-border dark:bg-dark-border shrink-0" />
       <div className="flex-1 space-y-3 w-full">
-        <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
-        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/3" />
-        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/4" />
+        <div className="h-8 bg-light-border dark:bg-dark-border rounded w-1/2" />
+        <div className="h-4 bg-light-border dark:bg-dark-border rounded w-1/3" />
+        <div className="h-4 bg-light-border dark:bg-dark-border rounded w-1/4" />
         <div className="flex gap-3 pt-1">
-          <div className="h-6 w-20 bg-gray-300 dark:bg-gray-700 rounded-full" />
-          <div className="h-6 w-16 bg-gray-300 dark:bg-gray-700 rounded-full" />
+          <div className="h-6 w-20 bg-light-border dark:bg-dark-border rounded-full" />
+          <div className="h-6 w-16 bg-light-border dark:bg-dark-border rounded-full" />
         </div>
       </div>
     </div>
     {/* Toggles */}
     <div className="flex gap-3">
-      <div className="h-10 w-28 bg-gray-300 dark:bg-gray-700 rounded-full" />
-      <div className="h-10 w-28 bg-gray-300 dark:bg-gray-700 rounded-full" />
+      <div className="h-10 w-28 bg-light-border dark:bg-dark-border rounded-full" />
+      <div className="h-10 w-28 bg-light-border dark:bg-dark-border rounded-full" />
     </div>
     {/* Grid */}
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="space-y-2">
-          <div className="aspect-2/3 bg-gray-300 dark:bg-gray-700 rounded-xl" />
-          <div className="h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-3/4" />
-          <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
-        </div>
+        <SkeletonCard key={i} />
       ))}
     </div>
   </div>
@@ -62,9 +68,7 @@ export default function ProductionPage({
       if (pageNum === 1) setLoading(true);
       else setLoadingMore(true);
 
-      const res = await fetch(
-        `/api/company/${id}?mediaType=${type}&page=${pageNum}`,
-      );
+      const res = await fetch(`/api/company/${id}?mediaType=${type}&page=${pageNum}`);
       const data = await res.json();
 
       if (pageNum === 1) {
@@ -90,12 +94,7 @@ export default function ProductionPage({
     if (!loaderRef.current) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !loading &&
-          !loadingMore &&
-          page < totalPages
-        )
+        if (entries[0].isIntersecting && !loading && !loadingMore && page < totalPages)
           setPage((prev) => prev + 1);
       },
       { rootMargin: "200px" },
@@ -123,7 +122,6 @@ export default function ProductionPage({
     <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen">
       {/* ── Company Banner ─────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-md border border-light-border dark:border-dark-border">
-        {/* Logo */}
         <div className="shrink-0 w-35 h-35 flex items-center justify-center bg-white dark:bg-white/5 rounded-xl shadow-sm border border-light-border dark:border-dark-border p-3">
           {company.logo_path ? (
             <Image
@@ -140,7 +138,6 @@ export default function ProductionPage({
           )}
         </div>
 
-        {/* Info */}
         <div className="flex-1 text-center sm:text-left space-y-1.5">
           <h1 className="text-3xl font-bold text-light-header dark:text-white">
             {company.name}
@@ -155,7 +152,6 @@ export default function ProductionPage({
               HQ: {company.headquarters}
             </p>
           )}
-          {/* Stat pills */}
           <div className="flex gap-2 pt-2 flex-wrap justify-center sm:justify-start">
             <span className="text-xs px-3 py-1 rounded-full bg-light-border dark:bg-dark-border text-light-secondary-text dark:text-dark-secondary-text">
               {items.length} titles
@@ -188,41 +184,33 @@ export default function ProductionPage({
       {items.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {items.map((item, index) => (
-            <Link
+            <MediaCard
               key={`${mediaType}-${item.id}-${index}`}
-              href={`/${mediaType}/${createSlug(item.title || item.name || "untitled")}/${item.id}`}
-            >
-              <MediaCard item={{ ...item, media_type: mediaType }} />
-            </Link>
+              item={{ ...item, media_type: mediaType }}
+            />
           ))}
         </div>
       ) : (
         <div className="flex items-center justify-center py-20">
           <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
-            No {mediaType === "movie" ? "movies" : "TV shows"} found for this
-            company.
+            No {mediaType === "movie" ? "movies" : "TV shows"} found for this company.
           </p>
         </div>
       )}
 
-      {/* ── Infinite scroll loader ─────────────────────────────────────── */}
-      {/* ── Infinite scroll sentinel (invisible) ─────────────────────────── */}
+      {/* ── Infinite scroll sentinel ──────────────────────────────────── */}
       <div ref={loaderRef} className="h-4" />
 
-      {/* ── Loading more skeletons ────────────────────────────────────────── */}
+      {/* ── Loading more ─────────────────────────────────────────────── */}
       {loadingMore && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="aspect-2/3 bg-gray-300 dark:bg-gray-700 rounded-xl" />
-              <div className="h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-3/4" />
-              <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
-            </div>
+            <SkeletonCard key={i} />
           ))}
         </div>
       )}
 
-      {/* ── End of results ─────────────────────────────────────────────── */}
+      {/* ── End of results ───────────────────────────────────────────── */}
       {!loadingMore && page >= totalPages && items.length > 0 && (
         <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-sm pb-4">
           You've reached the end of the results.

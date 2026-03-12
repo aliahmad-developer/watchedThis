@@ -3,13 +3,14 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import Portal from "../utilities/Portal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClose, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faClose, faSpinner, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 
 interface TrailerModalProps {
   mediaId: number;
   mediaType: "movie" | "tv";
   onClose: () => void;
   title?: string;
+  year?: string;
 }
 
 export default function TrailerModal({
@@ -17,212 +18,229 @@ export default function TrailerModal({
   mediaType,
   onClose,
   title,
+  year,
 }: TrailerModalProps) {
   const [videoKey, setVideoKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // visible drives the enter animation, closing drives the exit
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const MAX_RETRIES = 2;
-
   const fetchTrailer = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    setVideoKey(null);
+
     try {
-      setLoading(true);
-      setError(false);
+      const params = new URLSearchParams({
+        mediaId: String(mediaId),
+        mediaType,
+        ...(title && { title }),
+        ...(year && { year }),
+      });
 
-      const response = await fetch(
-        `https://api.themoviedb.org/3/${mediaType}/${mediaId}/videos?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
-      );
-      if (!response.ok) throw new Error("TMDB API failed");
+      const res = await fetch(`/api/trailer?${params.toString()}`);
+      if (!res.ok) throw new Error("No trailer found");
 
-      const data = await response.json();
-      const videos = data.results || [];
-
-      const youtubeVideos = videos.filter((v: any) => v.site === "YouTube");
-      const trailer =
-        youtubeVideos.find((v: any) => v.type === "Trailer" && v.official) ||
-        youtubeVideos.find((v: any) => v.type === "Trailer") ||
-        youtubeVideos.find((v: any) =>
-          v.name.toLowerCase().includes("trailer")
-        ) ||
-        youtubeVideos[0];
-
-      if (trailer?.key) {
-        setVideoKey(trailer.key);
-      } else {
-        throw new Error("No trailer found");
-      }
-    } catch (err) {
-      if (retryCount < MAX_RETRIES) {
-        setRetryCount((prev) => prev + 1);
-        return;
-      }
+      const data = await res.json();
+      if (data.key) setVideoKey(data.key);
+      else throw new Error("No key in response");
+    } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [mediaId, mediaType, retryCount]);
-
-  useEffect(() => {
-    if (retryCount > 0 && retryCount <= MAX_RETRIES) {
-      const timer = setTimeout(fetchTrailer, 1000 * retryCount);
-      return () => clearTimeout(timer);
-    }
-  }, [retryCount, fetchTrailer]);
+  }, [mediaId, mediaType, title, year]);
 
   useEffect(() => {
     fetchTrailer();
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "m" || e.key === "M") setIsMuted((prev) => !prev);
-    };
+    // Tiny delay so the browser has painted before we transition in
+    const t = setTimeout(() => setVisible(true), 16);
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    // Lock scroll
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
 
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      clearTimeout(t);
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
     };
-  }, [fetchTrailer, onClose]);
+  }, [fetchTrailer]);
 
-  const getEmbedUrl = useCallback(() => {
-    if (!videoKey) return "";
-    return `https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=${
-      isMuted ? 1 : 0
-    }&rel=0&playsinline=1&enablejsapi=1`;
-  }, [videoKey, isMuted]);
+  // Intercept close: play exit animation first, then call onClose
+  const handleClose = useCallback(() => {
+    setClosing(true);
+    setVisible(false);
+    setTimeout(onClose, 180); // matches transition duration
+  }, [onClose]);
 
-  const toggleFullscreen = () => {
-    if (!modalRef.current) return;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleClose]);
 
-    if (!document.fullscreenElement) {
-      modalRef.current.requestFullscreen().catch((err) => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
-      });
-    } else {
-      document.exitFullscreen();
-    }
-  };
+  const embedUrl = videoKey
+    ? `https://www.youtube.com/embed/${videoKey}?autoplay=1&rel=0&playsinline=1&enablejsapi=1&modestbranding=1&color=white`
+    : "";
+
+  // Shared transition: opacity + a whisper of vertical movement
+  const transition = "opacity 0.18s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
+  const isIn = visible && !closing;
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 overflow-auto">
+      <div
+        className="fixed inset-0 z-9999 flex items-center justify-center"
+        style={{
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          opacity: isIn ? 1 : 0,
+          transition,
+        }}
+        onClick={handleClose}
+      >
         <div
           ref={modalRef}
-          className={`bg-black shadow-2xl overflow-hidden ${
-            isFullscreen ? "w-full h-full" : "max-w-4xl w-full mx-2 my-auto"
-          }`}
+          onClick={(e) => e.stopPropagation()}
+          className="relative flex flex-col"
           style={{
-            // Ensure the modal doesn't exceed viewport height on small devices
-            maxHeight: isFullscreen ? "100%" : "calc(100vh - 2rem)",
+            width: "min(900px, 95vw)",
+            // Barely-there lift on enter, whisper of drop on exit
+            transform: isIn ? "translateY(0px)" : "translateY(6px)",
+            opacity: isIn ? 1 : 0,
+            transition,
           }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-neutral-900 text-white">
-            <h2 className="text-sm sm:text-base md:text-lg font-semibold truncate max-w-[70%]">
-              {"Play Trailer"}
-            </h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="p-2 rounded-md text-white hover:bg-red-700 transition bg-transparent"
-                aria-label="Close trailer"
+          {/* Floating close */}
+          <button
+            onClick={handleClose}
+            aria-label="Close trailer"
+            className="absolute -top-3 -right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center"
+            style={{
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              backdropFilter: "blur(8px)",
+              color: "rgba(255,255,255,0.75)",
+              transition: "background 0.15s, color 0.15s",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.22)";
+              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+              (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.75)";
+            }}
+          >
+            <FontAwesomeIcon icon={faClose} className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Title row */}
+          {title && (
+            <div className="flex items-center gap-2.5 mb-3 px-0.5">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="#e50914">
+                <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z" />
+              </svg>
+              <span
+                className="text-sm font-medium truncate"
+                style={{ color: "rgba(255,255,255,0.75)" }}
               >
-                <FontAwesomeIcon
-                  icon={faClose}
-                  className="w-3 h-3 sm:w-4 sm:h-4"
-                />
-              </button>
+                {title}
+                {year && (
+                  <span style={{ color: "rgba(255,255,255,0.3)" }}> · {year}</span>
+                )}
+              </span>
             </div>
-          </div>
+          )}
 
           {/* Video */}
-          <div className="w-full aspect-video bg-black relative">
-            {loading ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+          <div
+            className="relative w-full overflow-hidden"
+            style={{
+              aspectRatio: "16/9",
+              borderRadius: "10px",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.07)",
+              background: "#000",
+            }}
+          >
+            {loading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                 <FontAwesomeIcon
                   icon={faSpinner}
                   spin
-                  size="2x"
-                  className="text-white"
+                  className="w-6 h-6"
+                  style={{ color: "rgba(255,255,255,0.25)" }}
                 />
-                <span className="text-white text-sm">Loading trailer...</span>
+                <span
+                  className="text-[10px] tracking-widest uppercase"
+                  style={{ color: "rgba(255,255,255,0.2)" }}
+                >
+                  Loading
+                </span>
               </div>
-            ) : error ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center px-4 py-8 text-white">
-                <p className="text-ligt-accent dark:text-dark-accent text-lg mb-3">
-                  Trailer not available
+            )}
+
+            {!loading && error && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  No trailer available
                 </p>
                 <button
-                  onClick={() => {
-                    setRetryCount(0);
-                    fetchTrailer();
+                  onClick={fetchTrailer}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium"
+                  style={{
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "rgba(255,255,255,0.55)",
+                    transition: "background 0.15s, color 0.15s",
                   }}
-                  className="px-4 py-2 bg-light-accent text-white dark:bg-dark-accent rounded hover:light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg transition"
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.85)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.55)";
+                  }}
                 >
-                  Try Again
+                  <FontAwesomeIcon icon={faRotateRight} className="w-3 h-3" />
+                  Try again
                 </button>
               </div>
-            ) : videoKey ? (
+            )}
+
+            {!loading && !error && videoKey && (
               <iframe
-                ref={iframeRef}
                 className="absolute inset-0 w-full h-full"
-                src={getEmbedUrl()}
+                src={embedUrl}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
                 title={title || "Trailer"}
                 loading="eager"
               />
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center px-4 py-8">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 max-w-md w-full border border-white/20">
-                  <div className="flex flex-col items-center justify-center gap-3">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-12 w-12 text-red-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <h3 className="text-xl font-semibold text-white">
-                      Trailer Unavailable
-                    </h3>
-                    <p className="text-gray-300">
-                      We couldn't find a trailer for this content.
-                    </p>
-                    <button className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-full text-white font-medium transition-colors">
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
             )}
           </div>
+
+          <p
+            className="text-center mt-3 text-[10px] tracking-widest uppercase select-none"
+            style={{ color: "rgba(255,255,255,0.15)" }}
+          >
+            esc to close
+          </p>
         </div>
       </div>
     </Portal>

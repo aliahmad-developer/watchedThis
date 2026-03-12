@@ -8,18 +8,13 @@ import { useGenreData } from "../../components/hooks/Genre/useGenreData";
 import { useMediaType } from "../../components/hooks/Genre/useMediaType";
 import { useGenreNavigation } from "../../components/hooks/Genre/useGenreNavigation";
 import { MediaItem } from "../../components/Genre/types";
-import Loading from "@/app/components/utilities/loading";
 
 export default function GenrePage() {
   const params = useParams();
   const genreSlug = params?.genreId as string;
 
   const { mediaType, setMediaType } = useMediaType();
-  const {
-    genreMappings,
-    loading: mappingsLoading,
-    createSlug,
-  } = useGenreMappings();
+  const { genreMappings, loading: mappingsLoading, createSlug } = useGenreMappings();
 
   const {
     mediaItems,
@@ -31,12 +26,7 @@ export default function GenrePage() {
     normalizeSlug,
     findBestMatchingGenre,
     isInitialLoad,
-  } = useGenreData({
-    genreSlug,
-    mediaType,
-    genreMappings,
-    createSlug,
-  });
+  } = useGenreData({ genreSlug, mediaType, genreMappings, createSlug });
 
   const { handleMediaTypeChange } = useGenreNavigation({
     genreSlug,
@@ -45,32 +35,32 @@ export default function GenrePage() {
     genreMappings,
     normalizeSlug,
     findBestMatchingGenre,
-    setGenreName: (name) => {},
+    setGenreName: () => {},
   });
-
-  if (Object.keys(genreMappings).length === 0 && mappingsLoading) {
-    return <Loading fullScreen centerInParent />;
-  }
 
   const processedMediaItems: MediaItem[] = mediaItems.map((item: MediaItem) => ({
     ...item,
-    duration: mediaType === 'movie' 
-      ? item.runtime 
-      : item.episode_run_time?.[0] || item.runtime
+    duration: mediaType === "movie"
+      ? item.runtime
+      : item.episode_run_time?.[0] || item.runtime,
   }));
 
+  // Merge both loading states — GenreMediaGrid handles the skeleton internally
+  const isLoading =
+    (mappingsLoading && Object.keys(genreMappings).length === 0) ||
+    (dataLoading && isInitialLoad);
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 text-center min-h-screen">
       <GenreHeader
         genreName={genreName}
         mediaType={mediaType}
         onMediaTypeChange={handleMediaTypeChange}
       />
-
       <GenreMediaGrid
         mediaItems={processedMediaItems}
         mediaType={mediaType}
-        loading={dataLoading && isInitialLoad}
+        loading={isLoading}
         error={error}
         genreName={genreName}
         fetchMore={fetchMore}
