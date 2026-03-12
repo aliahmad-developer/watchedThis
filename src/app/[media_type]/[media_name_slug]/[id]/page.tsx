@@ -4,6 +4,7 @@ import { createSlug } from "@/app/components/utilities/createSlug";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import CastScroll from "@/app/components/mediaCard/castScroll";
+import CastSkeleton from "@/app/components/mediaCard/castSkeleton";
 import Desc from "@/app/components/randomMedia/detailsPage";
 
 export default function SpecificRandomMediaPage({
@@ -33,7 +34,7 @@ export default function SpecificRandomMediaPage({
       setIsLoading(true);
       try {
         const res = await fetch(
-          `/api/media/${media_type}/${media_name_slug}/${id}`
+          `/api/media/${media_type}/${media_name_slug}/${id}`,
         );
         if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
         const json = await res.json();
@@ -120,7 +121,13 @@ export default function SpecificRandomMediaPage({
 
         {/* Cast Section with Skeleton */}
         {isLoading ? (
-          <CastScrollSkeleton />
+          <div className="max-w-6xl mx-auto mt-8">
+            <div className="flex space-x-4 overflow-hidden">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <CastSkeleton key={i} showGradient={i >= 8} />
+              ))}
+            </div>
+          </div>
         ) : (
           data?.credits?.cast &&
           data.credits.cast.length > 0 && (
@@ -129,23 +136,5 @@ export default function SpecificRandomMediaPage({
         )}
       </div>
     </>
-  );
-}
-
-// Cast Scroll Skeleton Component
-function CastScrollSkeleton() {
-  return (
-    <div className="max-w-6xl mx-auto mt-8 animate-pulse">
-      <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-4"></div>
-      <div className="flex space-x-4 overflow-hidden">
-        {[...Array(10)].map((_, index) => (
-          <div key={index} className="shrink-0 w-32">
-            <div className="w-28 sm:w-32 h-40 sm:h-48 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
-            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24 mb-1"></div>
-            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

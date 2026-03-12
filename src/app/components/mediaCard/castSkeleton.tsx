@@ -1,4 +1,4 @@
-export function CastCardSkeleton({ 
+export default function CastCardSkeleton({ 
   showGradient = false 
 }: { 
   showGradient?: boolean; 
