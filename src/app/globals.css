@@ -34,6 +34,9 @@
   --scrollbar-track-dark: var(--color-dark-bg);
   --scrollbar-thumb-dark: var(--color-dark-accent);
 }
+@theme {
+  --font-irish-grover: "Irish Grover", cursive;
+}
 
 .ambient-text-container {
   color: inherit;
@@ -88,8 +91,8 @@ html {
     @apply bg-light-bg dark:bg-dark-bg;
   }
   h2 {
-  @apply text-light-header dark:text-dark-header text-lg sm:text-xl lg:text-2xl font-bold;
-}
+    @apply text-light-header dark:text-dark-header text-lg sm:text-xl lg:text-2xl font-bold;
+  }
 }
 
 @layer components {
@@ -171,5 +174,14 @@ html {
 }
 .scrollbar-none {
   -ms-overflow-style: none;
-  scrollbar-width: none; 
+  scrollbar-width: none;
+}
+:root {
+  --strip-bg: #e9ecef;        /* light-card — soft light background */
+  --hole-bg: rgba(52, 58, 64, 0.2);  /* light-header tint — subtle dark holes */
+}
+
+.dark {
+  --strip-bg: #282828;        /* dark-card — soft dark background */
+  --hole-bg: rgba(238, 238, 238, 0.12); /* dark-body-text tint — subtle light holes */
 }

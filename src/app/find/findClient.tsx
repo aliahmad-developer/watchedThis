@@ -227,7 +227,7 @@ function FindPageInner() {
       <div className="w-full max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-5 sm:space-y-7">
 
         <div className="flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold">Find Media</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Find Movies and Tv Shows</h1>
           <button
             onClick={() => setFilters(DEFAULT_FILTERS)}
             className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2"

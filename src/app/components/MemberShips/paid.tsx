@@ -1,11 +1,29 @@
+"use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPatreon } from "@fortawesome/free-brands-svg-icons";
 
 export default function Membership() {
+  const [is404, setIs404] = useState(false);
+
+  useEffect(() => {
+    const check = () =>
+      setIs404(document.documentElement.dataset.page === "404");
+    check();
+
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-page"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  if (is404) return null;
+
   return (
     <section className="w-full max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 p-8 cursor-default bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text border border-light-border dark:border-dark-border rounded-2xl shadow-md transition-colors duration-300">
-      {/* Text Section */}
       <div className="flex-1 text-center md:text-left">
         <h1 className="text-3xl font-bold mb-4 text-light-header dark:text-dark-header">
           #Support RandoMovie
@@ -19,7 +37,6 @@ export default function Membership() {
         </p>
       </div>
 
-      {/* Button Section */}
       <div className="flex-1 flex justify-center md:justify-end">
         <Link
           href="https://patreon.com/randomovieorg?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink"
