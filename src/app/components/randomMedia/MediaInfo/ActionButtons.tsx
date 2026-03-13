@@ -98,7 +98,7 @@ export default function ActionButtons({
             {!isAuthenticated ? (
               <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-400">
                 <FontAwesomeIcon icon={faLock} className="h-3 w-3" />
-                Sign in to save
+                Sign in to save.
               </div>
             ) : (
               LIST_OPTIONS.map((option) => {

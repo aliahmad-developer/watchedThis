@@ -12,12 +12,13 @@ import { faSliders, faRotate } from "@fortawesome/free-solid-svg-icons";
 const MAX_SLOTS = 20;
 
 export default function Spinner() {
-  const { slots, setSlots, loading, reshuffling, reshuffle } = useInitialMedia();
-  const [rotation, setRotation]   = useState(0);
+  const { slots, setSlots, loading, reshuffling, reshuffle } =
+    useInitialMedia();
+  const [rotation, setRotation] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [modalOpen, setModalOpen]   = useState(false);
-  const [result, setResult]         = useState<SpinnerItem | null>(null);
-  const [blacklist, setBlacklist]   = useState<SpinnerItem[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [result, setResult] = useState<SpinnerItem | null>(null);
+  const [blacklist, setBlacklist] = useState<SpinnerItem[]>([]);
 
   const handleFill = (items: SpinnerItem[]) => {
     setSlots(items.slice(0, MAX_SLOTS));
@@ -26,7 +27,7 @@ export default function Spinner() {
   const handleRemoveSlot = (item: SpinnerItem) => {
     setSlots((prev) => prev.map((s) => (s?.id === item.id ? null : s)));
     setBlacklist((prev) =>
-      prev.find((b) => b.id === item.id) ? prev : [...prev, item]
+      prev.find((b) => b.id === item.id) ? prev : [...prev, item],
     );
   };
 
@@ -42,57 +43,66 @@ export default function Spinner() {
 
     setTimeout(() => {
       setIsSpinning(false);
-      const count      = slots.filter(Boolean).length;
-      const deg        = 360 / count;
+      const count = slots.filter(Boolean).length;
+      const deg = 360 / count;
       const normalized = ((newRotation % 360) + 360) % 360;
-      const pointer    = (360 - normalized) % 360;
-      const index      = Math.floor(pointer / deg) % count;
+      const pointer = (360 - normalized) % 360;
+      const index = Math.floor(pointer / deg) % count;
       if (slots[index]) setResult(slots[index]!);
     }, 4000);
   };
 
   return (
-    <div className="relative min-h-screen bg-light-bg dark:bg-dark-bg flex flex-col items-center justify-center gap-8 px-6 py-12 overflow-hidden">
-      <SpinWheel
-        slots={slots}
-        rotation={rotation}
-        isSpinning={isSpinning}
-        loading={loading}
-        onRemoveSlot={handleRemoveSlot}
-      />
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => reshuffle(blacklist)}
-          disabled={isSpinning || loading || reshuffling}
-          title="Fetch new random media"
-          className="w-12 h-12 rounded-xl flex items-center justify-center bg-light-body-text dark:bg-dark-card border border-light-border dark:border-dark-border hover:bg-light-secondary-text dark:hover:bg-dark-border transition disabled:opacity-40"
-        >
-          <FontAwesomeIcon
-            icon={faRotate}
-            className={`h-4 w-4 text-light-text dark:text-dark-text ${reshuffling ? "animate-spin" : ""}`}
+    <div className="relative min-h-screen bg-light-bg dark:bg-dark-bg flex flex-col items-center justify-center px-6 py-6 overflow-hidden">
+      <div
+        className="flex flex-col items-center w-full gap-4"
+        style={{ maxHeight: "100svh" }}
+      >
+        <div className="w-full max-w-[min(480px,80vh)]">
+          <SpinWheel
+            slots={slots}
+            rotation={rotation}
+            isSpinning={isSpinning}
+            loading={loading}
+            onRemoveSlot={handleRemoveSlot}
           />
-        </button>
+        </div>
 
-        <button
-          onClick={handleSpin}
-          disabled={isSpinning || loading || slots.filter(Boolean).length === 0}
-          className="px-14 h-12 rounded-xl bg-light-accent dark:bg-dark-accent text-white font-bold text-base tracking-wide transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {isSpinning ? "Spinning…" : "Spin"}
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => reshuffle(blacklist)}
+            disabled={isSpinning || loading || reshuffling}
+            title="Fetch new random media"
+            className="w-12 h-12 rounded-xl flex items-center justify-center bg-light-body-text dark:bg-dark-card border border-light-border dark:border-dark-border hover:bg-light-secondary-text dark:hover:bg-dark-border transition disabled:opacity-40"
+          >
+            <FontAwesomeIcon
+              icon={faRotate}
+              className={`h-4 w-4 text-light-text dark:text-dark-text ${reshuffling ? "animate-spin" : ""}`}
+            />
+          </button>
 
-        <button
-          onClick={() => setModalOpen(true)}
-          disabled={isSpinning}
-          className="w-12 h-12 rounded-xl flex items-center justify-center bg-light-body-text dark:bg-dark-card border border-light-border dark:border-dark-border hover:bg-light-secondary-text dark:hover:bg-dark-border transition disabled:opacity-40"
-          title="Filter wheel"
-        >
-          <FontAwesomeIcon
-            icon={faSliders}
-            className="h-4 w-4 text-light-text dark:text-dark-text"
-          />
-        </button>
+          <button
+            onClick={handleSpin}
+            disabled={
+              isSpinning || loading || slots.filter(Boolean).length === 0
+            }
+            className="px-14 h-12 rounded-xl bg-light-accent dark:bg-dark-accent text-white font-bold text-base tracking-wide transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isSpinning ? "Spinning…" : "Spin"}
+          </button>
+
+          <button
+            onClick={() => setModalOpen(true)}
+            disabled={isSpinning}
+            className="w-12 h-12 rounded-xl flex items-center justify-center bg-light-body-text dark:bg-dark-card border border-light-border dark:border-dark-border hover:bg-light-secondary-text dark:hover:bg-dark-border transition disabled:opacity-40"
+            title="Filter wheel"
+          >
+            <FontAwesomeIcon
+              icon={faSliders}
+              className="h-4 w-4 text-light-header dark:text-dark-header"
+            />
+          </button>
+        </div>
       </div>
 
       <EditModal

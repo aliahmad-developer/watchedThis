@@ -16,7 +16,7 @@ const SECURITY_HEADERS = {
   'X-XSS-Protection': '1; mode=block',
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Apply security headers to all routes

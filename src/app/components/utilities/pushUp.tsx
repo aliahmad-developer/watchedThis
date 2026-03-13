@@ -63,7 +63,7 @@ export default function BackToTop() {
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-8 z-50 p-1">
       <button
         onClick={scrollToTop}
         aria-label="Back to top"
@@ -84,7 +84,8 @@ export default function BackToTop() {
         <svg
           width={size}
           height={size}
-          className="absolute inset-0 -rotate-90"
+          viewBox={`0 0 ${size} ${size}`}
+          className="absolute top-0 left-0 -rotate-90"
           aria-hidden="true"
         >
           {/* Track */}
@@ -113,26 +114,27 @@ export default function BackToTop() {
         {/* Button background */}
         <span
           className="
-            absolute rounded-full
-            bg-gray-900/80 dark:bg-gray-800/80
-            backdrop-blur-sm
-            shadow-lg shadow-black/30
-            transition-all duration-200
-            group-hover:bg-gray-800/90 dark:group-hover:bg-gray-700/90
-            group-active:scale-90
-          "
+          absolute rounded-full   
+          bg-light-disabled dark:bg-dark-header
+          backdrop-blur-sm
+          shadow-lg shadow-black/30
+          transition-all duration-200
+          group-hover:bg-light-border dark:group-hover:bg-dark-border
+          group-active:scale-90 m-0
+        "
           style={{
             width: `${size - strokeWidth * 2 - 4}px`,
             height: `${size - strokeWidth * 2 - 4}px`,
+            aspectRatio: "1 / 1", // force square
           }}
         />
 
         {/* Icon */}
-        <span className="relative z-10 flex items-center justify-center">
+        <span className="relative z-10 flex items-center justify-center m-0">
           <FontAwesomeIcon
             icon={faAngleUp}
             className={`
-              h-4 w-4 text-white
+              h-4 w-4 text-light-body-text dark:text-dark-body-text
               transition-transform duration-200
               group-hover:-translate-y-0.5
               ${isScrolling ? "animate-bounce" : ""}

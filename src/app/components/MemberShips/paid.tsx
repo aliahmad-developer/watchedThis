@@ -39,7 +39,7 @@ export default function Membership() {
 
       <div className="flex-1 flex justify-center md:justify-end">
         <Link
-          href="https://patreon.com/randomovieorg?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink"
+          href="https://www.patreon.com/c/randomovieorg/membership"
           target="_blank"
           className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-light-accent dark:bg-dark-accent text-white font-semibold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
         >
