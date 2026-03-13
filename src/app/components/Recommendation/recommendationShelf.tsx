@@ -7,6 +7,7 @@ import {
   faChevronRight,
   faWandMagicSparkles,
   faUserPlus,
+  faSprayCanSparkles
 } from "@fortawesome/free-solid-svg-icons";
 import { auth } from "../../firebase/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
@@ -212,9 +213,10 @@ function GuestCTA() {
 
         <div className="shrink-0 w-14 h-14 rounded-2xl bg-light-accent/10 dark:bg-dark-accent/10 flex items-center justify-center">
           <FontAwesomeIcon
-            icon={faWandMagicSparkles}
-            className="text-light-accent dark:text-dark-accent h-6 w-6"
-          />
+            icon={faSprayCanSparkles }
+            className="text-light-accent dark:text-dark-accent ml-1"
+             style={{ width: '1.5rem', height: '1.5rem' }}
+          bounce/>
         </div>
 
         <div className="flex-1 text-center sm:text-left">
