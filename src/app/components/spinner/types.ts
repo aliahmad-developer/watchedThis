@@ -4,5 +4,5 @@ export interface SpinnerItem {
   title: string;
   poster_path?: string;
   backdrop_path?: string;
-  name:string;
+  name?:string;
 }
