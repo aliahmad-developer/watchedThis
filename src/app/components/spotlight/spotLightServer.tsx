@@ -1,5 +1,5 @@
 import PopularSpotlightSliderClient from "./PopularSpotlightSliderClient";
-import { getSpotlightData } from "../../lib/spolight";
+import { getSpotlightData } from "./spotlightHelper";
 import { headers } from "next/headers";
 
 export default async function PopularSpotlightSliderServer({
