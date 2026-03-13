@@ -30,7 +30,7 @@ export default function ListsPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center gap-4 py-12">
+      <div className="flex flex-col items-center gap-4">
         <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
           Sign in to visit your library.
         </p>

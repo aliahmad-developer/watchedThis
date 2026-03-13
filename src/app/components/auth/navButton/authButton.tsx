@@ -14,7 +14,7 @@ export default function AuthButton() {
   const [imgError, setImgError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const pathname = usePathname();
-  const isAuthPage = pathname === "/user/profile";
+  const isAuthPage = pathname === "/user/profile" || pathname === "/user/library";
 
   const syncUser = (u: User | null) => {
     if (!u) return;
