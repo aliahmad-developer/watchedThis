@@ -13,8 +13,10 @@ import GradientOverlay from "./GradientOverlay";
 import { MediaItem } from "../types";
 
 interface DesktopContentProps {
+  
   item: MediaItem;
   index: number;
+  rawIndex: number;   
   showSpotlightNumber: boolean;
   formatDuration: (minutes: number) => string;
   formatDate: (dateString: string | undefined) => string;
@@ -22,16 +24,19 @@ interface DesktopContentProps {
   currentIndex: number;
 }
 
+
 const DesktopContent = ({
   item,
   index,
   showSpotlightNumber,
   formatDuration,
   formatDate,
+  rawIndex,
   handleWatchTrailer,
   currentIndex,
-}: DesktopContentProps) => (
-  <>
+}: DesktopContentProps) => {
+  return (
+    <>
     <div className="flex items-center px-8 lg:px-10 w-full md:w-1/2 z-20 relative">
       <div className="space-y-4 lg:space-y-5 max-w-xl">
         {showSpotlightNumber && (
@@ -87,18 +92,20 @@ const DesktopContent = ({
         <>
           <Image
             draggable={false}
-            src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
+            src={`https://image.tmdb.org/t/p/w1280${item.backdrop_path}`}
             alt={item.title || item.name || "Media backdrop"}
             fill
             className="object-cover object-right"
-            sizes="50vw"
-            priority={index === currentIndex}
+            sizes="40vw"
+           priority={rawIndex === currentIndex || rawIndex === currentIndex + 1}
           />
           <GradientOverlay />
         </>
       )}
     </div>
   </>
+  
 );
+}
 
 export default DesktopContent;

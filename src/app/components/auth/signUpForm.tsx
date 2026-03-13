@@ -132,7 +132,7 @@ export default function SignupForm({
       if (result.success && result.user && onSuccess) {
         setMessage(result.message);
         onSuccess(result.user, result.username);
-        window.dispatchEvent(new CustomEvent("signup-username-ready")); 
+        window.dispatchEvent(new CustomEvent("signup-username-ready"));
       } else {
         setMessage(result.message);
         if (result.accountExists) setAccountExists(true);
@@ -197,11 +197,9 @@ export default function SignupForm({
 
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-2.5 w-full bg-light-card dark:bg-dark-card"
+        className="flex flex-col gap-2.5 w-full bg-light-card dark:bg-dark-card p-4 sm:p-6 rounded-xl shadow-md border border-light-border dark:border-dark-border"
       >
-        <h2 className="text-base">
-          Create Account
-        </h2>
+        <h2 className="text-base">Create Account</h2>
 
         {/* OAuth Buttons — side by side on all sizes */}
         <div className="flex gap-2">

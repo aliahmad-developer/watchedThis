@@ -8,6 +8,7 @@ interface SlideItemProps {
   item: MediaItem;
   index: number;
   isMobile: boolean;
+  rawIndex: number; 
   showSpotlightNumber: boolean;
   formatDuration: (minutes: number) => string;
   formatDate: (dateString: string | undefined) => string;
@@ -19,6 +20,7 @@ const SlideItem = ({
   item,
   index,
   isMobile,
+  rawIndex,
   showSpotlightNumber,
   formatDuration,
   formatDate,
@@ -27,7 +29,7 @@ const SlideItem = ({
 }: SlideItemProps) => {
   if (isMobile) {
     return (
-      <div className="flex-shrink-0 w-full h-full md:hidden">
+      <div className="shrink-0 w-full h-full md:hidden">
         <div className="relative w-full h-full">
           {item.backdrop_path && (
             <>
@@ -38,7 +40,7 @@ const SlideItem = ({
                 fill
                 className="object-cover"
                 sizes="100vw"
-                priority={index === currentIndex}
+                priority={rawIndex === currentIndex || rawIndex === currentIndex + 1} 
               />
               <GradientOverlay />
               <MobileContent
@@ -55,7 +57,7 @@ const SlideItem = ({
   }
 
   return (
-    <div className="hidden md:flex flex-shrink-0 w-full h-full">
+    <div className="hidden md:flex shrink-0 w-full h-full">
       <DesktopContent
         item={item}
         index={index}
@@ -64,6 +66,7 @@ const SlideItem = ({
         formatDate={formatDate}
         handleWatchTrailer={handleWatchTrailer}
         currentIndex={currentIndex}
+        rawIndex={rawIndex}  
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import PopularSpotlightSliderClient from "./PopularSpotlightSliderClient";
 import { getSpotlightData } from "../../lib/spolight";
+import { headers } from "next/headers";
 
 export default async function PopularSpotlightSliderServer({
   slideDuration = 5000,
@@ -11,7 +12,9 @@ export default async function PopularSpotlightSliderServer({
 }: any) {
   try {
     const results = await getSpotlightData();
-
+    const headersList = await headers();
+   const ua = headersList.get("user-agent") || "";
+  const isMobile = /mobile|android|iphone|ipad/i.test(ua);
     return (
       <section
         aria-label="Popular Spotlight Slider"
@@ -25,6 +28,7 @@ export default async function PopularSpotlightSliderServer({
           showNavigation={showNavigation}
           showSpotlightNumber={showSpotlightNumber}
           autoPlay={autoPlay}
+          isMobile={isMobile}
         />
       </section>
     );

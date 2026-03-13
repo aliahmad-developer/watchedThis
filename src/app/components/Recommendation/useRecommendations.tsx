@@ -141,7 +141,6 @@ export function useRecommendations(
     // onAuthStateChanged waits for Firebase to restore the session
     // before firing — fixes the null uid on first render problem
     const unsubAuth = onAuthStateChanged(auth, (user) => {
-      console.log("[Recs] auth user:", user?.uid ?? "null"); // ← ADD
       const uid = user?.uid;
 
       if (!uid) {
@@ -166,13 +165,6 @@ export function useRecommendations(
           const clickLog = behaviour.clickLog ?? [];
           const searchHistory = behaviour.searchHistory ?? [];
           const findFilters = behaviour.findFilters ?? [];
-
-          console.log(
-            "[Recs] listDocs:",
-            listDocs.length,
-            "behaviour:",
-            behaviour,
-          ); 
 
           if (abortRef.current) return;
 

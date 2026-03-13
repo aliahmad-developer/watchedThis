@@ -3,17 +3,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 11, 10);
+    // ─── Helpers ───────────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+    function isValidUserData() {
+      let allowed = ['displayName', 'email', 'photoURL', 'createdAt'];
+      return request.resource.data.keys().hasOnly(allowed)
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 50
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 254;
+    }
+
+    // ─── appData (public read, no client writes) ───────────
+    match /appData/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ─── users ─────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidUserData();
+      allow update: if isOwner(uid) && isValidUserData();
+      allow delete: if false;
+
+      // watchlist & lists subcollection
+      match /lists/{listId} {
+        allow read, write: if isOwner(uid);
+        allow delete: if isOwner(uid);
+      }
+
+      // behaviour / search history subcollection
+      match /behaviour/{entryId} {
+        allow read, write: if isOwner(uid);
+        // cap behaviour docs to prevent abuse
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().size() <= 10;
+      }
     }
   }
 }

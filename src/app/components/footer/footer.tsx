@@ -165,7 +165,7 @@ export default function Footer() {
               </p>
               <button
                 type="submit" disabled={isSubmitting}
-                className="px-4 py-2 rounded-md transition-colors text-sm sm:text-base bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg hover:text-light-btn-hover-text dark:hover:text-dark-btn-hover-text disabled:opacity-50 disabled:cursor-not-allowed"
+                className="font-irish-grover px-4 py-2 rounded-md transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Sending..." : "Send message"}
               </button>

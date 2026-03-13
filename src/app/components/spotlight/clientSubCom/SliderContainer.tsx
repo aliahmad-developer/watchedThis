@@ -17,7 +17,7 @@ interface SliderContainerProps {
 const SliderContainer = ({
   items,
   currentIndex,
-  sliderRef,
+  sliderRef,  
   isMobile,
   showSpotlightNumber,
   formatDuration,
@@ -42,7 +42,8 @@ const SliderContainer = ({
           <SlideItem
             key={`${item.id}-${index}`}
             item={item}
-            index={index % items.length} // keep real index for spotlight number
+            index={index % items.length}
+            rawIndex={index} // add this
             isMobile={isMobile}
             showSpotlightNumber={showSpotlightNumber}
             formatDuration={formatDuration}

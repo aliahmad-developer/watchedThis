@@ -31,7 +31,6 @@ export async function GET() {
     
     // Check if we need to refresh the cache
     if (dailyCache.lastUpdated !== today || !dailyCache.today) {
-      console.log('🔄 Refreshing daily recommendations...');
       
       // Fetch new random media for today using your existing API
       const newMedia = await fetchRandomMedia();

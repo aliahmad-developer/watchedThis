@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useSwipeable } from "react-swipeable";
+import { useState } from "react";
 import SliderContainer from "./clientSubCom/SliderContainer";
 import NavigationControls from "./clientSubCom/NavigationControls";
 import IndicatorDots from "./clientSubCom/IndicatorDots";
@@ -10,6 +11,7 @@ import { MediaItem } from "./types";
 
 interface Props {
   items: MediaItem[];
+  isMobile: boolean;
   slideDuration?: number;
   className?: string;
   height?: number | string;
@@ -21,6 +23,7 @@ interface Props {
 
 export default function PopularSpotlightSliderClient({
   items,
+  isMobile,
   slideDuration = 5000,
   className = "",
   height = "420px",
@@ -33,17 +36,9 @@ export default function PopularSpotlightSliderClient({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   const formatDuration = useCallback((minutes: number): string => {
     if (!minutes) return "";
@@ -96,15 +91,12 @@ export default function PopularSpotlightSliderClient({
 
     setCurrentIndex((prev) => {
       const next = prev + 1;
-      // If we've reached the clone (index === items.length), animate to it,
-      // then after the transition snap silently back to index 0
       if (next === items.length) {
-        // Schedule the silent snap after the 500ms animation completes
         transitionTimeoutRef.current = setTimeout(() => {
-          setIsTransitioning(false); // disable transition first
-          setCurrentIndex(0);        // instant jump to real first slide
+          setIsTransitioning(false);
+          setCurrentIndex(0);
         }, 500);
-        return next; // go to clone position WITH animation
+        return next;
       }
 
       transitionTimeoutRef.current = setTimeout(() => {
@@ -159,19 +151,18 @@ export default function PopularSpotlightSliderClient({
     if (autoPlay && !showTrailer) startAutoPlay();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+      if (transitionTimeoutRef.current)
+        clearTimeout(transitionTimeoutRef.current);
     };
   }, [autoPlay, showTrailer, startAutoPlay]);
 
-  const containerHeight = useMemo(() => {
-    return isMobile
+  const containerHeight =
+    isMobile
       ? typeof mobileHeight === "number" ? `${mobileHeight}px` : mobileHeight
       : typeof height === "number" ? `${height}px` : height;
-  }, [isMobile, mobileHeight, height]);
 
   if (!items || items.length === 0) return null;
 
-  // Dot indicator should show real index (clamp clone back to 0)
   const realIndex = currentIndex % items.length;
 
   return (
