@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 const COLLECTION = "appData";
-const DOC        = "dailyMedia";
+const DOC = "dailyMedia";
 
 interface MediaItem {
   id: number;
@@ -21,20 +21,21 @@ interface DailyMediaDoc {
 }
 
 const deduped = (items: MediaItem[]): MediaItem[] =>
-  items.filter((item, i, arr) => arr.findIndex(x => x.id === item.id) === i);
+  items.filter((item, i, arr) => arr.findIndex((x) => x.id === item.id) === i);
 
 async function fetchUniqueItems(
   n: number,
-  existing: MediaItem[] = []
+  existing: MediaItem[] = [],
 ): Promise<MediaItem[]> {
-  const seen    = new Set(existing.map(x => x.id));
+  const seen = new Set(existing.map((x) => x.id));
   const results: MediaItem[] = [];
   const maxAttempts = n * 4;
   let attempts = 0;
 
-  const base = process.env.NODE_ENV === "production"
-    ? (process.env.NEXT_PUBLIC_BASE_URL || `https://${process.env.VERCEL_URL}`)
-    : "https://random-ozus.vercel.app";
+  const base =
+    process.env.NODE_ENV === "production"
+      ? process.env.NEXT_PUBLIC_BASE_URL || `https://${process.env.VERCEL_URL}`
+      : "https://random-ozus.vercel.app";
 
   while (results.length < n && attempts < maxAttempts) {
     attempts++;
@@ -55,15 +56,25 @@ async function fetchUniqueItems(
 }
 
 export async function GET() {
-  // In development, proxy to Vercel to avoid local writes
   if (process.env.NODE_ENV !== "production") {
-    const res = await fetch("https://random-ozus.vercel.app/api/dailyMedia");
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    try {
+      const res = await fetch("https://random-ozus.vercel.app/api/dailyMedia", {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`Vercel returned ${res.status}`);
+      const data = await res.json();
+      return NextResponse.json(data);
+    } catch (e) {
+      console.error("[dailyMedia] proxy to vercel failed:", e);
+      return NextResponse.json(
+        { success: false, error: "Dev proxy to Vercel failed" },
+        { status: 503 },
+      );
+    }
   }
 
   try {
-    const today  = new Date().toDateString();
+    const today = new Date().toDateString();
     const docRef = adminDb.collection(COLLECTION).doc(DOC);
 
     // ── Read first ────────────────────────────────────────────
@@ -73,7 +84,10 @@ export async function GET() {
     if (snap.exists) {
       const remote = snap.data() as DailyMediaDoc;
       if (remote.date === today && remote.items?.length > 0) {
-        return NextResponse.json({ success: true, data: deduped(remote.items) });
+        return NextResponse.json({
+          success: true,
+          data: deduped(remote.items),
+        });
       }
     }
 
@@ -111,11 +125,10 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, data: deduped(result) });
-
   } catch (error) {
     return NextResponse.json(
       { success: false, error: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
