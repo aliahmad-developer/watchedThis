@@ -5,8 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import ColorThief from "color-thief-browser";
 import { createSlug } from "../utilities/createSlug";
-import { db } from "../../firebase/firebaseConfig";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 
 interface MediaItem {
   id: number;
@@ -23,9 +21,6 @@ interface DailyMediaDoc {
   date: string;
   items: MediaItem[];
 }
-
-const FIRESTORE_COLLECTION = "appData";
-const FIRESTORE_DOC = "dailyMedia";
 const LOCAL_CACHE_KEY = "dailyMediaCache_v2";
 
 // ── Dedup helper ──────────────────────────────────────────────
