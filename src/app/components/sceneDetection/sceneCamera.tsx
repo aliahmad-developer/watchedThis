@@ -10,7 +10,7 @@ export default function SceneCamera() {
       <button
         onClick={() => setOpen(true)}
         aria-label="Detect movie scene"
-        className="fixed bottom-6 right-4 sm:right-20 z-40
+        className="fixed bottom-20 right-6 sm:bottom-6 sm:right-20 z-40
                    w-12 h-12 rounded-full shadow-lg
                    bg-light-btn-bg dark:bg-dark-btn-bg
                    text-light-btn-text dark:text-dark-btn-text

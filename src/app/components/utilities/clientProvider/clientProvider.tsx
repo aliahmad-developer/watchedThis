@@ -6,7 +6,7 @@ import { ThemeProvider } from "next-themes";
 const Membership = dynamic(() => import("../../MemberShips/paid"), {
   ssr: false,
 });
-const PushUp = dynamic(() => import("../../utilities/pushUp"), { ssr: false });
+const PushUp = dynamic(() => import("../backToTop"), { ssr: false });
 import { useEffect } from "react";
 import { onIdTokenChanged } from "firebase/auth";
 import { auth } from "../../../firebase/firebaseConfig";

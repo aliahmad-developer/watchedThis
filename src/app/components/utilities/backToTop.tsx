@@ -63,7 +63,7 @@ export default function BackToTop() {
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
-    <div className="fixed bottom-6 right-8 z-50 p-1">
+    <div className="fixed bottom-6 right-6 z-50 p-1">
       <button
         onClick={scrollToTop}
         aria-label="Back to top"
