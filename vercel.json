@@ -1,0 +1,8 @@
+{
+  "installCommand": "apt-get install -y libatomic1 && npm install",
+  "functions": {
+    "app/api/**": {
+      "runtime": "nodejs24.x"
+    }
+  }
+}
