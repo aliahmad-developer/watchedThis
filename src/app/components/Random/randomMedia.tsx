@@ -25,8 +25,13 @@ interface DailyMediaDoc {
 }
 
 const FIRESTORE_COLLECTION = "appData";
-const FIRESTORE_DOC        = "dailyMedia";
-const LOCAL_CACHE_KEY      = "dailyMediaCache_v2";
+const FIRESTORE_DOC = "dailyMedia";
+const LOCAL_CACHE_KEY = "dailyMediaCache_v2";
+
+// ── Dedup helper ──────────────────────────────────────────────
+
+const deduped = (items: MediaItem[]): MediaItem[] =>
+  items.filter((item, i, arr) => arr.findIndex((x) => x.id === item.id) === i);
 
 // ── Ambient color helpers ─────────────────────────────────────
 
@@ -52,22 +57,21 @@ const buildAmbientColor = (
     const f = lum < 0.5 ? 1.5 : 1.2;
     const clamp = (v: number) => Math.min(Math.floor(v * f + 50), 235);
     return {
-      solid:  `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
-      rgb:    `${clamp(r)},${clamp(g)},${clamp(b)}`,
+      solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
+      rgb: `${clamp(r)},${clamp(g)},${clamp(b)}`,
       rawRgb: `${r},${g},${b}`,
     };
   } else {
     const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
     const clamp = (v: number) => Math.max(Math.floor(v * f), 0);
     return {
-      solid:  `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
-      rgb:    `${clamp(r)},${clamp(g)},${clamp(b)}`,
+      solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
+      rgb: `${clamp(r)},${clamp(g)},${clamp(b)}`,
       rawRgb: `${r},${g},${b}`,
     };
   }
 };
 
-// Invert dominant color for text — always mathematically contrasting
 const getContrastText = (
   rawRgb: string,
 ): { primary: string; secondary: string } => {
@@ -75,22 +79,17 @@ const getContrastText = (
   const ir = 255 - r;
   const ig = 255 - g;
   const ib = 255 - b;
-
   const origLum = calculateLuminance(r, g, b);
-  const invLum  = calculateLuminance(ir, ig, ib);
+  const invLum = calculateLuminance(ir, ig, ib);
   const contrast = Math.abs(origLum - invLum);
-
-  // If inversion lands too close to the original (mid-grays),
-  // fall back to pure white or black based on original luminance
   if (contrast < 0.3) {
     return {
-      primary:   origLum > 0.5 ? "rgba(0,0,0,0.9)"    : "rgba(255,255,255,0.95)",
-      secondary: origLum > 0.5 ? "rgba(0,0,0,0.55)"   : "rgba(255,255,255,0.65)",
+      primary: origLum > 0.5 ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)",
+      secondary: origLum > 0.5 ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
     };
   }
-
   return {
-    primary:   `rgba(${ir},${ig},${ib},0.95)`,
+    primary: `rgba(${ir},${ig},${ib},0.95)`,
     secondary: `rgba(${ir},${ig},${ib},0.65)`,
   };
 };
@@ -141,13 +140,19 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
     }
   }, [isLightMode]);
 
-  useEffect(() => { setAmbient(null); }, [imageUrl, isLightMode]);
+  useEffect(() => {
+    setAmbient(null);
+  }, [imageUrl, isLightMode]);
 
   useEffect(() => {
     if (!imgRef.current) return;
     const img = imgRef.current;
     const handle = () => setTimeout(extract, 80);
-    if (img.complete) { handle(); } else { img.addEventListener("load", handle); }
+    if (img.complete) {
+      handle();
+    } else {
+      img.addEventListener("load", handle);
+    }
     return () => img.removeEventListener("load", handle);
   }, [extract, imageUrl]);
 
@@ -156,10 +161,10 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
 
 // ── Main component ────────────────────────────────────────────
 
-export default function randomMedia() {
-  const [media, setMedia]     = useState<MediaItem[]>([]);
+export default function RandomMedia() {
+  const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchOneRandom = useCallback(async (): Promise<MediaItem> => {
     const res = await fetch("/api/randomCall");
@@ -169,76 +174,85 @@ export default function randomMedia() {
     return data as MediaItem;
   }, []);
 
-  const fetchNRandom = useCallback(async (n: number): Promise<MediaItem[]> => {
-    const settled = await Promise.allSettled(
-      Array.from({ length: n }, () => fetchOneRandom()),
-    );
-    const ok = settled
-      .filter((s): s is PromiseFulfilledResult<MediaItem> => s.status === "fulfilled")
-      .map((s) => s.value);
-    if (ok.length === 0) throw new Error("All fetches failed");
-    return ok;
-  }, [fetchOneRandom]);
+  // Fetch until we have `n` unique items (by id), with a cap on total attempts
+  const fetchNUnique = useCallback(
+    async (n: number, existing: MediaItem[] = []): Promise<MediaItem[]> => {
+      const seen = new Set(existing.map((x) => x.id));
+      const results: MediaItem[] = [];
+      const maxAttempts = n * 4; // allow retries to get unique items
+      let attempts = 0;
+
+      while (results.length < n && attempts < maxAttempts) {
+        attempts++;
+        try {
+          const item = await fetchOneRandom();
+          if (!seen.has(item.id)) {
+            seen.add(item.id);
+            results.push(item);
+          }
+        } catch {
+          // keep trying until maxAttempts
+        }
+      }
+
+      if (results.length === 0) throw new Error("All fetches failed");
+      return results;
+    },
+    [fetchOneRandom],
+  );
 
   const loadDailyMedia = useCallback(async () => {
     setLoading(true);
     setError(null);
     const today = new Date().toDateString();
+    let cancelled = false;
 
     try {
+      // Check localStorage first
       const cached = localStorage.getItem(LOCAL_CACHE_KEY);
       if (cached) {
         const parsed: DailyMediaDoc = JSON.parse(cached);
         if (parsed.date === today && parsed.items?.length > 0) {
-          setMedia(parsed.items);
-          setLoading(false);
+          if (!cancelled) setMedia(parsed.items);
           return;
         }
       }
 
-      const docRef  = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC);
-      const docSnap = await getDoc(docRef);
+      // Hit the API route (which uses Admin SDK)
+      const res = await fetch("/api/dailyMedia");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
 
-      if (docSnap.exists()) {
-        const remote = docSnap.data() as DailyMediaDoc;
-        if (remote.date === today && remote.items?.length > 0) {
-          setMedia(remote.items);
-          localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(remote));
-          return;
-        }
-        const newItem = await fetchOneRandom();
-        const rotated: DailyMediaDoc = {
-          date: today,
-          items: [newItem, ...remote.items].slice(0, 3),
-        };
-        await setDoc(docRef, rotated);
-        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(rotated));
-        setMedia(rotated.items);
-      } else {
-        const initial = await fetchNRandom(3);
-        const seed: DailyMediaDoc = { date: today, items: initial.slice(0, 3) };
-        await setDoc(docRef, seed);
-        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(seed));
-        setMedia(seed.items);
-      }
+      const items: MediaItem[] = json.data;
+      localStorage.setItem(
+        LOCAL_CACHE_KEY,
+        JSON.stringify({ date: today, items }),
+      );
+      if (!cancelled) setMedia(items);
     } catch (err) {
       console.error("Error loading daily media:", err);
       const cached = localStorage.getItem(LOCAL_CACHE_KEY);
       if (cached) {
         const parsed: DailyMediaDoc = JSON.parse(cached);
         if (parsed.items?.length > 0) {
-          setMedia(parsed.items);
-          setLoading(false);
+          if (!cancelled) setMedia(parsed.items);
           return;
         }
       }
-      setError("Failed to load media. Please try again.");
+      if (!cancelled) setError("Failed to load media. Please try again.");
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
-  }, [fetchOneRandom, fetchNRandom]);
 
-  useEffect(() => { loadDailyMedia(); }, [loadDailyMedia]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    loadDailyMedia();
+  }, [loadDailyMedia]);
 
   if (loading) {
     return (
@@ -249,7 +263,9 @@ export default function randomMedia() {
           </div>
         </header>
         <div className="hidden lg:grid grid-cols-3 gap-2 min-h-100">
-          <div className="col-span-2"><FeaturedCardSkeleton /></div>
+          <div className="col-span-2">
+            <FeaturedCardSkeleton />
+          </div>
           <div className="flex flex-col gap-2">
             <RightStackCardSkeleton />
             <RightStackCardSkeleton />
@@ -272,7 +288,9 @@ export default function randomMedia() {
   if (error) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-2 bg-light-bg dark:bg-dark-bg text-center">
-        <p className="text-light-accent dark:text-dark-accent font-semibold">{error}</p>
+        <p className="text-light-accent dark:text-dark-accent font-semibold">
+          {error}
+        </p>
         <button
           onClick={loadDailyMedia}
           className="rounded-lg bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text px-6 py-2 transition hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg"
@@ -297,7 +315,11 @@ export default function randomMedia() {
           </div>
           <div className="flex flex-col space-y-2">
             {media.slice(1, 3).map((item, index) => (
-              <RightStackCard key={item.id} item={item} index={index + 1} />
+              <RightStackCard
+                key={`${item.id}-${index + 1}`}
+                item={item}
+                index={index + 1}
+              />
             ))}
             {media.length < 3 && (
               <div className="text-center text-gray-500 p-4 border border-dashed rounded-lg">
@@ -313,7 +335,11 @@ export default function randomMedia() {
         {media[0] && <FeaturedCard item={media[0]} index={0} />}
         <div className="grid grid-cols-2 gap-2">
           {media.slice(1, 3).map((item, index) => (
-            <RightStackCard key={item.id} item={item} index={index + 1} />
+            <RightStackCard
+              key={`${item.id}-${index + 1}`}
+              item={item}
+              index={index + 1}
+            />
           ))}
           {media.length < 3 &&
             Array.from({ length: 2 - (media.length - 1) }).map((_, i) => (
@@ -337,29 +363,37 @@ export default function randomMedia() {
 
 // ── Cards ─────────────────────────────────────────────────────
 
-interface CardProps { item: MediaItem; index: number; }
+interface CardProps {
+  item: MediaItem;
+  index: number;
+}
 
 const FeaturedCard = memo(({ item, index }: CardProps) => {
   const isLightMode = useThemeDetection();
   const hasBackdrop = !!item.backdrop_path;
-  const imageUrl    = getImageUrl(hasBackdrop ? item.backdrop_path : item.poster_path, 1280);
+  const imageUrl = getImageUrl(
+    hasBackdrop ? item.backdrop_path : item.poster_path,
+    1280,
+  );
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
-  const fallbackRaw   = isLightMode ? "50,50,50" : "200,200,200";
+  const fallbackRaw = isLightMode ? "50,50,50" : "200,200,200";
   const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
-  const solidColor    = ambient?.solid  ?? fallbackSolid;
-  const rgbColor      = ambient?.rgb    ?? (isLightMode ? "210,210,210" : "15,15,15");
-  const textColor     = getContrastText(ambient?.rawRgb ?? fallbackRaw);
+  const solidColor = ambient?.solid ?? fallbackSolid;
+  const rgbColor = ambient?.rgb ?? (isLightMode ? "210,210,210" : "15,15,15");
+  const textColor = getContrastText(ambient?.rawRgb ?? fallbackRaw);
 
-  // Overlays use ambient rgb for subtle tint only — gradient is neutral black
-  const fullTint    = `rgba(${rgbColor}, 0.2)`;
+  const fullTint = `rgba(${rgbColor}, 0.2)`;
   const layerBottom = `linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 20%, rgba(0,0,0,0.1) 45%, rgba(0,0,0,0) 65%)`;
-  const layerTop    = `linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 20%)`;
+  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 20%)`;
 
   return (
     <div
       className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden group border border-light-border dark:border-dark-border shadow-lg"
-      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
+      style={{
+        backgroundColor: solidColor,
+        transition: "background-color 700ms ease-in-out",
+      }}
     >
       <div className="absolute inset-0">
         <Image
@@ -373,7 +407,10 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 66vw"
         />
-        <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
+        <div
+          className="absolute inset-0 transition-all duration-700"
+          style={{ backgroundColor: fullTint }}
+        />
         <div className="absolute inset-0" style={{ background: layerBottom }} />
         <div className="absolute inset-0" style={{ background: layerTop }} />
       </div>
@@ -412,27 +449,32 @@ FeaturedCard.displayName = "FeaturedCard";
 
 const RightStackCard = memo(({ item, index }: CardProps) => {
   const isLightMode = useThemeDetection();
-  const hasPoster   = !!item.poster_path;
-  const imageUrl    = getImageUrl(hasPoster ? item.poster_path : item.backdrop_path, 500);
+  const hasPoster = !!item.poster_path;
+  const imageUrl = getImageUrl(
+    hasPoster ? item.poster_path : item.backdrop_path,
+    500,
+  );
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
   const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
-  const solidColor    = ambient?.solid ?? fallbackSolid;
-  const rgbColor      = ambient?.rgb   ?? (isLightMode ? "210,210,210" : "15,15,15");
+  const solidColor = ambient?.solid ?? fallbackSolid;
+  const rgbColor = ambient?.rgb ?? (isLightMode ? "210,210,210" : "15,15,15");
 
-  // Overlay is always dark black — text must always be white for readability
-  const primaryText   = "rgba(255,255,255,0.95)";
+  const primaryText = "rgba(255,255,255,0.95)";
   const secondaryText = "rgba(255,255,255,0.65)";
 
-  const fullTint    = `rgba(${rgbColor}, 0.15)`;
+  const fullTint = `rgba(${rgbColor}, 0.15)`;
   const layerBottom = `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0) 75%)`;
-  const layerTop    = `linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 20%)`;
+  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 20%)`;
 
   return (
     <Link
       href={`/${item.media_type || "movie"}/${createSlug(item.title || "")}/${item.id}`}
       className="relative w-full h-49 rounded-xl overflow-hidden group border border-light-border dark:border-dark-border shadow-md hover:shadow-lg transition-shadow"
-      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
+      style={{
+        backgroundColor: solidColor,
+        transition: "background-color 700ms ease-in-out",
+      }}
     >
       <div className="absolute inset-0">
         <Image
@@ -444,16 +486,16 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
           className={`transition-transform duration-700 group-hover:scale-105 ${hasPoster ? "object-cover object-top" : "object-cover object-center"}`}
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
-        <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
+        <div
+          className="absolute inset-0 transition-all duration-700"
+          style={{ backgroundColor: fullTint }}
+        />
         <div className="absolute inset-0" style={{ background: layerBottom }} />
         <div className="absolute inset-0" style={{ background: layerTop }} />
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-        <p
-          className="text-xs mb-1"
-          style={{ color: secondaryText }}
-        >
+        <p className="text-xs mb-1" style={{ color: secondaryText }}>
           {getDayLabel(index)}
         </p>
         <h3
@@ -462,10 +504,7 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
         >
           {item.title || "Untitled"}
         </h3>
-        <p
-          className="text-xs line-clamp-1"
-          style={{ color: secondaryText }}
-        >
+        <p className="text-xs line-clamp-1" style={{ color: secondaryText }}>
           {item.overview || "No description available."}
         </p>
       </div>

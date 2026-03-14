@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 interface MediaPosterProps {
   data: {
@@ -10,6 +10,7 @@ interface MediaPosterProps {
     media_type?: string;
   };
   textScheme?: "light" | "dark";
+  priority?: boolean; // let the parent decide — only true for above-the-fold posters
 }
 
 const FilmIcon = () => (
@@ -34,54 +35,56 @@ const FilmIcon = () => (
   </svg>
 );
 
-export default function MediaPoster({ data, textScheme = "light" }: MediaPosterProps) {
+const BADGE_MAP: Record<string, string> = {
+  movie: "MOVIE",
+  tv: "SERIES",
+};
+
+function MediaPoster({ data, textScheme = "light", priority = false }: MediaPosterProps) {
   const [hasError, setHasError] = useState(false);
 
   const displayTitle = data.title || data.name || "Untitled";
   const hasPoster = !!data.poster_path && !hasError;
-
-  const getBadgeText = () => {
-    if (data.media_type === "movie") return "MOVIE";
-    if (data.media_type === "tv") return "SERIES";
-    return "MEDIA";
-  };
+  const badgeText = BADGE_MAP[data.media_type ?? ""] ?? "MEDIA";
 
   const badgeTextColor = textScheme === "light" ? "text-white" : "text-gray-900";
   const badgeBorderColor = textScheme === "light" ? "border-white/40" : "border-gray-900/40";
 
   return (
     <div className="relative aspect-2/3 w-full max-w-xs rounded-2xl overflow-hidden shadow-lg group transition-all duration-300 hover:shadow-xl bg-light-border dark:bg-dark-border">
-      {!hasPoster && (
+      {hasPoster ? (
+        <Image
+          draggable={false}
+          // w342 is the right TMDB size for ~200px wide cards — don't use w500/original
+          src={`https://image.tmdb.org/t/p/w342${data.poster_path}`}
+          alt={`Poster for ${displayTitle}`}
+          fill
+          onContextMenu={(e) => e.preventDefault()}
+          className="object-contain object-center transition-opacity duration-300 select-none"
+          // Accurate sizes: poster cards are small, max ~320px wide
+          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 200px"
+          priority={priority}
+          onError={() => setHasError(true)}
+        />
+      ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
           <FilmIcon />
           <span className="text-xs font-medium leading-snug line-clamp-3 text-light-secondary-text dark:text-dark-secondary-text">
             {displayTitle}
           </span>
           <span className="text-[10px] uppercase tracking-widest text-light-disabled dark:text-dark-disabled">
-            {getBadgeText()}
+            {badgeText}
           </span>
         </div>
-      )}
-
-      {hasPoster && (
-        <Image
-          draggable={false}
-          src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
-          alt={`Poster for ${displayTitle}`}
-          fill
-          onContextMenu={(e) => e.preventDefault()}
-          className="object-contain object-center transition-opacity duration-300 select-none"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          priority
-          onError={() => setHasError(true)}
-        />
       )}
 
       <div
         className={`border absolute top-3 left-3 bg-transparent px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10 ${badgeTextColor} ${badgeBorderColor} ${!hasPoster ? "border-light-disabled/40 dark:border-dark-disabled/40 text-light-disabled dark:text-dark-disabled" : ""}`}
       >
-        {getBadgeText()}
+        {badgeText}
       </div>
     </div>
   );
 }
+
+export default memo(MediaPoster);

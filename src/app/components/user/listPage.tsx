@@ -94,7 +94,7 @@ export default function ListsPage() {
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
           <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
             Nothing in {FILTERS.find((f) => f.value === activeFilter)?.label}{" "}
-            yet
+            yet.
           </p>
         </div>
       ) : (
@@ -108,15 +108,17 @@ export default function ListsPage() {
                   name: item.mediaType === "tv" ? item.title : undefined,
                   poster_path: item.poster_path,
                   media_type: item.mediaType,
+                  
                 }}
+                hideMetaData
               />
               <button
                 onClick={(e) => handleRemove(e, item.mediaId)}
                 disabled={removing === item.mediaId}
                 className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center
-  rounded-full bg-black/60 text-white z-10
-  opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity
-  hover:bg-red-500 disabled:opacity-50"
+                rounded-full bg-black/60 text-white z-10
+                opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity
+                hover:bg-red-500 disabled:opacity-50"
                 title="Remove from library"
               >
                 {removing === item.mediaId ? (
