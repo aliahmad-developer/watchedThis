@@ -32,9 +32,9 @@ async function fetchUniqueItems(
   const maxAttempts = n * 4;
   let attempts = 0;
 
-  const base = process.env.NEXT_PUBLIC_BASE_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-    || "http://localhost:3000";
+  const base = process.env.NODE_ENV === "production"
+    ? (process.env.NEXT_PUBLIC_BASE_URL || `https://${process.env.VERCEL_URL}`)
+    : "https://random-ozus.vercel.app";
 
   while (results.length < n && attempts < maxAttempts) {
     attempts++;
@@ -55,36 +55,62 @@ async function fetchUniqueItems(
 }
 
 export async function GET() {
+  // In development, proxy to Vercel to avoid local writes
+  if (process.env.NODE_ENV !== "production") {
+    const res = await fetch("https://random-ozus.vercel.app/api/dailyMedia");
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  }
+
   try {
     const today  = new Date().toDateString();
     const docRef = adminDb.collection(COLLECTION).doc(DOC);
-    const snap   = await docRef.get();
 
+    // ── Read first ────────────────────────────────────────────
+    const snap = await docRef.get();
+
+    // ── Case 1: already fresh for today ──────────────────────
     if (snap.exists) {
       const remote = snap.data() as DailyMediaDoc;
-
       if (remote.date === today && remote.items?.length > 0) {
         return NextResponse.json({ success: true, data: deduped(remote.items) });
       }
-
-      const existingItems = deduped(remote.items ?? []);
-      const newItems      = await fetchUniqueItems(1, existingItems);
-
-      const rotated: DailyMediaDoc = {
-        date:  today,
-        items: deduped([...newItems, ...existingItems]).slice(0, 3),
-      };
-
-      await docRef.set(rotated);
-      return NextResponse.json({ success: true, data: rotated.items });
     }
 
-    const initial = await fetchUniqueItems(3);
-    if (initial.length === 0) throw new Error("Could not fetch any media");
+    // ── Case 2/3: stale or missing — fetch new items first ───
+    const existingItems = snap.exists
+      ? deduped((snap.data() as DailyMediaDoc).items ?? [])
+      : [];
 
-    const seed: DailyMediaDoc = { date: today, items: initial };
-    await docRef.set(seed);
-    return NextResponse.json({ success: true, data: seed.items });
+    const newItems = snap.exists
+      ? await fetchUniqueItems(1, existingItems)
+      : await fetchUniqueItems(3);
+
+    if (!snap.exists && newItems.length === 0) {
+      throw new Error("Could not fetch any media");
+    }
+
+    const updatedItems = snap.exists
+      ? deduped([...newItems, ...existingItems]).slice(0, 3)
+      : newItems;
+
+    // ── Transaction: only write if still stale ────────────────
+    const result = await adminDb.runTransaction(async (tx) => {
+      const freshSnap = await tx.get(docRef);
+
+      if (freshSnap.exists) {
+        const fresh = freshSnap.data() as DailyMediaDoc;
+        if (fresh.date === today && fresh.items?.length > 0) {
+          return fresh.items;
+        }
+      }
+
+      const newDoc: DailyMediaDoc = { date: today, items: updatedItems };
+      tx.set(docRef, newDoc);
+      return updatedItems;
+    });
+
+    return NextResponse.json({ success: true, data: deduped(result) });
 
   } catch (error) {
     return NextResponse.json(
