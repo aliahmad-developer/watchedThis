@@ -32,9 +32,9 @@ async function fetchUniqueItems(
   const maxAttempts = n * 4;
   let attempts = 0;
 
-const base = process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+const base = process.env.NEXT_PUBLIC_BASE_URL 
+  || process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`
+  || "http://localhost:3000";
 
   while (results.length < n && attempts < maxAttempts) {
     attempts++;
