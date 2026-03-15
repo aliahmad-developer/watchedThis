@@ -320,18 +320,6 @@ export default function SpinWheel({
             stroke="rgba(128,128,128,0.2)"
             strokeWidth="2"
           />
-          <text
-            x={CX}
-            y={CY + R + 28}
-            textAnchor="middle"
-            className="fill-[rgba(0,0,0,0.3)] dark:fill-[rgba(255,255,255,0.3)]"
-            fontSize="13"
-            fontFamily="system-ui, sans-serif"
-            fontWeight="500"
-            letterSpacing="2"
-          >
-            LOADING MEDIA…
-          </text>
         </svg>
       </div>
     );

@@ -93,27 +93,7 @@ export default function TermsPage() {
           </Section>
 
           {/* Contact */}
-          <div className="pt-4 border-t border-light-border dark:border-dark-border">
-            <div className="flex items-center gap-3 mb-3">
-              <FontAwesomeIcon
-                icon={faEnvelope}
-                className="w-4 h-4 text-light-accent dark:text-dark-accent"
-              />
-              <h2 className="text-base font-bold text-light-header dark:text-white">
-                Still have questions?
-              </h2>
-            </div>
-            <p className="text-light-body-text dark:text-dark-body-text text-sm leading-relaxed">
-              For questions, reach out at{" "}
-              <a
-                href="mailto:lorem@gmail.com"
-                className="text-light-accent dark:text-dark-accent hover:underline font-medium transition-colors"
-              >
-                lorem@gmail.com
-              </a>
-              . Emails are read by an actual human. Well, mostly.
-            </p>
-          </div>
+         
         </div>
 
         {/* Footer note */}
