@@ -10,6 +10,34 @@ interface SpinWheelProps {
   loading: boolean;
   onRemoveSlot?: (item: SpinnerItem) => void;
 }
+const round = (n: number) => Math.round(n * 1000) / 1000;
+
+function buildSlicePath(
+  i: number,
+  degPerSlice: number,
+  customR = R,
+  customInner = INNER_R,
+) {
+  const a1 = toRad(degPerSlice * i - 90);
+  const a2 = toRad(degPerSlice * (i + 1) - 90);
+  const large = degPerSlice > 180 ? 1 : 0;
+  const ox1 = round(CX + customR * Math.cos(a1)),
+    oy1 = round(CY + customR * Math.sin(a1));
+  const ox2 = round(CX + customR * Math.cos(a2)),
+    oy2 = round(CY + customR * Math.sin(a2));
+  const ix1 = round(CX + customInner * Math.cos(a1)),
+    iy1 = round(CY + customInner * Math.sin(a1));
+  const ix2 = round(CX + customInner * Math.cos(a2)),
+    iy2 = round(CY + customInner * Math.sin(a2));
+  return [
+    `M ${ix1} ${iy1}`,
+    `L ${ox1} ${oy1}`,
+    `A ${customR} ${customR} 0 ${large} 1 ${ox2} ${oy2}`,
+    `L ${ix2} ${iy2}`,
+    `A ${customInner} ${customInner} 0 ${large} 0 ${ix1} ${iy1}`,
+    "Z",
+  ].join(" ");
+}
 
 const COLORS = [
   "#e879a0",
@@ -48,32 +76,6 @@ const PTR_TRANS_Y = PTR_TIP_Y - PTR_H;
 const toRad = (d: number) => d * (Math.PI / 180);
 
 // Pure function — move outside component so it's never recreated
-function buildSlicePath(
-  i: number,
-  degPerSlice: number,
-  customR = R,
-  customInner = INNER_R,
-) {
-  const a1 = toRad(degPerSlice * i - 90);
-  const a2 = toRad(degPerSlice * (i + 1) - 90);
-  const large = degPerSlice > 180 ? 1 : 0;
-  const ox1 = CX + customR * Math.cos(a1),
-    oy1 = CY + customR * Math.sin(a1);
-  const ox2 = CX + customR * Math.cos(a2),
-    oy2 = CY + customR * Math.sin(a2);
-  const ix1 = CX + customInner * Math.cos(a1),
-    iy1 = CY + customInner * Math.sin(a1);
-  const ix2 = CX + customInner * Math.cos(a2),
-    iy2 = CY + customInner * Math.sin(a2);
-  return [
-    `M ${ix1} ${iy1}`,
-    `L ${ox1} ${oy1}`,
-    `A ${customR} ${customR} 0 ${large} 1 ${ox2} ${oy2}`,
-    `L ${ix2} ${iy2}`,
-    `A ${customInner} ${customInner} 0 ${large} 0 ${ix1} ${iy1}`,
-    "Z",
-  ].join(" ");
-}
 
 function getImgUrl(item: SpinnerItem): string | null {
   if (item.backdrop_path)
@@ -377,7 +379,7 @@ export default function SpinWheel({
               : "none",
           }}
         >
-          {sliceData.map(({path, midDeg, midRad, url, label }, i) => (
+          {sliceData.map(({ path, midDeg, midRad, url, label }, i) => (
             <WheelSlice
               key={i}
               item={slots[i]}

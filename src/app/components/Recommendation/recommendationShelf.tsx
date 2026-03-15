@@ -7,7 +7,7 @@ import {
   faChevronRight,
   faWandMagicSparkles,
   faUserPlus,
-  faSprayCanSparkles
+  faSprayCanSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import { auth } from "../../firebase/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
@@ -199,24 +199,26 @@ function GuestCTA() {
   const [authOpen, setAuthOpen] = useState(false);
 
   return (
-    <section className="my-4">
+    <section className="px-4">
       <div className="flex items-center gap-2 mb-6 px-1">
         <FontAwesomeIcon
           icon={faWandMagicSparkles}
-          className="text-light-accent dark:text-dark-accent h-8 w-8"
+          className="text-light-accent dark:text-dark-accent ml-1"
+          style={{ width: "1.5rem", height: "1.5rem" }}
         />
         <h2>Recommended For You</h2>
       </div>
 
-      <div className="mx-5 relative overflow-hidden rounded-2xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-card p-6 flex flex-col sm:flex-row items-center gap-5">
+      <div className="mx-5 mb-5 relative overflow-hidden rounded-2xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-card p-6 flex flex-col sm:flex-row items-center gap-5">
         <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-light-accent/10 dark:bg-dark-accent/10 blur-3xl pointer-events-none" />
 
         <div className="shrink-0 w-14 h-14 rounded-2xl bg-light-accent/10 dark:bg-dark-accent/10 flex items-center justify-center">
           <FontAwesomeIcon
-            icon={faSprayCanSparkles }
+            icon={faSprayCanSparkles}
             className="text-light-accent dark:text-dark-accent ml-1"
-             style={{ width: '1.5rem', height: '1.5rem' }}
-          bounce/>
+            style={{ width: "1.5rem", height: "1.5rem" }}
+            bounce
+          />
         </div>
 
         <div className="flex-1 text-center sm:text-left">

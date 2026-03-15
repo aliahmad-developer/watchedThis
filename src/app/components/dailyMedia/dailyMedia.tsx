@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ColorThief from "color-thief-browser";
 import { createSlug } from "../utilities/createSlug";
+import { faDice } from "@fortawesome/free-solid-svg-icons";
 
 interface MediaItem {
   id: number;
@@ -311,9 +313,14 @@ export default function RandomMedia() {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
-      <header className="mb-6">
-        <h2 className="px-4 mb-6">Random Media of the Day.</h2>
-      </header>
+      <div className="flex items-center gap-2 mb-6 px-1">
+        <FontAwesomeIcon
+          icon={faDice}
+          className="text-light-accent dark:text-dark-accent ml-1"
+          style={{ width: "1.5rem", height: "1.5rem" }}
+        />
+        <h2>Random Media of the day</h2>
+      </div>
 
       {/* Desktop (≥1024px) */}
       <div className="hidden lg:block">
@@ -565,7 +572,7 @@ const getDayLabel = (index: number): string => {
 
 const FeaturedCardSkeleton = () => (
   <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
-    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
+    <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6">
       <div className="h-4 w-24 bg-gray-400 rounded mb-2" />
       <div className="h-6 w-3/4 bg-gray-400 rounded mb-2" />
@@ -576,7 +583,7 @@ const FeaturedCardSkeleton = () => (
 
 const RightStackCardSkeleton = () => (
   <div className="relative w-full h-49 rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
-    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
+    <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4">
       <div className="h-3 w-16 bg-gray-400 rounded mb-1" />
       <div className="h-4 w-3/4 bg-gray-400 rounded mb-1" />

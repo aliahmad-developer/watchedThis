@@ -13,6 +13,8 @@ import { NavigationButtons } from "./SubComps/NavigationButtons";
 import { ErrorState } from "./SubComps/ErrorState";
 import { EmptyState } from "./SubComps/EmptyState";
 import { MOBILE_GAP, GAP } from "./SubComps/types";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faHashtag } from "@fortawesome/free-solid-svg-icons";
 
 const SWIPE_THRESHOLD = 50;
 
@@ -111,7 +113,14 @@ export default function TrendingCarouselClient() {
         ref={carouselRef}
         aria-label="Trending media carousel"
       >
-        <h2 className="mb-6 px-4 mx-4">Trending</h2>
+        <div className="flex items-center gap-2 mb-6 px-1">
+          <FontAwesomeIcon
+            icon={faHashtag}
+            className="text-light-accent dark:text-dark-accent ml-1"
+            style={{ width: "1.5rem", height: "1.5rem" }}
+          />
+          <h2>Trending</h2>
+        </div>
 
         <div className="flex w-full items-start" ref={containerRef}>
           <div className="relative overflow-hidden flex-1">

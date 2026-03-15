@@ -1,4 +1,15 @@
-// app/privacy/page.tsx  (or pages/privacy.tsx depending on your router)
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faUser,
+  faDatabase,
+  faGear,
+  faCookie,
+  faHandshake,
+  faCalendar,
+  faShield,
+  faChild,
+  faRotate,
+} from "@fortawesome/free-solid-svg-icons";
 
 export const metadata = {
   title: "Privacy Policy — RandoMovie",
@@ -6,237 +17,188 @@ export const metadata = {
 };
 
 const LAST_UPDATED = "March 15, 2026";
-const CONTACT_EMAIL = "privacy@randomovie.app"; // ← update this
+const CONTACT_EMAIL = "privacy@randomovie.app";
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
-      <header className="mb-12">
-        <p className="text-xs uppercase tracking-widest text-light-accent dark:text-dark-accent mb-3">
-          Legal
-        </p>
-        <h1 className="text-3xl font-semibold mb-3">Privacy Policy</h1>
-        <p className="text-sm text-light-muted dark:text-dark-muted">
-          Last updated: {LAST_UPDATED}
-        </p>
-      </header>
-
-      <div className="space-y-10 text-sm leading-7 text-light-text dark:text-dark-text">
-        <Section title="1. Who we are">
-          <p>
-            RandoMovie ("we", "us", "our") is a media discovery app that helps
-            you find movies and TV shows. We are not affiliated with any
-            streaming service or studio. This policy explains what data we
-            collect when you use RandoMovie, why we collect it, and what rights
-            you have over it.
+    <div className="min-h-screen bg-light-bg dark:bg-dark-bg px-4 py-16">
+      <div className="max-w-2xl mx-auto bg-light-card dark:bg-dark-card rounded-lg shadow-md p-8">
+        {/* Header */}
+        <div className="mb-6 font-mono">
+          <p className="text-xs font-semibold tracking-widest uppercase text-light-accent dark:text-dark-accent">
+            Legal
           </p>
-          <p>
-            If you have questions, email us at{" "}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="text-light-accent dark:text-dark-accent underline underline-offset-2"
-            >
-              {CONTACT_EMAIL}
-            </a>
-            .
+          <h1 className="text-4xl sm:text-5xl font-bold text-light-header dark:text-white mb-4 leading-tight">
+            Privacy Policy
+          </h1>
+          <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
+            Last updated {LAST_UPDATED}; written by an actual human, not a
+            lawyer bot.
           </p>
-        </Section>
+        </div>
 
-        <Section title="2. Data we collect">
-          <Subsection title="Account data">
+        {/* Intro prose */}
+        <p className="text-light-body-text dark:text-dark-body-text leading-relaxed mb-12 text-base">
+          This explains what data RandoMovie collects, why it collects it, and
+          what rights you have over it. Short version: we collect the minimum
+          needed to make the app work and nothing else.
+        </p>
+
+        <div className="space-y-5">
+          <Section icon={faUser} title="1. Who we are">
             <p>
+              RandoMovie is a media discovery app that helps you find movies and
+              TV shows. We are not affiliated with any streaming service or
+              studio. If you have questions, email us at{" "}
+              <ExternalLink href={`mailto:${CONTACT_EMAIL}`}>
+                {CONTACT_EMAIL}
+              </ExternalLink>
+              .
+            </p>
+          </Section>
+
+          <Section icon={faDatabase} title="2. Data we collect">
+            <Subsection title="Account data">
               When you create an account we collect your email address. If you
               sign in via Google or Apple OAuth we receive your name, email
               address, and profile picture from that provider. We do not receive
-              or store your Google or Apple passwords.
-            </p>
-          </Subsection>
-          <Subsection title="Usage data">
-            <p>
+              or store your passwords.
+            </Subsection>
+            <Subsection title="Usage data">
               We log the searches you run, the titles you click, and any items
-              you add to your watchlist. This data is tied to your account and
-              is used solely to personalise your recommendations within
-              RandoMovie.
-            </p>
-          </Subsection>
-          <Subsection title="Technical data">
-            <p>
+              you add to your watchlist. This is tied to your account and is
+              used solely to personalise your recommendations within RandoMovie.
+            </Subsection>
+            <Subsection title="Technical data">
               Our hosting provider (Vercel) may collect standard server logs
-              including your IP address, browser type, and page requests. These
-              logs are retained for up to 30 days and are used for security and
-              performance monitoring. We may also use Vercel Analytics, which
-              collects anonymised, aggregated usage metrics and does not track
-              individual users or set cross-site cookies.
-            </p>
-          </Subsection>
-          <Subsection title="What we do not collect">
+              including your IP address, browser type, and page requests,
+              retained for up to 30 days for security and performance
+              monitoring. Vercel Analytics may collect anonymised, aggregated
+              usage metrics — no individual tracking, no cross-site cookies.
+            </Subsection>
+            <Subsection title="What we do not collect">
+              No payment information, precise location data, contacts, or device
+              data beyond what's described above. We do not run advertising and
+              we do not sell your data to any third party, ever.
+            </Subsection>
+          </Section>
+
+          <Section icon={faGear} title="3. How we use your data">
+            We use your data to create and maintain your account, personalise
+            recommendations based on your watch history and searches, operate
+            and improve the service, and send occasional product updates or
+            security notices by email (opt-out anytime). We also use it to
+            comply with legal obligations where required.
+          </Section>
+
+          <Section icon={faCookie} title="4. Cookies and local storage">
             <p>
-              We do not collect payment information, precise location data,
-              contacts, or any data from your device beyond what is described
-              above. We do not run advertising and we do not sell your data to
-              any third party, ever.
+              RandoMovie uses a Firebase session cookie, a first-party,
+              HTTP-only cookie to keep you signed in, containing no PII beyond a
+              session token, expiring on sign-out or after 30 days of
+              inactivity. We also cache the daily media selection in
+              localStorage so the page loads faster; this data never leaves your
+              device and clears automatically each day.
             </p>
-          </Subsection>
-        </Section>
+            <p className="mt-3">
+              No advertising cookies, third-party tracking pixels, or cross-site
+              tracking. Because we only use strictly necessary first-party
+              storage, there is no cookie consent banner.
+            </p>
+          </Section>
 
-        <Section title="3. How we use your data">
-          <ul className="list-disc pl-5 space-y-2">
-            <li>To create and maintain your account.</li>
-            <li>
-              To personalise your experience — surfacing recommendations based
-              on your watch history and search activity.
-            </li>
-            <li>
-              To operate and improve the service — understanding which features
-              are used helps us prioritise what to build next.
-            </li>
-            <li>
-              To communicate with you — occasional product updates or security
-              notices sent to your email. You can opt out of non-essential
-              emails at any time.
-            </li>
-            <li>
-              To comply with legal obligations where required.
-            </li>
-          </ul>
-        </Section>
-
-        <Section title="4. Cookies and local storage">
-          <p>
-            RandoMovie uses the following browser storage mechanisms:
-          </p>
-          <ul className="list-disc pl-5 space-y-2 mt-3">
-            <li>
-              <span className="font-medium">Firebase session cookie</span> — a
-              first-party, HTTP-only cookie set by Firebase Authentication to
-              keep you signed in. It contains no personally identifiable
-              information beyond a session token and expires when you sign out
-              or after 30 days of inactivity.
-            </li>
-            <li>
-              <span className="font-medium">localStorage cache</span> — we
-              cache the daily media selection locally so the page loads faster
-              on repeat visits. This data never leaves your device and is
-              cleared automatically each day.
-            </li>
-          </ul>
-          <p className="mt-3">
-            We do not use advertising cookies, third-party tracking pixels, or
-            any cross-site tracking technology. Because we only use strictly
-            necessary first-party storage, we do not display a cookie consent
-            banner — but we do ask you to agree to this policy before creating
-            an account.
-          </p>
-        </Section>
-
-        <Section title="5. Third-party services">
-          <p>
-            RandoMovie uses the following third-party services. Each has its
-            own privacy policy:
-          </p>
-          <ul className="list-disc pl-5 space-y-2 mt-3">
-            <li>
-              <span className="font-medium">Firebase (Google)</span> —
-              authentication and database. Data is stored on Google's
+          <Section icon={faHandshake} title="5. Third-party services">
+            <Subsection title="Firebase (Google)">
+              Authentication and database. Data is stored on Google's
               infrastructure.{" "}
               <ExternalLink href="https://firebase.google.com/support/privacy">
                 Firebase Privacy Policy
               </ExternalLink>
-            </li>
-            <li>
-              <span className="font-medium">TMDB (The Movie Database)</span> —
-              all movie and TV metadata, images, and ratings are fetched from
-              TMDB's API. We do not share your personal data with TMDB.{" "}
+            </Subsection>
+            <Subsection title="TMDB">
+              All movie and TV metadata, images, and ratings come from TMDB's
+              API. We do not share your personal data with TMDB.{" "}
               <ExternalLink href="https://www.themoviedb.org/privacy-policy">
                 TMDB Privacy Policy
               </ExternalLink>
-            </li>
-            <li>
-              <span className="font-medium">Vercel</span> — hosting and edge
-              infrastructure.{" "}
+            </Subsection>
+            <Subsection title="Hosting">
+              Hosting and edge infrastructure.{" "}
               <ExternalLink href="https://vercel.com/legal/privacy-policy">
                 Vercel Privacy Policy
               </ExternalLink>
-            </li>
-          </ul>
-        </Section>
+            </Subsection>
+          </Section>
 
-        <Section title="6. Data retention">
-          <p>
+          <Section icon={faCalendar} title="6. Data retention">
             We keep your account data for as long as your account is active. If
-            you delete your account, we delete your personal data within 30
-            days. Anonymised usage aggregates (e.g. "X searches were run this
-            week") may be retained indefinitely as they cannot be linked back to
-            you.
-          </p>
-        </Section>
+            you delete your account, your personal data is deleted within 30
+            days. Anonymised usage aggregates may be retained indefinitely as
+            they cannot be linked back to you.
+          </Section>
 
-        <Section title="7. Your rights">
-          <p>
+          <Section icon={faShield} title="7. Your rights">
             Depending on where you live you may have the right to access,
-            correct, export, or delete your personal data. EU/EEA residents
-            have these rights under GDPR. California residents have rights under
-            CCPA. Regardless of where you are, we will honour reasonable
-            requests to:
-          </p>
-          <ul className="list-disc pl-5 space-y-2 mt-3">
-            <li>See what data we hold about you.</li>
-            <li>Correct inaccurate data.</li>
-            <li>Delete your account and associated data.</li>
-            <li>Export your watchlist and search history.</li>
-          </ul>
-          <p className="mt-3">
-            To exercise any of these rights, email{" "}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="text-light-accent dark:text-dark-accent underline underline-offset-2"
-            >
+            correct, export, or delete your personal data (GDPR for EU/EEA, CCPA
+            for California). Regardless of where you are, we will honour
+            reasonable requests to see, correct, delete, or export your data.
+            Email{" "}
+            <ExternalLink href={`mailto:${CONTACT_EMAIL}`}>
               {CONTACT_EMAIL}
-            </a>
-            . We will respond within 30 days.
-          </p>
-        </Section>
+            </ExternalLink>{" "}
+            and we will respond within 30 days.
+          </Section>
 
-        <Section title="8. Children">
-          <p>
-            RandoMovie is not directed at children under 13. We do not
-            knowingly collect data from anyone under 13. If you believe a child
-            has created an account, please contact us and we will delete it
-            promptly.
-          </p>
-        </Section>
+          <Section icon={faChild} title="8. Age Restrictions">
+            RandoMovie is not directed at children under 13. We do not knowingly
+            collect data from anyone under 13. If you believe a child has
+            created an account, contact us and we will delete it promptly.
+          </Section>
 
-        <Section title="9. Changes to this policy">
-          <p>
+          <Section icon={faRotate} title="9. Changes to this policy">
             We may update this policy as the product evolves. If we make
-            material changes we will notify you by email and update the "last
-            updated" date above. Continued use of RandoMovie after a change
-            constitutes acceptance of the revised policy.
-          </p>
-        </Section>
+            material changes we will notify you by email and update the date
+            above. Continued use of RandoMovie after a change constitutes
+            acceptance of the revised policy.
+          </Section>
+        </div>
+
+        {/* Footer note */}
+        <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-xs mt-8 pb-4">
+          Your data is yours. We're just borrowing it to make the app useful.
+          <br /> Now stop reading legal pages and go watch something.
+        </p>
       </div>
-    </main>
+    </div>
   );
 }
 
-// ── Local helpers ─────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 
 function Section({
+  icon,
   title,
   children,
 }: {
+  icon: any;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <h2 className="text-base font-semibold mb-4 text-light-text dark:text-dark-text">
-        {title}
-      </h2>
-      <div className="space-y-3 text-light-muted dark:text-dark-muted">
+    <div className="group">
+      <div className="flex items-center gap-3 mb-3">
+        <FontAwesomeIcon
+          icon={icon}
+          className="w-4 h-4 text-light-accent dark:text-dark-accent transition-transform duration-300 group-hover:scale-110"
+        />
+        <h2 className="text-base font-bold text-light-header dark:text-white">
+          {title}
+        </h2>
+      </div>
+      <div className="text-light-body-text dark:text-dark-body-text text-sm leading-relaxed pl-7 space-y-3">
         {children}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -248,11 +210,11 @@ function Subsection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-4">
-      <h3 className="text-sm font-medium mb-2 text-light-text dark:text-dark-text">
+    <div>
+      <p className="font-medium text-light-accent dark:text-dark-accent mb-1">
         {title}
-      </h3>
-      {children}
+      </p>
+      <p>{children}</p>
     </div>
   );
 }
@@ -269,7 +231,7 @@ function ExternalLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-light-accent dark:text-dark-accent underline underline-offset-2"
+      className="text-light-accent dark:text-dark-accent hover:underline font-medium transition-colors"
     >
       {children}
     </a>

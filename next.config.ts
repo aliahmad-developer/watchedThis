@@ -11,16 +11,16 @@ const nextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
-  experimental: {
-    optimizePackageImports: [
-      'lucide-react',
-      '@fortawesome/react-fontawesome',
-      '@fortawesome/free-solid-svg-icons',
-      '@fortawesome/free-brands-svg-icons',
-      'framer-motion',
-      '@heroicons/react',
-    ],
-  },
+ experimental: {
+  optimizePackageImports: [
+    'lucide-react',
+    '@fortawesome/react-fontawesome',
+    '@fortawesome/free-solid-svg-icons',
+    '@fortawesome/free-brands-svg-icons',
+    'framer-motion',
+    '@heroicons/react',
+  ],
+},
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },

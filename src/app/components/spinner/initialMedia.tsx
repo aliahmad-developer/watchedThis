@@ -33,25 +33,23 @@ function writeCache(items: SpinnerItem[]) {
 }
 
 function clearCache() {
-  try { localStorage.removeItem(CACHE_KEY); } catch {}
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {}
 }
 
 async function fetchFresh(): Promise<SpinnerItem[]> {
-  const calls = Array.from({ length: 20 }, () =>
-    fetch("/api/randomCall").then((r) => r.json()).catch(() => null)
-  );
-  const results = await Promise.allSettled(calls);
-  return results
-    .filter((r) => r.status === "fulfilled" && (r as PromiseFulfilledResult<any>).value?.id)
-    .map((r) => {
-      const v = (r as PromiseFulfilledResult<any>).value;
-      return {
-        id: v.id,
-        mediaType: v.media_type as "movie" | "tv",
-        title: v.title || v.name || "Untitled",
-        poster_path: v.poster_path,
-      };
-    });
+  const res = await fetch("/api/randomCall?count=20");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const items = await res.json();
+  return (items as any[])
+    .filter((v) => v?.id)
+    .map((v) => ({
+      id: v.id,
+      mediaType: v.media_type as "movie" | "tv",
+      title: v.title || v.name || "Untitled",
+      poster_path: v.poster_path,
+    }));
 }
 
 function toSlots(items: SpinnerItem[]): (SpinnerItem | null)[] {
@@ -61,7 +59,9 @@ function toSlots(items: SpinnerItem[]): (SpinnerItem | null)[] {
 }
 
 export function useInitialMedia() {
-  const [slots, setSlots] = useState<(SpinnerItem | null)[]>(Array(20).fill(null));
+  const [slots, setSlots] = useState<(SpinnerItem | null)[]>(
+    Array(20).fill(null),
+  );
   const [loading, setLoading] = useState(true);
   const [reshuffling, setReshuffling] = useState(false);
 
