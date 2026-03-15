@@ -64,26 +64,77 @@ const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
 const calculateLuminance = (r: number, g: number, b: number) =>
   (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
+interface AmbientColor {
+  solid: string;
+  rgb: string;       // processed — used for gradients & card bg
+  rawRgb: string;    // raw dominant — used for text tinting
+  luminance: number; // luminance of processed color — used for text flip
+}
+
 const buildAmbientColor = (
   r: number,
   g: number,
   b: number,
   isLightMode: boolean,
-) => {
+): AmbientColor => {
   const lum = calculateLuminance(r, g, b);
   if (isLightMode) {
     const f = lum < 0.5 ? 1.5 : 1.2;
-    const clamp = (v: number) => Math.min(Math.floor(v * f + 50), 235);
+    const cr = Math.min(Math.floor(r * f + 50), 235);
+    const cg = Math.min(Math.floor(g * f + 50), 235);
+    const cb = Math.min(Math.floor(b * f + 50), 235);
     return {
-      solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
-      rgb: `${clamp(r)},${clamp(g)},${clamp(b)}`,
+      solid: `rgb(${cr},${cg},${cb})`,
+      rgb: `${cr},${cg},${cb}`,
+      rawRgb: `${r},${g},${b}`,
+      luminance: calculateLuminance(cr, cg, cb),
     };
   } else {
     const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
-    const clamp = (v: number) => Math.max(Math.floor(v * f), 0);
+    const cr = Math.max(Math.floor(r * f), 0);
+    const cg = Math.max(Math.floor(g * f), 0);
+    const cb = Math.max(Math.floor(b * f), 0);
     return {
-      solid: `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`,
-      rgb: `${clamp(r)},${clamp(g)},${clamp(b)}`,
+      solid: `rgb(${cr},${cg},${cb})`,
+      rgb: `${cr},${cg},${cb}`,
+      rawRgb: `${r},${g},${b}`,
+      luminance: lum,
+    };
+  }
+};
+
+/**
+ * Ambient text color — same logic as RandomMedia.
+ *
+ * Light mode + bright gradient (lum ≥ 0.45): dark tinted text
+ * Light mode + dark gradient  (lum  < 0.45): light tinted text
+ * Dark mode (always):                         light tinted text
+ */
+const getAmbientTextColor = (
+  isLightMode: boolean,
+  rawRgb: string,
+  processedLuminance: number,
+) => {
+  const [r, g, b] = rawRgb.split(",").map(Number);
+  const useLightText = !isLightMode || processedLuminance < 0.45;
+
+  if (!useLightText) {
+    // Light mode, bright gradient — dark tinted
+    const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
+    const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
+    return {
+      primary:   `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
+      secondary: `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`,
+      muted:     `rgba(${ds(r)},${ds(g)},${ds(b)},0.55)`,
+    };
+  } else {
+    // Dark gradient (any theme) — light pastel tinted
+    const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
+    const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85),  255);
+    return {
+      primary:   `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
+      secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`,
+      muted:     `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)`,
     };
   }
 };
@@ -114,9 +165,7 @@ const useThemeDetection = () => {
 };
 
 const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
-  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(
-    null,
-  );
+  const [ambient, setAmbient] = useState<AmbientColor | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const extractingRef = useRef(false);
 
@@ -221,7 +270,7 @@ export default function FindResultsPage() {
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
-        {/* Header — left-padded enough so it never sits under the back button */}
+        {/* Header */}
         <div className="text-center py-2">
           <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold capitalize">
             {mediaType === "tv" ? "TV Shows" : "Movies"}
@@ -350,6 +399,9 @@ function ResultCard({ item }: { item: MediaResult }) {
   const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
   const solidColor = ambient?.solid ?? fallbackSolid;
   const rgbColor = ambient?.rgb ?? fallbackRgb;
+  const rawRgb = ambient?.rawRgb ?? fallbackRgb;
+  const processedLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
+  const textColor = getAmbientTextColor(isLightMode, rawRgb, processedLuminance);
 
   const fullTint = `rgba(${rgbColor}, 0.45)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
@@ -389,26 +441,39 @@ function ResultCard({ item }: { item: MediaResult }) {
         />
         <div className="absolute inset-0" style={{ background: layerTop }} />
         <div className="absolute inset-0" style={{ background: layerCenter }} />
+
         {rating && (
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-light-btn-bg dark:bg-dark-btn-bg backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
             ★ {rating}
           </div>
         )}
+
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-8 lg:px-12 gap-1">
-          <h3 className="text-white text-base sm:text-2xl lg:text-3xl font-bold text-center drop-shadow-lg line-clamp-2 group-hover:text-light-border dark:group-hover:text-dark-secondary-text transition-colors leading-snug">
+          <h3
+            className="text-base sm:text-2xl lg:text-3xl font-bold text-center drop-shadow-lg line-clamp-2 transition-colors duration-700 leading-snug"
+            style={{ color: textColor.primary }}
+          >
             {item.title}
           </h3>
-          <p className="text-white/50 text-[10px] sm:text-sm italic">
+          <p
+            className="text-[10px] sm:text-sm italic transition-colors duration-700"
+            style={{ color: textColor.muted }}
+          >
             Click for full details
           </p>
         </div>
       </div>
+
+      {/* Bottom info bar */}
       <div
         className="px-3 sm:px-4 py-2 sm:py-3 space-y-1 transition-all duration-700"
         style={{ backgroundColor: solidColor }}
       >
         {genreNames.length > 0 && (
-          <p className="text-light-body-text dark:text-white/80 text-xs sm:text-sm leading-snug">
+          <p
+            className="text-xs sm:text-sm leading-snug transition-colors duration-700"
+            style={{ color: textColor.secondary }}
+          >
             {genreNames.join(", ")}
           </p>
         )}
@@ -417,7 +482,8 @@ function ResultCard({ item }: { item: MediaResult }) {
             {item.keywords.slice(0, 4).map((kw) => (
               <span
                 key={kw}
-                className="text-light-secondary-text dark:text-white/50 font-mono text-[10px] sm:text-xs tracking-tight"
+                className="font-mono text-[10px] sm:text-xs tracking-tight transition-colors duration-700"
+                style={{ color: textColor.muted }}
               >
                 #{kw.toLowerCase().replace(/\s+/g, "-")}
               </span>

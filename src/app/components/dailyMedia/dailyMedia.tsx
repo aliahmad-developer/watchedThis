@@ -24,11 +24,6 @@ interface DailyMediaDoc {
 
 const LOCAL_CACHE_KEY = "dailyMediaCache_v2";
 
-// ── Dedup helper ──────────────────────────────────────────────
-
-const deduped = (items: MediaItem[]): MediaItem[] =>
-  items.filter((item, i, arr) => arr.findIndex((x) => x.id === item.id) === i);
-
 // ── Ambient color helpers ─────────────────────────────────────
 
 const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
@@ -38,10 +33,51 @@ const calculateLuminance = (r: number, g: number, b: number) =>
 
 interface AmbientColor {
   solid: string;
-  rgb: string;
-  rawRgb: string;
+  rgb: string; // processed — used for gradients
+  rawRgb: string; // raw dominant — used for text tinting
   luminance: number;
 }
+
+/**
+ * Unified ambient text color for both FeaturedCard and RightStackCard.
+ *
+ * The text sits on layerBottom which fades to the *processed* gradient color.
+ * processedLuminance is the luminance of that processed color — if it's still
+ * dark in light mode (e.g. Jason Bourne navy, Conclave deep red), we flip to
+ * light text so it stays readable regardless of theme.
+ *
+ * Light mode + bright gradient (lum ≥ 0.45): dark tinted text
+ * Light mode + dark gradient  (lum  < 0.45): light tinted text  ← the fix
+ * Dark mode (always):                         light tinted text
+ */
+const getAmbientTextColor = (
+  isLightMode: boolean,
+  rawRgb: string,
+  processedLuminance: number,
+) => {
+  const [r, g, b] = rawRgb.split(",").map(Number);
+
+  // Use light text whenever the card's own gradient bottom is dark
+  const useLightText = !isLightMode || processedLuminance < 0.45;
+
+  if (!useLightText) {
+    // Light mode, genuinely bright gradient — dark tinted text
+    const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
+    const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
+    return {
+      primary: `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
+      secondary: `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`,
+    };
+  } else {
+    // Dark gradient (any theme) — light pastel tinted text
+    const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
+    const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85), 255);
+    return {
+      primary: `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
+      secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`,
+    };
+  }
+};
 
 const buildAmbientColor = (
   r: number,
@@ -52,66 +88,27 @@ const buildAmbientColor = (
   const lum = calculateLuminance(r, g, b);
   if (isLightMode) {
     const f = lum < 0.5 ? 1.5 : 1.2;
-    const clamp = (v: number) => Math.min(Math.floor(v * f + 50), 235);
-    const cr = clamp(r), cg = clamp(g), cb = clamp(b);
+    const cr = Math.min(Math.floor(r * f + 50), 235);
+    const cg = Math.min(Math.floor(g * f + 50), 235);
+    const cb = Math.min(Math.floor(b * f + 50), 235);
+    return {
+      solid: `rgb(${cr},${cg},${cb})`,
+      rgb: `${cr},${cg},${cb}`,
+      rawRgb: `${r},${g},${b}`,
+      luminance: calculateLuminance(cr, cg, cb),
+    };
+  } else {
+    const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
+    const cr = Math.max(Math.floor(r * f), 0);
+    const cg = Math.max(Math.floor(g * f), 0);
+    const cb = Math.max(Math.floor(b * f), 0);
     return {
       solid: `rgb(${cr},${cg},${cb})`,
       rgb: `${cr},${cg},${cb}`,
       rawRgb: `${r},${g},${b}`,
       luminance: lum,
     };
-  } else {
-    // solid: heavily darkened for card background
-    const sf = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
-    const sclamp = (v: number) => Math.max(Math.floor(v * sf), 0);
-    // rgb: moderately darkened for gradient layers — kept much
-    // brighter than solid so colour-bleed is actually visible.
-    // Even very dark swatches use 0.65× so the hue reads through.
-    const gf = lum > 0.5 ? 0.45 : lum > 0.3 ? 0.55 : 0.65;
-    const gclamp = (v: number) => Math.max(Math.floor(v * gf), 0);
-    return {
-      solid: `rgb(${sclamp(r)},${sclamp(g)},${sclamp(b)})`,
-      rgb: `${gclamp(r)},${gclamp(g)},${gclamp(b)}`,
-      rawRgb: `${r},${g},${b}`,
-      luminance: lum,
-    };
   }
-};
-
-const getContrastText = (
-  rawRgb: string,
-): { primary: string; secondary: string } => {
-  const [r, g, b] = rawRgb.split(",").map(Number);
-  const ir = 255 - r;
-  const ig = 255 - g;
-  const ib = 255 - b;
-  const origLum = calculateLuminance(r, g, b);
-  const invLum = calculateLuminance(ir, ig, ib);
-  const contrast = Math.abs(origLum - invLum);
-  if (contrast < 0.3) {
-    return {
-      primary: origLum > 0.5 ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)",
-      secondary: origLum > 0.5 ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
-    };
-  }
-  return {
-    primary: `rgba(${ir},${ig},${ib},0.95)`,
-    secondary: `rgba(${ir},${ig},${ib},0.65)`,
-  };
-};
-
-// ── Pick the most visually useful swatch from the palette ─────
-const pickBestSwatch = (palette: number[][]): [number, number, number] => {
-  let best = palette[0];
-  let bestLum = calculateLuminance(best[0], best[1], best[2]);
-  for (const swatch of palette) {
-    const lum = calculateLuminance(swatch[0], swatch[1], swatch[2]);
-    if (lum > bestLum) {
-      bestLum = lum;
-      best = swatch;
-    }
-  }
-  return [best[0], best[1], best[2]];
 };
 
 const useThemeDetection = () => {
@@ -151,8 +148,7 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
     extractingRef.current = true;
     try {
       const ct = new ColorThief();
-      const palette: number[][] = ct.getPalette(img, 8);
-      const [r, g, b] = pickBestSwatch(palette);
+      const [r, g, b] = ct.getColor(img);
       setAmbient(buildAmbientColor(r, g, b, isLightMode));
     } catch {
       setAmbient(null);
@@ -201,7 +197,6 @@ export default function RandomMedia() {
       const results: MediaItem[] = [];
       const maxAttempts = n * 4;
       let attempts = 0;
-
       while (results.length < n && attempts < maxAttempts) {
         attempts++;
         try {
@@ -211,10 +206,9 @@ export default function RandomMedia() {
             results.push(item);
           }
         } catch {
-          // keep trying until maxAttempts
+          /* keep trying */
         }
       }
-
       if (results.length === 0) throw new Error("All fetches failed");
       return results;
     },
@@ -226,7 +220,6 @@ export default function RandomMedia() {
     setError(null);
     const today = new Date().toDateString();
     let cancelled = false;
-
     try {
       const cached = localStorage.getItem(LOCAL_CACHE_KEY);
       if (cached) {
@@ -236,12 +229,10 @@ export default function RandomMedia() {
           return;
         }
       }
-
       const res = await fetch("/api/dailyMedia");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
-
       const items: MediaItem[] = json.data;
       localStorage.setItem(
         LOCAL_CACHE_KEY,
@@ -262,7 +253,6 @@ export default function RandomMedia() {
     } finally {
       if (!cancelled) setLoading(false);
     }
-
     return () => {
       cancelled = true;
     };
@@ -395,41 +385,22 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
   );
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
-  const fallbackRaw = isLightMode ? "50,50,50" : "200,200,200";
+  const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
   const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
   const solidColor = ambient?.solid ?? fallbackSolid;
-  const rgbColor = ambient?.rgb ?? (isLightMode ? "210,210,210" : "15,15,15");
-  const textColor = getContrastText(ambient?.rawRgb ?? fallbackRaw);
+  const rgbColor = ambient?.rgb ?? fallbackRgb;
+  const rawRgb = ambient?.rawRgb ?? fallbackRgb;
+  const processedLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
+  const textColor = getAmbientTextColor(
+    isLightMode,
+    rawRgb,
+    processedLuminance,
+  );
 
-  const lum = ambient?.luminance ?? 0.5;
-
-  // Brightness boost on the raw image — dark images need a lift
-  // before any overlay is applied. Caps at 1.6× so bright images
-  // are never washed out.
-  const brightness = lum < 0.15 ? 1.6 : lum < 0.25 ? 1.4 : lum < 0.4 ? 1.2 : 1.0;
-
-  // ── Gradient layers ───────────────────────────────────────
-  // Tint: very light on dark images, heavier on bright ones
-  const tintOpacity = lum < 0.2 ? 0.06 : lum < 0.4 ? 0.15 : 0.30;
-  const fullTint = `rgba(${rgbColor}, ${tintOpacity})`;
-
-  // Bottom fade uses the gradient-safe rgb (moderately darkened,
-  // not crushed) so the colour-bleed hue stays visible.
-  const layerBottom = `linear-gradient(to top,
-    rgba(${rgbColor},0.92) 0%,
-    rgba(${rgbColor},0.6)  14%,
-    rgba(${rgbColor},0.22) 30%,
-    rgba(${rgbColor},0)    46%)`;
-
-  // Top shadow
-  const layerTop = `linear-gradient(to bottom,
-    rgba(0,0,0,0.4) 0%,
-    rgba(0,0,0,0)   20%)`;
-
-  // Centre vignette — gentle, just enough for text
-  const layerCenter = `radial-gradient(ellipse at center,
-    rgba(0,0,0,0.22) 0%,
-    rgba(0,0,0,0)    70%)`;
+  const fullTint = `rgba(${rgbColor}, 0.25)`;
+  const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.85) 18%, rgba(${rgbColor},0.4) 36%, rgba(${rgbColor},0) 55%)`;
+  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
+  const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
 
   return (
     <div
@@ -448,30 +419,18 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
           draggable={false}
           crossOrigin="anonymous"
           className={`transition-transform duration-700 scale-100 group-hover:scale-102 object-cover ${hasBackdrop ? "object-center" : "object-top"}`}
-          style={{
-            filter: `brightness(${brightness})`,
-            transition: "filter 700ms ease-in-out",
-          }}
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 66vw"
         />
-
-        {/* Colour tint — ambient hue washed over the whole image */}
         <div
           className="absolute inset-0 transition-all duration-700"
           style={{ backgroundColor: fullTint }}
         />
-
-        {/* Bottom colour-bleed fade */}
         <div
           className="absolute inset-0 transition-all duration-700"
           style={{ background: layerBottom }}
         />
-
-        {/* Top shadow */}
         <div className="absolute inset-0" style={{ background: layerTop }} />
-
-        {/* Centre vignette */}
         <div className="absolute inset-0" style={{ background: layerCenter }} />
       </div>
 
@@ -509,41 +468,29 @@ FeaturedCard.displayName = "FeaturedCard";
 
 const RightStackCard = memo(({ item, index }: CardProps) => {
   const isLightMode = useThemeDetection();
-  const hasPoster = !!item.poster_path;
+  const hasBackdrop = !!item.backdrop_path;
   const imageUrl = getImageUrl(
-    hasPoster ? item.poster_path : item.backdrop_path,
-    500,
+    hasBackdrop ? item.backdrop_path : item.poster_path,
+    780,
   );
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
+  const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
   const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
   const solidColor = ambient?.solid ?? fallbackSolid;
-  const rgbColor = ambient?.rgb ?? (isLightMode ? "210,210,210" : "15,15,15");
+  const rgbColor = ambient?.rgb ?? fallbackRgb;
+  const rawRgb = ambient?.rawRgb ?? fallbackRgb;
+  const processedLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
+  const textColor = getAmbientTextColor(
+    isLightMode,
+    rawRgb,
+    processedLuminance,
+  );
 
-  const lum = ambient?.luminance ?? 0.5;
-
-  // ── Gradient layers ───────────────────────────────────────
-  const brightness = lum < 0.15 ? 1.5 : lum < 0.25 ? 1.3 : lum < 0.4 ? 1.15 : 1.0;
-
-  const tintOpacity = lum < 0.2 ? 0.06 : lum < 0.4 ? 0.15 : 0.30;
-  const fullTint = `rgba(${rgbColor}, ${tintOpacity})`;
-
-  const layerBottom = `linear-gradient(to top,
-    rgba(${rgbColor},0.95) 0%,
-    rgba(${rgbColor},0.65) 18%,
-    rgba(${rgbColor},0.25) 36%,
-    rgba(${rgbColor},0)    52%)`;
-
-  const layerTop = `linear-gradient(to bottom,
-    rgba(0,0,0,0.22) 0%,
-    rgba(0,0,0,0)    20%)`;
-
-  const layerCenter = `radial-gradient(ellipse at center,
-    rgba(0,0,0,0.22) 0%,
-    rgba(0,0,0,0)    70%)`;
-
-  const primaryText = "rgba(255,255,255,0.95)";
-  const secondaryText = "rgba(255,255,255,0.65)";
+  const fullTint = `rgba(${rgbColor}, 0.25)`;
+  const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.85) 18%, rgba(${rgbColor},0.4) 36%, rgba(${rgbColor},0) 55%)`;
+  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
+  const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
 
   return (
     <Link
@@ -561,44 +508,38 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
           alt={item.title || "Media"}
           fill
           crossOrigin="anonymous"
-          className={`transition-transform duration-700 group-hover:scale-105 ${hasPoster ? "object-cover object-top" : "object-cover object-center"}`}
-          style={{
-            filter: `brightness(${brightness})`,
-            transition: "filter 700ms ease-in-out",
-          }}
+          className="transition-transform duration-700 group-hover:scale-105 object-cover object-center"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
-
-        {/* Colour tint */}
         <div
           className="absolute inset-0 transition-all duration-700"
           style={{ backgroundColor: fullTint }}
         />
-
-        {/* Bottom colour-bleed fade */}
         <div
           className="absolute inset-0 transition-all duration-700"
           style={{ background: layerBottom }}
         />
-
-        {/* Top shadow */}
         <div className="absolute inset-0" style={{ background: layerTop }} />
-
-        {/* Centre vignette */}
         <div className="absolute inset-0" style={{ background: layerCenter }} />
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-        <p className="text-xs mb-1" style={{ color: secondaryText }}>
+        <p
+          className="text-xs mb-1 transition-colors duration-700"
+          style={{ color: textColor.primary }}
+        >
           {getDayLabel(index)}
         </p>
         <h3
-          className="text-base font-semibold leading-tight line-clamp-1 mb-1"
-          style={{ color: primaryText }}
+          className="text-base font-semibold leading-tight line-clamp-1 mb-1 transition-colors duration-700"
+          style={{ color: textColor.primary }}
         >
           {item.title || "Untitled"}
         </h3>
-        <p className="text-xs line-clamp-1" style={{ color: secondaryText }}>
+        <p
+          className="text-xs line-clamp-1 transition-colors duration-700"
+          style={{ color: textColor.secondary }}
+        >
           {item.overview || "No description available."}
         </p>
       </div>
@@ -624,7 +565,7 @@ const getDayLabel = (index: number): string => {
 
 const FeaturedCardSkeleton = () => (
   <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
-    <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6">
       <div className="h-4 w-24 bg-gray-400 rounded mb-2" />
       <div className="h-6 w-3/4 bg-gray-400 rounded mb-2" />
@@ -635,7 +576,7 @@ const FeaturedCardSkeleton = () => (
 
 const RightStackCardSkeleton = () => (
   <div className="relative w-full h-49 rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
-    <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4">
       <div className="h-3 w-16 bg-gray-400 rounded mb-1" />
       <div className="h-4 w-3/4 bg-gray-400 rounded mb-1" />

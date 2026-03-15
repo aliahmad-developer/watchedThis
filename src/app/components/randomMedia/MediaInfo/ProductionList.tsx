@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { AmbientTextColors } from "../detailsPage";
 
 interface Company {
   id: number;
@@ -7,19 +8,21 @@ interface Company {
 
 interface ProductionListProps {
   companies?: Company[];
-  primaryClass?: string;
-  secondaryClass?: string;
+  ambientText: AmbientTextColors;
 }
 
-export function ProductionList({
-  companies,
-  primaryClass = "text-white",
-  secondaryClass = "text-white/75",
-}: ProductionListProps) {
+export function ProductionList({ companies, ambientText }: ProductionListProps) {
   const filtered = companies?.filter((c) => c.name?.trim()) ?? [];
 
   if (filtered.length === 0) {
-    return <p className={secondaryClass}>N/A</p>;
+    return (
+      <p
+        className="transition-colors duration-700"
+        style={{ color: ambientText.secondary }}
+      >
+        N/A
+      </p>
+    );
   }
 
   return (
@@ -29,7 +32,8 @@ export function ProductionList({
           <Link
             href={`/production/${c.id}`}
             title={c.name ?? "Unknown"}
-            className={`transition-colors hover:text-light-accent dark:hover:text-dark-accent ${primaryClass}`}
+            className="transition-colors duration-700 hover:text-light-accent dark:hover:text-dark-accent"
+            style={{ color: ambientText.primary }}
           >
             {c.name}
           </Link>

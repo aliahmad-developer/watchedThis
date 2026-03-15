@@ -1,56 +1,51 @@
 "use client";
 import { useState } from "react";
+import type { AmbientTextColors } from "../detailsPage";
 
 interface OverviewProps {
   overview: string;
-  bodyClass?: string;
+  textScheme: "light" | "dark";
+  ambientText: AmbientTextColors;
 }
 
 const SCROLL_THRESHOLD = 500;
 
-export default function OverviewSection({
-  overview,
-  bodyClass = "text-white/90",
-}: OverviewProps) {
+export default function OverviewSection({ overview, textScheme, ambientText }: OverviewProps) {
   const isLong = overview.length > SCROLL_THRESHOLD;
-
-  // Only used when NOT long (truncate/expand path)
   const [expanded, setExpanded] = useState(false);
   const MAX_CHARS = 150;
   const shouldTruncate = !isLong && overview.length > MAX_CHARS;
-  const truncated = shouldTruncate && !expanded
-    ? overview.slice(0, MAX_CHARS) + "…"
-    : overview;
+  const truncated =
+    shouldTruncate && !expanded ? overview.slice(0, MAX_CHARS) + "…" : overview;
 
-  const toggleClass = bodyClass.includes("white")
-    ? "text-white/50 hover:text-white"
-    : "text-gray-500 hover:text-gray-800";
+  // Scroll box scrim — dark for light text on dark bg, light for dark text on bright bg
+  const scrollBoxBg =
+    textScheme === "light" ? "bg-black/30 backdrop-blur-sm" : "bg-white/40 backdrop-blur-sm";
 
   return (
-    <div className={`leading-relaxed ${bodyClass}`}>
+    <div className="leading-relaxed transition-colors duration-700" style={{ color: ambientText.primary }}>
       {/* Mobile: always scrollable */}
-      <div className="md:hidden max-h-24 overflow-y-auto rounded-lg px-3 py-2 bg-white/10 dark:bg-black/10 scrollbar-thin">
-        <p className="text-sm whitespace-pre-wrap opacity-90">{overview}</p>
+      <div className={`md:hidden max-h-24 overflow-y-auto rounded-lg px-3 py-2 ${scrollBoxBg} scrollbar-thin`}>
+        <p className="text-sm whitespace-pre-wrap">{overview}</p>
       </div>
 
       {/* Desktop */}
       <div className="hidden md:block">
         {isLong ? (
-          // Long overview → fixed-height scrollable box, no truncation
           <div
-            className="overflow-y-auto rounded-lg px-3 py-2.5 bg-white/10 dark:bg-black/10 scrollbar-thin"
-            style={{ maxHeight: "7.5rem" }} // ~4 lines
+            className={`overflow-y-auto rounded-lg px-3 py-2.5 ${scrollBoxBg} scrollbar-thin`}
+            style={{ maxHeight: "7.5rem" }}
           >
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{overview}</p>
           </div>
         ) : (
-          // Short/medium overview → inline text with optional expand
           <p>
             {truncated}
             {shouldTruncate && (
               <span
                 onClick={() => setExpanded((v) => !v)}
-                className={`cursor-pointer inline ml-1 transition-colors ${toggleClass}`}
+                className="cursor-pointer inline ml-1 transition-colors duration-700 hover:opacity-100"
+                style={{ color: ambientText.muted }}
               >
                 {expanded ? " − less" : " + more"}
               </span>

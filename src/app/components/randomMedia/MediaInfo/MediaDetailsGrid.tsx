@@ -1,19 +1,18 @@
 import { DetailItem } from "./DetailItem";
 import GenreTags from "./GenreTags";
 import { ProductionList } from "./ProductionList";
+import type { AmbientTextColors } from "../detailsPage";
 
 interface MediaDetailsGridProps {
   data: any;
   displayTitle: string;
-  primaryClass?: string;
-  secondaryClass?: string;
+  ambientText: AmbientTextColors;
 }
 
 export default function MediaDetailsGrid({
   data,
   displayTitle,
-  primaryClass = "text-white",
-  secondaryClass = "text-white/75",
+  ambientText,
 }: MediaDetailsGridProps) {
   const isMovie = data.media_type === "movie";
   const originalTitle = data.original_title || data.original_name || "";
@@ -31,7 +30,7 @@ export default function MediaDetailsGrid({
     if (Array.isArray(data.episode_run_time) && data.episode_run_time.length) {
       const avg = Math.round(
         data.episode_run_time.reduce((a: number, b: number) => a + b, 0) /
-          data.episode_run_time.length
+          data.episode_run_time.length,
       );
       return `${avg}m per episode`;
     }
@@ -71,73 +70,48 @@ export default function MediaDetailsGrid({
     <div className="grid grid-cols-2 gap-x-8 gap-y-5 content-start">
       {shouldShowOriginalTitle && (
         <div className="col-span-2">
-          <DetailItem
-            label="Original Title"
-            value={originalTitle}
-            primaryClass={primaryClass}
-            secondaryClass={secondaryClass}
-          />
+          <DetailItem label="Original Title" value={originalTitle} ambientText={ambientText} />
         </div>
       )}
-
       {releaseDate && (
         <DetailItem
           label={isMovie ? "Release Date" : "First Aired"}
           value={releaseDate}
-          primaryClass={primaryClass}
-          secondaryClass={secondaryClass}
+          ambientText={ambientText}
         />
       )}
-
-      {year && (
-        <DetailItem
-          label="Year"
-          value={year}
-          primaryClass={primaryClass}
-          secondaryClass={secondaryClass}
-        />
-      )}
-
+      {year && <DetailItem label="Year" value={year} ambientText={ambientText} />}
       {getDuration() && (
-        <DetailItem
-          label="Duration"
-          value={getDuration()}
-          primaryClass={primaryClass}
-          secondaryClass={secondaryClass}
-        />
+        <DetailItem label="Duration" value={getDuration()} ambientText={ambientText} />
       )}
-
       {getStatus() && (
-        <DetailItem
-          label="Status"
-          value={getStatus()}
-          primaryClass={primaryClass}
-          secondaryClass={secondaryClass}
-        />
+        <DetailItem label="Status" value={getStatus()} ambientText={ambientText} />
       )}
-
       {getScore() && (
-        <DetailItem
-          label="Score"
-          value={getScore()}
-          primaryClass={primaryClass}
-          secondaryClass={secondaryClass}
-        />
+        <DetailItem label="Score" value={getScore()} ambientText={ambientText} />
       )}
 
       {genres.length > 0 && (
         <div className="col-span-2">
-          <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>Genres</h4>
+          <h4
+            className="text-sm font-semibold mb-1 transition-colors duration-700"
+            style={{ color: ambientText.secondary }}
+          >
+            Genres
+          </h4>
           <GenreTags genres={genres} />
         </div>
       )}
 
       {companies.length > 0 && (
         <div className="col-span-2">
-          <h4 className={`text-sm font-semibold mb-1 ${secondaryClass}`}>
+          <h4
+            className="text-sm font-semibold mb-1 transition-colors duration-700"
+            style={{ color: ambientText.secondary }}
+          >
             {isMovie ? "Production" : "Studio"}
           </h4>
-          <ProductionList companies={companies} />
+          <ProductionList companies={companies} ambientText={ambientText} />
         </div>
       )}
     </div>

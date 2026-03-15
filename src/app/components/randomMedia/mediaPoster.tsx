@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { memo, useState } from "react";
+import type { AmbientTextColors } from "./detailsPage";
 
 interface MediaPosterProps {
   data: {
@@ -10,7 +11,8 @@ interface MediaPosterProps {
     media_type?: string;
   };
   textScheme?: "light" | "dark";
-  priority?: boolean; // let the parent decide — only true for above-the-fold posters
+  ambientText: AmbientTextColors;
+  priority?: boolean;
 }
 
 const FilmIcon = () => (
@@ -40,28 +42,28 @@ const BADGE_MAP: Record<string, string> = {
   tv: "SERIES",
 };
 
-function MediaPoster({ data, textScheme = "light", priority = false }: MediaPosterProps) {
+function MediaPoster({
+  data,
+  textScheme = "light",
+  ambientText,
+  priority = false,
+}: MediaPosterProps) {
   const [hasError, setHasError] = useState(false);
 
   const displayTitle = data.title || data.name || "Untitled";
   const hasPoster = !!data.poster_path && !hasError;
   const badgeText = BADGE_MAP[data.media_type ?? ""] ?? "MEDIA";
 
-  const badgeTextColor = textScheme === "light" ? "text-white" : "text-gray-900";
-  const badgeBorderColor = textScheme === "light" ? "border-white/40" : "border-gray-900/40";
-
   return (
     <div className="relative aspect-2/3 w-full max-w-xs rounded-2xl overflow-hidden shadow-lg group transition-all duration-300 hover:shadow-xl bg-light-border dark:bg-dark-border">
       {hasPoster ? (
         <Image
           draggable={false}
-          // w342 is the right TMDB size for ~200px wide cards — don't use w500/original
           src={`https://image.tmdb.org/t/p/w342${data.poster_path}`}
           alt={`Poster for ${displayTitle}`}
           fill
           onContextMenu={(e) => e.preventDefault()}
           className="object-contain object-center transition-opacity duration-300 select-none"
-          // Accurate sizes: poster cards are small, max ~320px wide
           sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 200px"
           priority={priority}
           onError={() => setHasError(true)}
@@ -78,8 +80,17 @@ function MediaPoster({ data, textScheme = "light", priority = false }: MediaPost
         </div>
       )}
 
+      {/* Badge — ambient tinted text + border, only when poster is showing */}
       <div
-        className={`border absolute top-3 left-3 bg-transparent px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10 ${badgeTextColor} ${badgeBorderColor} ${!hasPoster ? "border-light-disabled/40 dark:border-dark-disabled/40 text-light-disabled dark:text-dark-disabled" : ""}`}
+        className="absolute top-3 left-3 bg-transparent px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10 border transition-colors duration-700"
+        style={
+          hasPoster
+            ? {
+                color: ambientText.primary,
+                borderColor: ambientText.secondary,
+              }
+            : undefined
+        }
       >
         {badgeText}
       </div>

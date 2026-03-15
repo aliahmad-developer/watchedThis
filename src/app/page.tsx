@@ -1,7 +1,7 @@
 import "./globals.css";
 import SpotLightServer from "./components/spotlight/spotLightServer";
 import Trending from "./components/trending/TrendingCrousel";
-import Random from "./components/Random/randomMedia";
+import DailyMedia from "./components/dailyMedia/dailyMedia";
 import RecommendationShelf from "./components/Recommendation/recommendationShelf";
 
 export default function Home() {
@@ -10,7 +10,7 @@ export default function Home() {
       <div>
         <SpotLightServer />
         <div className="lg:mx-5 min-h-400 ">
-          <Random />
+          <DailyMedia />
           <RecommendationShelf />
           <Trending />
         </div>
