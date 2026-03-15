@@ -38,7 +38,7 @@ export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCar
       {/* Poster */}
       <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl">
         <div className="absolute inset-0 transition-transform duration-200 group-hover:scale-[1.03] transform-gpu will-change-transform">
-          <MediaPoster data={item} />
+          <MediaPoster data={item}/>
         </div>
       </div>
 

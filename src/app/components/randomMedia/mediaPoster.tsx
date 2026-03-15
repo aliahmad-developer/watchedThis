@@ -11,7 +11,7 @@ interface MediaPosterProps {
     media_type?: string;
   };
   textScheme?: "light" | "dark";
-  ambientText: AmbientTextColors;
+  ambientText?: AmbientTextColors;
   priority?: boolean;
 }
 
@@ -42,10 +42,18 @@ const BADGE_MAP: Record<string, string> = {
   tv: "SERIES",
 };
 
+
+/** Used when no backdrop is available (e.g. MediaCard grid) */
+const FALLBACK_AMBIENT: AmbientTextColors = {
+  primary:   "rgba(255,255,255,0.95)",
+  secondary: "rgba(255,255,255,0.70)",
+  muted:     "rgba(255,255,255,0.40)",
+};
+
 function MediaPoster({
   data,
   textScheme = "light",
-  ambientText,
+  ambientText = FALLBACK_AMBIENT,
   priority = false,
 }: MediaPosterProps) {
   const [hasError, setHasError] = useState(false);
