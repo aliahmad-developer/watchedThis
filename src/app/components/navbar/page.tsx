@@ -114,8 +114,8 @@ export default function Navbar() {
 
         const fuse = new Fuse(merged, {
           keys: [
-            { name: "title",         weight: 0.6 },
-            { name: "name",          weight: 0.6 },
+            { name: "title", weight: 0.6 },
+            { name: "name", weight: 0.6 },
             { name: "original_name", weight: 0.3 },
           ],
           threshold: 0.5,
@@ -127,9 +127,8 @@ export default function Navbar() {
 
         const fuseResults = fuse.search(searchQuery);
 
-        const reranked = fuseResults.length > 0
-          ? fuseResults.map((r) => r.item)
-          : merged;
+        const reranked =
+          fuseResults.length > 0 ? fuseResults.map((r) => r.item) : merged;
 
         setSearchResults(reranked.slice(0, 5));
       } catch (err) {
@@ -163,7 +162,9 @@ export default function Navbar() {
   // Lock body scroll when drawer is open
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [drawerOpen]);
 
   const handleSearchToggle = () => {
@@ -206,9 +207,10 @@ export default function Navbar() {
   };
 
   const navItems = [
-    { label: "Random", icon: faShuffle,        href: "/random"  },
-    { label: "Spinner", icon: faSpinner,        href: "/spinner" },
-    { label: "Find",   icon: faMagnifyingGlass, href: "/find"    },
+    { label: "Random", icon: faShuffle, href: "/random" },
+    { label: "Spinner", icon: faSpinner, href: "/spinner" },
+    { label: "Find", icon: faMagnifyingGlass, href: "/find" },
+    { label: "Movie Like", icon: faMagnifyingGlass, href: "/like" },
   ];
 
   return (
@@ -219,68 +221,91 @@ export default function Navbar() {
         - Once scrolled past: sticks to top of viewport
         `transition-transform` + navVisible handles the hide-on-scroll-down behaviour.
       */}
-      <div
-        className={`sticky top-0 z-50 transition-transform duration-300 ease-in-out ${
-          navVisible ? "translate-y-0" : "-translate-y-full"
-        }`}
-      >
-        {/* ── Main Navbar ── */}
-        <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="flex items-center justify-between w-full sm:w-auto">
-              <div className="flex items-center gap-3">
-                <button
-                  className="sm:hidden bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
-                  onClick={() => setDrawerOpen(true)}
-                  aria-label="Open menu"
-                >
-                  <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
-                </button>
+      <div className="sticky top-0 z-50 opacity-95">
+        <div
+          className={`transition-all duration-500 ${
+            navVisible
+              ? "translate-y-0 opacity-100"
+              : "-translate-y-full opacity-0 pointer-events-none"
+          }`}
+        >
+          <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+              <div className="flex items-center justify-between w-full sm:w-auto">
+                <div className="flex items-center gap-3">
+                  <button
+                    className="sm:hidden bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
+                    onClick={() => setDrawerOpen(true)}
+                    aria-label="Open menu"
+                  >
+                    <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
+                  </button>
 
-                <Link href="/" className="text-lg font-bold text-dark-accent whitespace-nowrap">
-                  RandoMovie
-                </Link>
+                  <Link
+                    href="/"
+                    className="text-lg font-bold text-dark-accent whitespace-nowrap"
+                  >
+                    RandoMovie
+                  </Link>
+                </div>
+
+                <div className="flex items-center gap-2 sm:hidden">
+                  <SearchButton
+                    isActive={searchVisible}
+                    onClick={handleSearchToggle}
+                    size="sm"
+                  />
+                  <Toggle size="sm" />
+                  <AuthButton />
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 sm:hidden">
-                <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
+              {/* Desktop nav pills */}
+              <div className="hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-65">
+                <div className="flex justify-evenly items-center gap-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1 px-2 shadow-sm text-xs sm:text-sm">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={(e) =>
+                        item.label === "Random" && handleRandomClick(e)
+                      }
+                      className={`flex flex-col items-center justify-center font-medium transition-colors duration-200 ${
+                        pathname === item.href
+                          ? "text-light-accent dark:text-dark-accent"
+                          : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
+                      }`}
+                    >
+                      <FontAwesomeIcon
+                        icon={item.icon}
+                        className="h-3 mb-0.5"
+                      />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2">
+                <SearchButton
+                  isActive={searchVisible}
+                  onClick={handleSearchToggle}
+                  size="sm"
+                />
                 <Toggle size="sm" />
                 <AuthButton />
               </div>
             </div>
-
-            {/* Desktop nav pills */}
-            <div className="hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-65">
-              <div className="flex justify-evenly items-center gap-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1 px-2 shadow-sm text-xs sm:text-sm">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={(e) => item.label === "Random" && handleRandomClick(e)}
-                    className={`flex flex-col items-center justify-center font-medium transition-colors duration-200 ${
-                      pathname === item.href
-                        ? "text-light-accent dark:text-dark-accent"
-                        : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={item.icon} className="h-3 mb-0.5" />
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2">
-              <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
-              <Toggle size="sm" />
-              <AuthButton />
-            </div>
-          </div>
-        </nav>
+          </nav>
+        </div>
 
         {/* ── Search Input + Dropdown — absolute so they float over page content ── */}
         {hasMounted && searchVisible && (
-          <div className="absolute left-0 right-0 top-full">
+          <div
+            className={`absolute left-0 right-0 transition-all duration-300 ${
+              navVisible ? "top-full" : "top-0"
+            }`}
+          >
             <div className="w-full bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
               <SearchInput
                 clearInput={handleClearInput}
@@ -317,7 +342,9 @@ export default function Navbar() {
           <div
             onClick={() => setDrawerOpen(false)}
             className={`sm:hidden fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
-              drawerOpen ? "opacity-50 pointer-events-auto" : "opacity-0 pointer-events-none"
+              drawerOpen
+                ? "opacity-50 pointer-events-auto"
+                : "opacity-0 pointer-events-none"
             }`}
           />
           <div
