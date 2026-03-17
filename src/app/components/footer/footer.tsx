@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/random", label: "Random" },
   { href: "/spinner", label: "Spinner" },
   { href: "/find", label: "Find" },
+  { href: "/like", label: "Movie Like" },
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();

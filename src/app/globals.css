@@ -177,11 +177,65 @@ html {
   scrollbar-width: none;
 }
 :root {
-  --strip-bg: #e9ecef;        /* light-card — soft light background */
-  --hole-bg: rgba(52, 58, 64, 0.2);  /* light-header tint — subtle dark holes */
+  --strip-bg: #e9ecef; /* light-card — soft light background */
+  --hole-bg: rgba(52, 58, 64, 0.2); /* light-header tint — subtle dark holes */
 }
 
 .dark {
-  --strip-bg: #282828;        /* dark-card — soft dark background */
-  --hole-bg: rgba(238, 238, 238, 0.12); /* dark-body-text tint — subtle light holes */
+  --strip-bg: #282828; /* dark-card — soft dark background */
+  --hole-bg: rgba(
+    238,
+    238,
+    238,
+    0.12
+  ); /* dark-body-text tint — subtle light holes */
+}
+/* ── Shooting stars ── */
+.star-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #ad858d;
+  border-radius: 50%;
+  box-shadow:
+     0 0 0 4px rgba(173, 133, 141, 0.1),
+    0 0 0 8px rgba(173, 133, 141, 0.1),
+    0 0 20px rgba(173, 133, 141, 0.15);
+  animation: shootingStar linear infinite;
+}
+
+.star-dot::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 300px;
+  height: 1px;
+  background: linear-gradient(270deg, transparent, #9ca3af);
+}
+
+.dark .star-dot {
+  background: #d4a373;
+  box-shadow:
+    0 0 0 4px rgba(212, 163, 115, 0.1),
+    0 0 0 8px rgba(212, 163, 115, 0.1),
+    0 0 20px rgba(212, 163, 115, 0.1);
+}
+.dark .star-dot::before {
+  background: linear-gradient(270deg, transparent, #fff);
+}
+
+@keyframes shootingStar {
+  0% {
+    transform: rotate(315deg) translateX(0);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(315deg) translateX(-1000px);
+    opacity: 0;
+  }
 }

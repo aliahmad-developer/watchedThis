@@ -3,18 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "next lint",
-  "postinstall": "echo 'skipping'"
-},
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "postinstall": "echo 'skipping'"
+  },
   "dependencies": {
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/aspect-ratio": "^0.4.2",
+    "animejs": "^4.3.6",
     "axios": "^1.12.2",
     "color-thief-browser": "^2.0.2",
     "firebase": "^12.2.1",
