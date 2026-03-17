@@ -223,7 +223,7 @@ export default function Navbar() {
       */}
       <div className="sticky top-0 z-50 opacity-95">
         <div
-          className={`transition-all duration-500 ${
+          className={`transition-all duration-400 ${
             navVisible
               ? "translate-y-0 opacity-100"
               : "-translate-y-full opacity-0 pointer-events-none"

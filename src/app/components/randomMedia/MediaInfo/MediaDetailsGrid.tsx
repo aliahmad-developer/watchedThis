@@ -99,7 +99,7 @@ export default function MediaDetailsGrid({
           >
             Genres
           </h4>
-          <GenreTags genres={genres} />
+          <GenreTags genres={genres} ambientText={ambientText} />
         </div>
       )}
 

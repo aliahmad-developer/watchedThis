@@ -82,11 +82,34 @@ const buildAmbientColor = (
 };
 
 /**
+ * Extracts the rgb channel values from an rgba(...) string.
+ * e.g. "rgba(180,120,90,0.95)" → [180, 120, 90]
+ */
+const parseRgbaChannels = (rgba: string): [number, number, number] => {
+  const parts = rgba.replace(/rgba?\(/, "").split(",").map(Number);
+  return [parts[0], parts[1], parts[2]];
+};
+
+/**
+ * WCAG contrast ratio between two luminance values.
+ */
+const contrastRatio = (lumA: number, lumB: number): number => {
+  const lighter = Math.max(lumA, lumB);
+  const darker = Math.min(lumA, lumB);
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+/**
  * Computes tinted rgba text colors from the dominant color.
  *
  * Light mode + bright bg (lum ≥ 0.45): very dark tint  (readable on pale bg)
  * Light mode + dark  bg (lum  < 0.45): bright pastel   (readable on dark bg)
  * Dark  mode (always):                  bright pastel   (readable on dark bg)
+ *
+ * If the computed primary color has contrast ratio < 3.5 against the
+ * background, the whole set falls back to safe near-white or near-black
+ * so that desaturated / mid-tone backdrops (e.g. brownish-grey) remain
+ * readable.
  */
 const getAmbientTextColor = (
   isLightMode: boolean,
@@ -96,25 +119,52 @@ const getAmbientTextColor = (
   const [r, g, b] = rawRgb.split(",").map(Number);
   const useLightText = !isLightMode || processedLuminance < 0.45;
 
+  let primary: string;
+  let secondary: string;
+  let muted: string;
+
   if (!useLightText) {
     // Light mode, bright background — dark tinted text
     const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
     const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
-    return {
-      primary:   `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
-      secondary: `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`,
-      muted:     `rgba(${ds(r)},${ds(g)},${ds(b)},0.50)`,
-    };
+    primary   = `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`;
+    secondary = `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`;
+    muted     = `rgba(${ds(r)},${ds(g)},${ds(b)},0.50)`;
   } else {
     // Dark background (any theme) — light pastel tinted text
     const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
     const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85), 255);
-    return {
-      primary:   `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
-      secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`,
-      muted:     `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)`,
-    };
+    primary   = `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`;
+    secondary = `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`;
+    muted     = `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)`;
   }
+
+  // ── contrast safety net ───────────────────────────────────────────────────
+  // On desaturated / mid-tone backdrops the ambient colors can collapse into
+  // the bg and become unreadable. Check the primary contrast ratio against
+  // the processed background luminance; if it's below 3.5 fall back to safe
+  // near-white or near-black (whichever gives contrast) while preserving the
+  // light/dark direction so it never looks jarring.
+  const [pr, pg, pb] = parseRgbaChannels(primary);
+  const primaryLum = calculateLuminance(pr, pg, pb);
+  const ratio = contrastRatio(primaryLum, processedLuminance);
+
+  if (ratio < 3.5) {
+    const useWhite = processedLuminance < 0.5;
+    return useWhite
+      ? {
+          primary:   "rgba(255,255,255,0.95)",
+          secondary: "rgba(255,255,255,0.75)",
+          muted:     "rgba(255,255,255,0.45)",
+        }
+      : {
+          primary:   "rgba(20,20,20,0.92)",
+          secondary: "rgba(20,20,20,0.70)",
+          muted:     "rgba(20,20,20,0.40)",
+        };
+  }
+
+  return { primary, secondary, muted };
 };
 
 // ─── hooks ────────────────────────────────────────────────────────────────────
