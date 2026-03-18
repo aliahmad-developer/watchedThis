@@ -45,16 +45,16 @@ export default function ClientProviders({
             boxShadow: "0 4px 14px rgba(0, 0, 0, 0.25)",
           },
           className:
-            "bg-light-card text-light-accent border border-light-border dark:bg-dark-card dark:text-dark-accent dark:border-dark-border",
+            "bg-light-card text-light-body-text border border-light-border dark:bg-dark-card dark:text-dark-body-text dark:border-dark-border",
           success: {
-            iconTheme: { primary: "#b85c7a", secondary: "#fff" },
+            iconTheme: { primary: "#468189", secondary: "#ffffff" },
             className:
-              "bg-light-card text-light-accent border border-light-border dark:bg-dark-card dark:text-dark-accent dark:border-dark-border",
+              "bg-light-card text-light-body-text border border-light-border dark:bg-dark-card dark:text-dark-body-text dark:border-dark-border",
           },
           error: {
-            iconTheme: { primary: "#d9534f", secondary: "#fff" },
+            iconTheme: { primary: "#d9534f", secondary: "#ffffff" },
             className:
-              "bg-light-card text-light-accent border border-light-border dark:bg-dark-card dark:text-dark-accent dark:border-dark-border",
+              "bg-light-card text-light-body-text border border-light-border dark:bg-dark-card dark:text-dark-body-text dark:border-dark-border",
           },
         }}
       />

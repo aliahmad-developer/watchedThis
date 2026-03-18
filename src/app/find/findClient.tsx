@@ -326,7 +326,7 @@ function FindPageInner() {
 
           <button
             onClick={() => setFilters(DEFAULT_FILTERS)}
-            className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2"
+           className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition underline underline-offset-2"
           >
             Reset
           </button>
@@ -336,7 +336,7 @@ function FindPageInner() {
           {/* Strict Mode */}
           <div className="flex items-center justify-between p-3 rounded-xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
             <div>
-              <p className="text-sm font-semibold text-light-text dark:text-dark-text">
+              <p className="text-sm font-semibold text-light-body-text dark:text-dark-body-text">
                 Strict Mode
               </p>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-0.5">
@@ -437,7 +437,7 @@ function FindPageInner() {
                   onClick={() =>
                     setFilters((prev) => ({ ...prev, keywords: [] }))
                   }
-                  className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2"
+                 className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition underline underline-offset-2"
                 >
                   clear all
                 </button>
@@ -636,7 +636,7 @@ function FindPageInner() {
                       excludeKeywords: [],
                     }))
                   }
-                  className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2"
+                  className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition underline underline-offset-2"
                 >
                   clear all
                 </button>
