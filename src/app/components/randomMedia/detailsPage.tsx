@@ -96,7 +96,10 @@ const buildAmbientColor = (
 };
 
 const parseRgbaChannels = (rgba: string): [number, number, number] => {
-  const parts = rgba.replace(/rgba?\(/, "").split(",").map(Number);
+  const parts = rgba
+    .replace(/rgba?\(/, "")
+    .split(",")
+    .map(Number);
   return [parts[0], parts[1], parts[2]];
 };
 
@@ -130,16 +133,16 @@ const getAmbientTextColor = (
   if (!useLightText) {
     const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
     const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
-    primary   = `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`;
+    primary = `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`;
     secondary = `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`;
-    muted     = `rgba(${ds(r)},${ds(g)},${ds(b)},0.50)`;
+    muted = `rgba(${ds(r)},${ds(g)},${ds(b)},0.50)`;
   } else {
     const lp = (v: number) => Math.min(Math.floor(v * 2.6 + 160), 255);
     const ls = (v: number) => Math.min(Math.floor(v * 2.2 + 110), 255);
     const lm = (v: number) => Math.min(Math.floor(v * 1.8 + 75), 255);
-    primary   = `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`;
+    primary = `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`;
     secondary = `rgba(${ls(r)},${ls(g)},${ls(b)},0.88)`;
-    muted     = `rgba(${lm(r)},${lm(g)},${lm(b)},0.55)`;
+    muted = `rgba(${lm(r)},${lm(g)},${lm(b)},0.55)`;
   }
 
   const [pr, pg, pb] = parseRgbaChannels(primary);
@@ -150,14 +153,14 @@ const getAmbientTextColor = (
     const useWhite = effectiveBgLum < 0.5;
     return useWhite
       ? {
-          primary:   "rgba(255,255,255,0.95)",
+          primary: "rgba(255,255,255,0.95)",
           secondary: "rgba(235,235,235,0.82)",
-          muted:     "rgba(210,210,210,0.50)",
+          muted: "rgba(210,210,210,0.50)",
         }
       : {
-          primary:   "rgba(20,20,20,0.92)",
+          primary: "rgba(20,20,20,0.92)",
           secondary: "rgba(20,20,20,0.72)",
-          muted:     "rgba(20,20,20,0.42)",
+          muted: "rgba(20,20,20,0.42)",
         };
   }
 
@@ -247,8 +250,12 @@ const useAmbientColor = (
       const handleError = () => {
         // Fallback: try visible backdrop image
         const visible = imgRef.current;
-        if (visible?.complete && visible.naturalWidth > 0) extractColor(visible);
-        else visible?.addEventListener("load", () => extractColor(visible), { once: true });
+        if (visible?.complete && visible.naturalWidth > 0)
+          extractColor(visible);
+        else
+          visible?.addEventListener("load", () => extractColor(visible), {
+            once: true,
+          });
       };
 
       img.addEventListener("load", handleLoad);
@@ -277,17 +284,25 @@ const useAmbientColor = (
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export default function Desc({ data, backdropUrl = "", isLoading = false }: DescProps) {
+export default function Desc({
+  data,
+  backdropUrl = "",
+  isLoading = false,
+}: DescProps) {
   const [hasError, setHasError] = useState(false);
   const isLightMode = useThemeDetection();
   const hasBackdrop = isValidBackdropUrl(backdropUrl) && !hasError;
-  const { imgRef, ambient } = useAmbientColor(backdropUrl, hasBackdrop, isLightMode);
+  const { imgRef, ambient } = useAmbientColor(
+    backdropUrl,
+    hasBackdrop,
+    isLightMode,
+  );
 
   const mediaTitle = data?.title || data?.name || "Media";
 
   const { solidColor, rgbColor } = useMemo(() => {
-    const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
-    const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
+    const fallbackRgb = isLightMode ? "238,240,242" : "3,25,38";
+    const fallbackSolid = isLightMode ? "rgb(238,240,242)" : "rgb(3,25,38)";
     return {
       solidColor: ambient?.solid ?? fallbackSolid,
       rgbColor: ambient?.rgb ?? fallbackRgb,
@@ -295,14 +310,14 @@ export default function Desc({ data, backdropUrl = "", isLoading = false }: Desc
   }, [ambient, isLightMode]);
 
   const ambientText: AmbientTextColors = useMemo(() => {
-    const rawRgb = ambient?.rawRgb ?? (isLightMode ? "210,210,210" : "15,15,15");
-    const rawLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
+    const rawRgb = ambient?.rawRgb ?? (isLightMode ? "238,240,242" : "3,25,38");
+    const rawLuminance = ambient?.luminance ?? (isLightMode ? 0.88 : 0.02);
     return getAmbientTextColor(isLightMode, rawRgb, rawLuminance);
   }, [ambient, isLightMode]);
 
   const textScheme: "light" | "dark" = useMemo(() => {
     const effectiveLum = getEffectiveBgLuminance(
-      ambient?.luminance ?? (isLightMode ? 0.8 : 0.06),
+      ambient?.luminance ?? (isLightMode ? 0.88 : 0.02),
       isLightMode,
     );
     return !isLightMode || effectiveLum < 0.45 ? "light" : "dark";
@@ -320,7 +335,10 @@ export default function Desc({ data, backdropUrl = "", isLoading = false }: Desc
   return (
     <section
       className="relative w-full min-h-screen overflow-hidden"
-      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
+      style={{
+        backgroundColor: solidColor,
+        transition: "background-color 700ms ease-in-out",
+      }}
     >
       {hasBackdrop && backdropDisplaySrc && (
         <div className="absolute inset-0">
@@ -405,7 +423,20 @@ export default function Desc({ data, backdropUrl = "", isLoading = false }: Desc
       </div>
 
       {/* Keywords strip */}
-      {!isLoading && keywords.length > 0 && (
+      {/* Keywords strip */}
+      {isLoading ? (
+        <div className="relative z-10 px-4 sm:px-6 pb-6 animate-pulse">
+          <div className="flex flex-wrap gap-2">
+            {[52, 72, 44, 64, 48, 80, 56, 40, 68, 60].map((w, i) => (
+              <div
+                key={i}
+                className="h-4 bg-light-border dark:bg-dark-border rounded"
+                style={{ width: `${w}px` }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : keywords.length > 0 ? (
         <div className="relative z-10 px-4 sm:px-6 pb-6">
           <KeywordsSection
             keywords={keywords}
@@ -413,7 +444,7 @@ export default function Desc({ data, backdropUrl = "", isLoading = false }: Desc
             mutedColor={ambientText.muted}
           />
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

@@ -25,9 +25,6 @@ interface DailyMediaDoc {
 }
 
 const LOCAL_CACHE_KEY = "dailyMediaCache_v2";
-
-// ── Ambient color helpers ─────────────────────────────────────
-
 const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
 
 const calculateLuminance = (r: number, g: number, b: number) =>
@@ -35,47 +32,31 @@ const calculateLuminance = (r: number, g: number, b: number) =>
 
 interface AmbientColor {
   solid: string;
-  rgb: string; // processed — used for gradients
-  rawRgb: string; // raw dominant — used for text tinting
+  rgb: string;
+  rawRgb: string;
   luminance: number;
 }
 
-/**
- * Unified ambient text color for both FeaturedCard and RightStackCard.
- *
- * The text sits on layerBottom which fades to the *processed* gradient color.
- * processedLuminance is the luminance of that processed color — if it's still
- * dark in light mode (e.g. Jason Bourne navy, Conclave deep red), we flip to
- * light text so it stays readable regardless of theme.
- *
- * Light mode + bright gradient (lum ≥ 0.45): dark tinted text
- * Light mode + dark gradient  (lum  < 0.45): light tinted text  ← the fix
- * Dark mode (always):                         light tinted text
- */
 const getAmbientTextColor = (
   isLightMode: boolean,
   rawRgb: string,
   processedLuminance: number,
 ) => {
   const [r, g, b] = rawRgb.split(",").map(Number);
-
-  // Use light text whenever the card's own gradient bottom is dark
   const useLightText = !isLightMode || processedLuminance < 0.45;
 
   if (!useLightText) {
-    // Light mode, genuinely bright gradient — dark tinted text
     const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
     const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
     return {
-      primary: `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
+      primary:   `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
       secondary: `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`,
     };
   } else {
-    // Dark gradient (any theme) — light pastel tinted text
     const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
     const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85), 255);
     return {
-      primary: `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
+      primary:   `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
       secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`,
     };
   }
@@ -113,13 +94,11 @@ const buildAmbientColor = (
   }
 };
 
+// Fixed: light mode = no .dark class (your setup never adds a .light class)
 const useThemeDetection = () => {
   const [isLightMode, setIsLightMode] = useState(false);
   const check = useCallback(() => {
-    setIsLightMode(
-      document.documentElement.classList.contains("light") ||
-        window.matchMedia(COLOR_SCHEME_MEDIA_QUERY).matches,
-    );
+    setIsLightMode(!document.documentElement.classList.contains("dark"));
   }, []);
   useEffect(() => {
     check();
@@ -159,19 +138,14 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
     }
   }, [isLightMode]);
 
-  useEffect(() => {
-    setAmbient(null);
-  }, [imageUrl, isLightMode]);
+  useEffect(() => { setAmbient(null); }, [imageUrl, isLightMode]);
 
   useEffect(() => {
     if (!imgRef.current) return;
     const img = imgRef.current;
     const handle = () => setTimeout(extract, 80);
-    if (img.complete) {
-      handle();
-    } else {
-      img.addEventListener("load", handle);
-    }
+    if (img.complete) { handle(); }
+    else { img.addEventListener("load", handle); }
     return () => img.removeEventListener("load", handle);
   }, [extract, imageUrl]);
 
@@ -180,7 +154,7 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
 
 // ── Main component ────────────────────────────────────────────
 
-export default function RandomMedia() {
+export default function dailyMedia() {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -207,9 +181,7 @@ export default function RandomMedia() {
             seen.add(item.id);
             results.push(item);
           }
-        } catch {
-          /* keep trying */
-        }
+        } catch {}
       }
       if (results.length === 0) throw new Error("All fetches failed");
       return results;
@@ -236,10 +208,7 @@ export default function RandomMedia() {
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       const items: MediaItem[] = json.data;
-      localStorage.setItem(
-        LOCAL_CACHE_KEY,
-        JSON.stringify({ date: today, items }),
-      );
+      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify({ date: today, items }));
       if (!cancelled) setMedia(items);
     } catch (err) {
       console.error("Error loading daily media:", err);
@@ -255,27 +224,24 @@ export default function RandomMedia() {
     } finally {
       if (!cancelled) setLoading(false);
     }
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    loadDailyMedia();
-  }, [loadDailyMedia]);
+  // suppress unused warning — fetchNUnique used externally
+  void fetchNUnique;
+
+  useEffect(() => { loadDailyMedia(); }, [loadDailyMedia]);
 
   if (loading) {
     return (
       <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
         <header className="mb-6">
           <div className="flex mb-6">
-            <div className="h-8 bg-gray-200 px-40 rounded w-64 animate-pulse" />
+            <div className="h-8 bg-light-card dark:bg-dark-card px-40 rounded w-64 animate-pulse" />
           </div>
         </header>
         <div className="hidden lg:grid grid-cols-3 gap-2 min-h-100">
-          <div className="col-span-2">
-            <FeaturedCardSkeleton />
-          </div>
+          <div className="col-span-2"><FeaturedCardSkeleton /></div>
           <div className="flex flex-col gap-2">
             <RightStackCardSkeleton />
             <RightStackCardSkeleton />
@@ -288,9 +254,7 @@ export default function RandomMedia() {
             <RightStackCardSkeleton />
           </div>
         </div>
-        <div className="block md:hidden">
-          <FeaturedCardSkeleton />
-        </div>
+        <div className="block md:hidden"><FeaturedCardSkeleton /></div>
       </section>
     );
   }
@@ -298,9 +262,7 @@ export default function RandomMedia() {
   if (error) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-2 bg-light-bg dark:bg-dark-bg text-center">
-        <p className="text-light-accent dark:text-dark-accent font-semibold">
-          {error}
-        </p>
+        <p className="text-light-accent dark:text-dark-accent font-semibold">{error}</p>
         <button
           onClick={loadDailyMedia}
           className="rounded-lg bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text px-6 py-2 transition hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg"
@@ -330,14 +292,10 @@ export default function RandomMedia() {
           </div>
           <div className="flex flex-col space-y-2">
             {media.slice(1, 3).map((item, index) => (
-              <RightStackCard
-                key={`${item.id}-${index + 1}`}
-                item={item}
-                index={index + 1}
-              />
+              <RightStackCard key={`${item.id}-${index + 1}`} item={item} index={index + 1} />
             ))}
             {media.length < 3 && (
-              <div className="text-center text-gray-500 p-4 border border-dashed rounded-lg">
+              <div className="text-center text-light-secondary-text dark:text-dark-secondary-text p-4 border border-dashed border-light-border dark:border-dark-border rounded-lg">
                 More recommendations coming soon
               </div>
             )}
@@ -350,17 +308,13 @@ export default function RandomMedia() {
         {media[0] && <FeaturedCard item={media[0]} index={0} />}
         <div className="grid grid-cols-2 gap-2">
           {media.slice(1, 3).map((item, index) => (
-            <RightStackCard
-              key={`${item.id}-${index + 1}`}
-              item={item}
-              index={index + 1}
-            />
+            <RightStackCard key={`${item.id}-${index + 1}`} item={item} index={index + 1} />
           ))}
           {media.length < 3 &&
             Array.from({ length: 2 - (media.length - 1) }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="text-center text-gray-500 p-4 border border-dashed rounded-lg flex items-center justify-center"
+                className="text-center text-light-secondary-text dark:text-dark-secondary-text p-4 border border-dashed border-light-border dark:border-dark-border rounded-lg flex items-center justify-center"
               >
                 Coming soon
               </div>
@@ -383,39 +337,32 @@ interface CardProps {
   index: number;
 }
 
+// Updated fallbacks: #eef0f2 = light-bg, #031926 = dark-bg
+const FALLBACK_LIGHT = { rgb: "238,240,242", solid: "rgb(238,240,242)", luminance: 0.88 };
+const FALLBACK_DARK  = { rgb: "3,25,38",     solid: "rgb(3,25,38)",     luminance: 0.02 };
+
 const FeaturedCard = memo(({ item, index }: CardProps) => {
   const isLightMode = useThemeDetection();
   const hasBackdrop = !!item.backdrop_path;
-  const imageUrl = getImageUrl(
-    hasBackdrop ? item.backdrop_path : item.poster_path,
-    1280,
-  );
+  const imageUrl = getImageUrl(hasBackdrop ? item.backdrop_path : item.poster_path, 1280);
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
-  const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
-  const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
-  const solidColor = ambient?.solid ?? fallbackSolid;
-  const rgbColor = ambient?.rgb ?? fallbackRgb;
-  const rawRgb = ambient?.rawRgb ?? fallbackRgb;
-  const processedLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
-  const textColor = getAmbientTextColor(
-    isLightMode,
-    rawRgb,
-    processedLuminance,
-  );
+  const fb = isLightMode ? FALLBACK_LIGHT : FALLBACK_DARK;
+  const solidColor        = ambient?.solid     ?? fb.solid;
+  const rgbColor          = ambient?.rgb       ?? fb.rgb;
+  const rawRgb            = ambient?.rawRgb    ?? fb.rgb;
+  const processedLuminance = ambient?.luminance ?? fb.luminance;
+  const textColor = getAmbientTextColor(isLightMode, rawRgb, processedLuminance);
 
-  const fullTint = `rgba(${rgbColor}, 0.25)`;
+  const fullTint    = `rgba(${rgbColor}, 0.25)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.85) 18%, rgba(${rgbColor},0.4) 36%, rgba(${rgbColor},0) 55%)`;
-  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
+  const layerTop    = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
   const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
 
   return (
     <div
       className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden group border border-light-border dark:border-dark-border shadow-lg"
-      style={{
-        backgroundColor: solidColor,
-        transition: "background-color 700ms ease-in-out",
-      }}
+      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
     >
       <div className="absolute inset-0">
         <Image
@@ -429,23 +376,14 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 66vw"
         />
-        <div
-          className="absolute inset-0 transition-all duration-700"
-          style={{ backgroundColor: fullTint }}
-        />
-        <div
-          className="absolute inset-0 transition-all duration-700"
-          style={{ background: layerBottom }}
-        />
+        <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
+        <div className="absolute inset-0 transition-all duration-700" style={{ background: layerBottom }} />
         <div className="absolute inset-0" style={{ background: layerTop }} />
         <div className="absolute inset-0" style={{ background: layerCenter }} />
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 z-10">
-        <p
-          className="text-xs mb-1 transition-colors duration-700"
-          style={{ color: textColor.secondary }}
-        >
+        <p className="text-xs mb-1 transition-colors duration-700" style={{ color: textColor.secondary }}>
           {getDayLabel(index)}
         </p>
         <h2
@@ -454,10 +392,7 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
         >
           {item.title || "Untitled"}
         </h2>
-        <p
-          className="text-sm line-clamp-2 mb-4 transition-colors duration-700"
-          style={{ color: textColor.secondary }}
-        >
+        <p className="text-sm line-clamp-2 mb-4 transition-colors duration-700" style={{ color: textColor.secondary }}>
           {item.overview || "No description available."}
         </p>
         <Link
@@ -476,37 +411,26 @@ FeaturedCard.displayName = "FeaturedCard";
 const RightStackCard = memo(({ item, index }: CardProps) => {
   const isLightMode = useThemeDetection();
   const hasBackdrop = !!item.backdrop_path;
-  const imageUrl = getImageUrl(
-    hasBackdrop ? item.backdrop_path : item.poster_path,
-    780,
-  );
+  const imageUrl = getImageUrl(hasBackdrop ? item.backdrop_path : item.poster_path, 780);
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
-  const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
-  const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
-  const solidColor = ambient?.solid ?? fallbackSolid;
-  const rgbColor = ambient?.rgb ?? fallbackRgb;
-  const rawRgb = ambient?.rawRgb ?? fallbackRgb;
-  const processedLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
-  const textColor = getAmbientTextColor(
-    isLightMode,
-    rawRgb,
-    processedLuminance,
-  );
+  const fb = isLightMode ? FALLBACK_LIGHT : FALLBACK_DARK;
+  const solidColor        = ambient?.solid     ?? fb.solid;
+  const rgbColor          = ambient?.rgb       ?? fb.rgb;
+  const rawRgb            = ambient?.rawRgb    ?? fb.rgb;
+  const processedLuminance = ambient?.luminance ?? fb.luminance;
+  const textColor = getAmbientTextColor(isLightMode, rawRgb, processedLuminance);
 
-  const fullTint = `rgba(${rgbColor}, 0.25)`;
+  const fullTint    = `rgba(${rgbColor}, 0.25)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.85) 18%, rgba(${rgbColor},0.4) 36%, rgba(${rgbColor},0) 55%)`;
-  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
+  const layerTop    = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
   const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
 
   return (
     <Link
       href={`/${item.media_type || "movie"}/${createSlug(item.title || "")}/${item.id}`}
       className="relative w-full h-49 rounded-xl overflow-hidden group border border-light-border dark:border-dark-border shadow-md hover:shadow-lg transition-shadow"
-      style={{
-        backgroundColor: solidColor,
-        transition: "background-color 700ms ease-in-out",
-      }}
+      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
     >
       <div className="absolute inset-0">
         <Image
@@ -518,23 +442,14 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
           className="transition-transform duration-700 group-hover:scale-105 object-cover object-center"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
-        <div
-          className="absolute inset-0 transition-all duration-700"
-          style={{ backgroundColor: fullTint }}
-        />
-        <div
-          className="absolute inset-0 transition-all duration-700"
-          style={{ background: layerBottom }}
-        />
+        <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
+        <div className="absolute inset-0 transition-all duration-700" style={{ background: layerBottom }} />
         <div className="absolute inset-0" style={{ background: layerTop }} />
         <div className="absolute inset-0" style={{ background: layerCenter }} />
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-        <p
-          className="text-xs mb-1 transition-colors duration-700"
-          style={{ color: textColor.primary }}
-        >
+        <p className="text-xs mb-1 transition-colors duration-700" style={{ color: textColor.primary }}>
           {getDayLabel(index)}
         </p>
         <h3
@@ -543,10 +458,7 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
         >
           {item.title || "Untitled"}
         </h3>
-        <p
-          className="text-xs line-clamp-1 transition-colors duration-700"
-          style={{ color: textColor.secondary }}
-        >
+        <p className="text-xs line-clamp-1 transition-colors duration-700" style={{ color: textColor.secondary }}>
           {item.overview || "No description available."}
         </p>
       </div>
@@ -560,7 +472,7 @@ RightStackCard.displayName = "RightStackCard";
 const getImageUrl = (path?: string | null, width = 1280): string =>
   path
     ? `https://image.tmdb.org/t/p/w${width}${path}`
-    : "https://via.placeholder.com/800x450?text=No+Image";
+    : `https://image.tmdb.org/t/p/w${width}/placeholder.jpg`;
 
 const getDayLabel = (index: number): string => {
   if (index === 0) return "Today";
@@ -571,23 +483,23 @@ const getDayLabel = (index: number): string => {
 // ── Skeletons ─────────────────────────────────────────────────
 
 const FeaturedCardSkeleton = () => (
-  <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
+  <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-light-card dark:bg-dark-card animate-pulse">
     <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6">
-      <div className="h-4 w-24 bg-gray-400 rounded mb-2" />
-      <div className="h-6 w-3/4 bg-gray-400 rounded mb-2" />
-      <div className="h-4 w-5/6 bg-gray-400 rounded" />
+      <div className="h-4 w-24 bg-light-border dark:bg-dark-border rounded mb-2" />
+      <div className="h-6 w-3/4 bg-light-border dark:bg-dark-border rounded mb-2" />
+      <div className="h-4 w-5/6 bg-light-border dark:bg-dark-border rounded" />
     </div>
   </div>
 );
 
 const RightStackCardSkeleton = () => (
-  <div className="relative w-full h-49 rounded-xl overflow-hidden bg-light-border dark:bg-dark-border animate-pulse">
+  <div className="relative w-full h-49 rounded-xl overflow-hidden bg-light-card dark:bg-dark-card animate-pulse">
     <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/10 to-transparent" />
     <div className="absolute bottom-0 left-0 right-0 p-4">
-      <div className="h-3 w-16 bg-gray-400 rounded mb-1" />
-      <div className="h-4 w-3/4 bg-gray-400 rounded mb-1" />
-      <div className="h-3 w-5/6 bg-gray-400 rounded" />
+      <div className="h-3 w-16 bg-light-border dark:bg-dark-border rounded mb-1" />
+      <div className="h-4 w-3/4 bg-light-border dark:bg-dark-border rounded mb-1" />
+      <div className="h-3 w-5/6 bg-light-border dark:bg-dark-border rounded" />
     </div>
   </div>
 );

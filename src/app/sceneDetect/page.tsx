@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -51,13 +52,11 @@ const buildAmbientColor = (
   }
 };
 
+// Fixed: light mode = no .dark class (your setup never adds a .light class)
 const useThemeDetection = () => {
   const [isLightMode, setIsLightMode] = useState(false);
   const check = useCallback(() => {
-    setIsLightMode(
-      document.documentElement.classList.contains("light") ||
-        window.matchMedia(COLOR_SCHEME_MEDIA_QUERY).matches,
-    );
+    setIsLightMode(!document.documentElement.classList.contains("dark"));
   }, []);
   useEffect(() => {
     check();
@@ -77,9 +76,7 @@ const useThemeDetection = () => {
 };
 
 const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
-  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(
-    null,
-  );
+  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const extractingRef = useRef(false);
   const extract = useCallback(() => {
@@ -125,9 +122,7 @@ function SceneResultCard({
 }) {
   const isLightMode = useThemeDetection();
   const confidence = Math.round((movie.votes / totalVotes) * 100);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(
-    null,
-  );
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const badgeRef = useRef<HTMLSpanElement>(null);
 
   const imageUrl = movie.backdrop_path
@@ -137,13 +132,16 @@ function SceneResultCard({
       : null;
 
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
-  const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
-  const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
+
+  // Updated fallbacks to match new palette tokens
+  const fallbackRgb   = isLightMode ? "238,240,242" : "3,25,38";
+  const fallbackSolid = isLightMode ? "rgb(238,240,242)" : "rgb(3,25,38)";
   const solidColor = ambient?.solid ?? fallbackSolid;
-  const rgbColor = ambient?.rgb ?? fallbackRgb;
-  const fullTint = `rgba(${rgbColor}, 0.45)`;
+  const rgbColor   = ambient?.rgb   ?? fallbackRgb;
+
+  const fullTint   = `rgba(${rgbColor}, 0.45)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
-  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
+  const layerTop    = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
   const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
 
   return (
@@ -160,7 +158,6 @@ function SceneResultCard({
       }}
     >
       <div className="relative w-full aspect-4/3 sm:aspect-16/6 lg:aspect-16/5">
-        {/* Image in its own named group — scale only fires on this div's hover */}
         <div className="group/img absolute inset-0 overflow-hidden">
           {imageUrl ? (
             <Image
@@ -173,24 +170,14 @@ function SceneResultCard({
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1280px"
             />
           ) : (
-            <div className="absolute inset-0 bg-linear-to-br from-gray-700 to-gray-900" />
+            <div className="absolute inset-0 bg-dark-card" />
           )}
-          <div
-            className="absolute inset-0 transition-all duration-700"
-            style={{ backgroundColor: fullTint }}
-          />
-          <div
-            className="absolute inset-0 transition-all duration-700"
-            style={{ background: layerBottom }}
-          />
+          <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
+          <div className="absolute inset-0 transition-all duration-700" style={{ background: layerBottom }} />
           <div className="absolute inset-0" style={{ background: layerTop }} />
-          <div
-            className="absolute inset-0"
-            style={{ background: layerCenter }}
-          />
+          <div className="absolute inset-0" style={{ background: layerCenter }} />
         </div>
 
-        {/* Overlay — pointer-events-none so mouse falls through to image group */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Badges top-left */}
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-1.5 pointer-events-auto">
@@ -248,10 +235,10 @@ function SceneResultCard({
               transform: "translate(-50%, -100%)",
             }}
           >
-            <div className="relative bg-black/90 backdrop-blur-sm text-white text-[10px] leading-snug px-2.5 py-2 rounded-lg shadow-xl text-center w-44 whitespace-normal">
+            <div className="relative bg-dark-nav/90 backdrop-blur-sm text-dark-body-text text-[10px] leading-snug px-2.5 py-2 rounded-lg shadow-xl text-center w-44 whitespace-normal">
               How confident the AI is that this is the correct match, based on
               scene analysis.
-              <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90" />
+              <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-nav/90" />
             </div>
           </div>,
           document.body,
@@ -263,7 +250,7 @@ function SceneResultCard({
         style={{ backgroundColor: solidColor }}
       >
         {movie.genres.length > 0 && (
-          <p className="text-light-body-text dark:text-white/80 text-xs sm:text-sm leading-snug">
+          <p className="text-light-body-text dark:text-dark-body-text text-xs sm:text-sm leading-snug">
             {movie.genres.slice(0, 4).join(", ")}
           </p>
         )}
@@ -272,7 +259,7 @@ function SceneResultCard({
             {movie.keywords.slice(0, 5).map((kw) => (
               <span
                 key={kw}
-                className="text-light-secondary-text dark:text-white/50 font-mono text-[10px] sm:text-xs tracking-tight"
+                className="text-light-secondary-text dark:text-dark-secondary-text font-mono text-[10px] sm:text-xs tracking-tight"
               >
                 #{kw.toLowerCase().replace(/\s+/g, "-")}
               </span>
@@ -286,11 +273,11 @@ function SceneResultCard({
 
 function CardSkeleton() {
   return (
-    <div className="w-full rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-700 animate-pulse">
+    <div className="w-full rounded-xl overflow-hidden bg-light-card dark:bg-dark-card animate-pulse">
       <div className="aspect-4/3 sm:aspect-16/6 lg:aspect-16/5" />
       <div className="px-3 sm:px-4 py-2 sm:py-3 space-y-2">
-        <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/3" />
-        <div className="h-2.5 bg-gray-300 dark:bg-gray-600 rounded w-1/2" />
+        <div className="h-3 bg-light-border dark:bg-dark-border rounded w-1/3" />
+        <div className="h-2.5 bg-light-border dark:bg-dark-border rounded w-1/2" />
       </div>
     </div>
   );
@@ -301,8 +288,6 @@ export default function SceneDetectPage() {
   const [ready, setReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const router = useRouter();
-
-  // Replace the useEffect and handleTryAgain with this:
 
   const loadResults = useCallback(() => {
     const raw = sessionStorage.getItem("sceneResults");
@@ -335,18 +320,17 @@ export default function SceneDetectPage() {
   const totalVotes = movies.reduce((sum, m) => sum + m.votes, 0);
 
   return (
-    <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
+    <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
         <div className="text-center flex items-center gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
+            <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate text-light-header dark:text-dark-header">
               Scene Results
             </h1>
             {ready && (
               <p className="text-[11px] sm:text-xs text-light-secondary-text dark:text-dark-secondary-text mt-0.5">
                 {movies.filter((m) => m.media_type !== "tv").length} Movies ·{" "}
-                {movies.filter((m) => m.media_type === "tv").length} TV shows
-                matched
+                {movies.filter((m) => m.media_type === "tv").length} TV shows matched
               </p>
             )}
           </div>
@@ -368,33 +352,17 @@ export default function SceneDetectPage() {
         {ready && (
           <button
             onClick={handleTryAgain}
-            className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2 bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text hover:bg-light-border dark:hover:bg-dark-border"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
-                d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
-                d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"
-              />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
             </svg>
             Try another scene
           </button>
         )}
       </div>
 
-      {/* Shared modal — no navigation needed, opens right here */}
       <SceneCameraModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
