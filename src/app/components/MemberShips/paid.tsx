@@ -91,11 +91,14 @@ export default function Membership() {
   "
     >
       {/* Stars — purely decorative, hidden from screen readers */}
-      <div aria-hidden="true">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 overflow-hidden pointer-events-none"
+      >
         {STARS.map((star, i) => (
           <span
             key={i}
-            className="star-dot pointer-events-none"
+            className="star-dot"
             style={{
               top: `${star.top}px`,
               right: `${star.right}px`,
