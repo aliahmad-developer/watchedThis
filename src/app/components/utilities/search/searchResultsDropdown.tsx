@@ -30,10 +30,10 @@ export default function SearchResultsDropdown({
         item.runtime && item.runtime > 0
           ? formatRuntime(item.runtime)
           : item.media_type === "tv"
-          ? "23m per ep"
-          : item.media_type === "ona"
-          ? "9m"
-          : "";
+            ? "23m per ep"
+            : item.media_type === "ona"
+              ? "9m"
+              : "";
 
       return {
         id: item.id,
@@ -43,18 +43,20 @@ export default function SearchResultsDropdown({
         runtime,
         mediaType: item.media_type,
         poster: item.poster_path,
+        overview: item.overview,
         originalName: item.original_name,
-        link: `/random/${item.media_type}/${slug}/${item.id}`,
+        link: `/${item.media_type}/${slug}/${item.id}`,
       };
     });
   }, [limitedResults]);
 
   return (
     <div className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg shadow-lg overflow-hidden">
-      <div className="max-h-[90vh] overflow-y-auto">
+      {/* Scrollable results list */}
+      <div className="max-h-[50vh] sm:max-h-[60vh] overflow-y-auto">
         {isLoading ? (
-          <div className="px-4 py-3 text-center text-light-secondary-text dark:text-dark-secondary-text">
-            Loading...
+          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm">
+            Searching...
           </div>
         ) : formattedResults.length > 0 ? (
           formattedResults.map((item, index) => (
@@ -64,61 +66,89 @@ export default function SearchResultsDropdown({
                 onClick={onClose}
                 className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
               >
-                <div className="flex items-center gap-3 px-4 py-4">
+                <div className="flex items-start gap-2.5 px-3 sm:px-4 py-2">
+                  {/* Poster — slightly smaller */}
                   {item.poster ? (
                     <Image
                       src={`https://image.tmdb.org/t/p/w92${item.poster}`}
                       alt={item.title}
-                      width={40}
-                      height={56}
-                      className="w-10 h-14 rounded object-cover"
+                      width={36}
+                      height={50}
+                      className="w-8 h-[46px] sm:w-9 sm:h-[52px] rounded object-cover shrink-0 mt-0.5"
                     />
                   ) : (
-                    <div className="w-10 h-14 bg-light-disabled dark:bg-dark-disabled rounded" />
+                    <div className="w-8 h-[46px] sm:w-9 sm:h-[52px] bg-light-disabled dark:bg-dark-disabled rounded shrink-0 mt-0.5" />
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-light-body-text dark:text-dark-body-text text-sm font-medium line-clamp-1">
-                      {item.title}
+
+                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start sm:gap-3">
+                    {/* Left — title + meta */}
+                    <div className="sm:w-44 sm:shrink-0 min-w-0">
+                      <div className="text-light-body-text dark:text-dark-body-text text-sm font-semibold line-clamp-1 leading-tight">
+                        {item.title}
+                      </div>
+                      {item.originalName &&
+                        item.originalName !== item.title && (
+                          <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
+                            {item.originalName}
+                          </div>
+                        )}
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        <span className="text-xs px-1.5 py-0 rounded bg-light-card dark:bg-dark-card text-light-secondary-text dark:text-dark-secondary-text font-medium">
+                          {formatMediaType(item.mediaType)}
+                        </span>
+                        <span className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
+                          {item.year}
+                        </span>
+                        {item.runtime && (
+                          <>
+                            <span className="text-light-disabled dark:text-dark-disabled text-xs">
+                              •
+                            </span>
+                            <span className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
+                              {item.runtime}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    {item.originalName && (
-                      <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1 bold">
-                        {item.originalName}
+
+                    {/* Overview */}
+                    {item.overview && (
+                      <div className="flex-1 min-w-0 mt-1 sm:mt-0 sm:border-l sm:border-light-border sm:dark:border-dark-border sm:pl-3">
+                        <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                          {item.overview}
+                        </p>
                       </div>
                     )}
-                    <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1">
-                      {item.year} • {formatMediaType(item.mediaType)}
-                      {item.runtime && ` • ${item.runtime}`}
-                    </div>
                   </div>
                 </div>
               </Link>
-
               {index < formattedResults.length - 1 && (
-                <div className="border-t border-light-border dark:border-dark-border mx-4" />
+                <div className="border-t border-light-border dark:border-dark-border mx-3 sm:mx-4" />
               )}
             </div>
           ))
         ) : (
-          <div className="px-4 py-3 text-center text-light-secondary-text dark:text-dark-secondary-text">
+          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm">
             No results found
           </div>
         )}
-
-        {results.length > 0 && (
-          <Link
-            href={`/search?q=${encodeURIComponent(searchQuery)}`}
-            onClick={onClose}
-            className="block text-center px-4 py-3 bg-light-btn-bg text-light-btn-text font-medium hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text transition-colors"
-          >
-            View all results
-          </Link>
-        )}
       </div>
+
+      {/* Button lives OUTSIDE the scroll container — always visible */}
+      {results.length > 0 && (
+        <Link
+          href={`/search?q=${encodeURIComponent(searchQuery)}`}
+          onClick={onClose}
+          className="block text-center px-4 py-3 border-t border-light-border dark:border-dark-border bg-light-btn-bg text-light-btn-text font-medium hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text transition-colors text-sm"
+        >
+          View all results
+        </Link>
+      )}
     </div>
   );
 }
 
-// Utility functions
 function formatMediaType(type: string) {
   switch (type) {
     case "tv":

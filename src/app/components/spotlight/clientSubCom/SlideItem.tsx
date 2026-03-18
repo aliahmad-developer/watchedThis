@@ -7,26 +7,31 @@ import Image from "next/image";
 interface SlideItemProps {
   item: MediaItem;
   index: number;
+  rawIndex: number;
   isMobile: boolean;
-  rawIndex: number; 
   showSpotlightNumber: boolean;
   formatDuration: (minutes: number) => string;
   formatDate: (dateString: string | undefined) => string;
   handleWatchTrailer: (media: MediaItem) => void;
   currentIndex: number;
+  isActive: boolean;
 }
 
 const SlideItem = ({
   item,
   index,
-  isMobile,
   rawIndex,
+  isMobile,
   showSpotlightNumber,
   formatDuration,
   formatDate,
   handleWatchTrailer,
   currentIndex,
+  isActive,
 }: SlideItemProps) => {
+  // Prioritize loading for the active slide and its immediate neighbour
+  const shouldPrioritize = isActive || rawIndex === currentIndex + 1;
+
   if (isMobile) {
     return (
       <div className="shrink-0 w-full h-full md:hidden">
@@ -40,7 +45,7 @@ const SlideItem = ({
                 fill
                 className="object-cover"
                 sizes="100vw"
-                priority={rawIndex === currentIndex || rawIndex === currentIndex + 1} 
+                priority={shouldPrioritize}
               />
               <GradientOverlay />
               <MobileContent
@@ -61,12 +66,13 @@ const SlideItem = ({
       <DesktopContent
         item={item}
         index={index}
+        rawIndex={rawIndex}
         showSpotlightNumber={showSpotlightNumber}
         formatDuration={formatDuration}
         formatDate={formatDate}
         handleWatchTrailer={handleWatchTrailer}
         currentIndex={currentIndex}
-        rawIndex={rawIndex}  
+        isActive={isActive}
       />
     </div>
   );

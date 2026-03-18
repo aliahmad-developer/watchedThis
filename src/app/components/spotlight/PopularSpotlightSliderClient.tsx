@@ -74,6 +74,7 @@ export default function PopularSpotlightSliderClient({
     intervalRef.current = setInterval(() => {
       goToNext();
     }, slideDuration);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slideDuration, items.length]);
 
   const resetAutoPlayTimer = useCallback(() => {
@@ -91,7 +92,10 @@ export default function PopularSpotlightSliderClient({
 
     setCurrentIndex((prev) => {
       const next = prev + 1;
+
       if (next === items.length) {
+        // Slide to appended clone of first item (index items.length),
+        // then instantly snap back to real index 0
         transitionTimeoutRef.current = setTimeout(() => {
           setIsTransitioning(false);
           setCurrentIndex(0);
@@ -112,11 +116,22 @@ export default function PopularSpotlightSliderClient({
     setIsTransitioning(true);
     resetAutoPlayTimer();
 
-    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+    setCurrentIndex((prev) => {
+      if (prev === 0) {
+        // Slide to prepended clone of last item (index -1),
+        // then instantly snap to real last index
+        transitionTimeoutRef.current = setTimeout(() => {
+          setIsTransitioning(false);
+          setCurrentIndex(items.length - 1);
+        }, 500);
+        return -1;
+      }
 
-    transitionTimeoutRef.current = setTimeout(() => {
-      setIsTransitioning(false);
-    }, 500);
+      transitionTimeoutRef.current = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 500);
+      return prev - 1;
+    });
   }, [isTransitioning, items.length, resetAutoPlayTimer]);
 
   const goToIndex = useCallback(
@@ -163,7 +178,11 @@ export default function PopularSpotlightSliderClient({
 
   if (!items || items.length === 0) return null;
 
-  const realIndex = currentIndex % items.length;
+  // Real index for indicator dots — clamp -1 and items.length edge cases
+  const realIndex =
+    currentIndex === -1
+      ? items.length - 1
+      : currentIndex % items.length;
 
   return (
     <>

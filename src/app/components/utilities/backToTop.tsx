@@ -71,7 +71,7 @@ export default function BackToTop() {
           bg-transparent border-none rounded-full
           relative group flex items-center justify-center
           transition-all duration-500 ease-out
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-light-accent/50 dark:focus-visible:ring-dark-accent/50
           ${
             isVisible
               ? "opacity-100 translate-y-0 pointer-events-auto"
@@ -95,7 +95,7 @@ export default function BackToTop() {
             r={radius}
             fill="none"
             strokeWidth={strokeWidth}
-            className="stroke-white/10"
+            className="stroke-light-border dark:stroke-dark-border"
           />
           {/* Progress arc */}
           <circle
@@ -114,8 +114,8 @@ export default function BackToTop() {
         {/* Button background */}
         <span
           className="
-          absolute rounded-full   
-          bg-light-disabled dark:bg-dark-header
+          absolute rounded-full
+          bg-light-card dark:bg-dark-card
           backdrop-blur-sm
           shadow-lg shadow-black/30
           transition-all duration-200
@@ -125,7 +125,7 @@ export default function BackToTop() {
           style={{
             width: `${size - strokeWidth * 2 - 4}px`,
             height: `${size - strokeWidth * 2 - 4}px`,
-            aspectRatio: "1 / 1", // force square
+            aspectRatio: "1 / 1",
           }}
         />
 

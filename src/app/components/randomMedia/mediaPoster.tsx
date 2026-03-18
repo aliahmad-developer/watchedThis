@@ -68,16 +68,16 @@ function MediaPoster({
   return (
     <div
       className={`
-        relative aspect-[2/3] mx-auto rounded-2xl overflow-hidden shadow-lg
+        relative aspect-2/3 mx-auto rounded-2xl overflow-hidden shadow-lg
         transition-all duration-300 hover:shadow-xl
         bg-light-border dark:bg-dark-border
-        w-32 sm:w-48 md:w-56 lg:w-full lg:max-w-[240px] xl:max-w-xs
+        w-32 sm:w-48 md:w-56 lg:w-full lg:max-w-60 xl:max-w-xs
       `}
     >
       {hasPoster ? (
         <>
           {!loaded && (
-            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/5 via-white/10 to-white/5" />
+            <div className="absolute inset-0 animate-pulse bg-linear-to-br from-white/5 via-white/10 to-white/5" />
           )}
           <Image
             draggable={false}

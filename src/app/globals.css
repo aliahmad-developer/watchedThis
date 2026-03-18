@@ -1,31 +1,50 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 @theme {
-  --color-light-bg: #f8f9fa;
-  --color-light-card: #e9ecef;
-  --color-light-border: #dee2e6;
-  --color-light-disabled: #ced4da;
-  --color-light-accent: #ad858d;
-  --color-light-secondary-text: #6c757d;
-  --color-light-body-text: #495057;
-  --color-light-header: #343a40;
-  --color-light-nav: #212529;
-  --color-light-btn-bg: #ad858d;
+  /* ===================== */
+  /*        ACCENT         */
+  /* ===================== */
+  --color-accent: #468189;
+  --color-accent-hover: #355f66;
+  --color-accent-muted: rgba(70, 129, 137, 0.12);
+  --color-accent-text: #ffffff;
+
+  /* ===================== */
+  /*      LIGHT MODE       */
+  /* ===================== */
+  --color-light-bg: #eef0f2;
+  --color-light-card: #e2e6ea;
+  --color-light-border: #cdd3dc;
+  --color-light-disabled: #aab9cf;
+  --color-light-accent: #468189;
+  --color-light-accent-hover: #355f66;
+  --color-light-accent-muted: rgba(70, 129, 137, 0.12);
+  --color-light-secondary-text: #637074;
+  --color-light-body-text: #212227;
+  --color-light-header: #0a1628;
+  --color-light-nav: #031926;
+  --color-light-btn-bg: #468189;
   --color-light-btn-text: #ffffff;
-  --color-light-btn-hover-bg: #966e77;
+  --color-light-btn-hover-bg: #355f66;
   --color-light-btn-hover-text: #ffffff;
 
-  --color-dark-bg: #1a1a1a;
-  --color-dark-card: #282828;
-  --color-dark-border: rgb(49, 49, 49);
-  --color-dark-disabled: #8a8a8a;
-  --color-dark-accent: #d4a373;
-  --color-dark-secondary-text: #9e9e9e;
-  --color-dark-body-text: #eeeeee;
-  --color-dark-header: #5a5a5aff;
-  --color-dark-btn-bg: #d4a373;
-  --color-dark-btn-text: #000000;
-  --color-dark-btn-hover-bg: #b87c45;
+  /* ===================== */
+  /*       DARK MODE       */
+  /* ===================== */
+  --color-dark-bg: #031926;
+  --color-dark-card: #0d2535;
+  --color-dark-border: #1a3a4a;
+  --color-dark-disabled: #637074;
+  --color-dark-accent: #468189;
+  --color-dark-accent-hover: #355f66;
+  --color-dark-accent-muted: rgba(70, 129, 137, 0.12);
+  --color-dark-secondary-text: #8693ab;
+  --color-dark-body-text: #bdd4e7;
+  --color-dark-header: #eef0f2;
+  --color-dark-nav: #031926;
+  --color-dark-btn-bg: #468189;
+  --color-dark-btn-text: #ffffff;
+  --color-dark-btn-hover-bg: #355f66;
   --color-dark-btn-hover-text: #ffffff;
 
   --scrollbar-width: 9px;
@@ -34,6 +53,7 @@
   --scrollbar-track-dark: var(--color-dark-bg);
   --scrollbar-thumb-dark: var(--color-dark-accent);
 }
+
 @theme {
   --font-irish-grover: "Irish Grover", cursive;
 }
@@ -52,9 +72,7 @@
     color: color-mix(in srgb, var(--bg-color) 20%, black);
   }
 }
-/* {
-  outline: 1px solid rgba(255, 0, 0, 0.3); /* red outlines 
-} */
+
 html {
   data-scroll-behavior: smooth;
   scrollbar-gutter: stable;
@@ -90,6 +108,7 @@ html {
   body {
     @apply bg-light-bg dark:bg-dark-bg;
   }
+
   h2 {
     @apply text-light-header dark:text-dark-header text-lg sm:text-xl lg:text-2xl font-bold;
   }
@@ -114,11 +133,31 @@ html {
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 }
+
 :root {
   --navbar-h: 64px;
+
+  /* Film strip */
+  --strip-bg: #e2e6ea;
+  --hole-bg: rgba(10, 22, 40, 0.15);
 }
 
-/* Base scrollbar */
+.dark {
+  --strip-bg: #0d2535;
+  --hole-bg: rgba(189, 212, 231, 0.1);
+}
+
+/* ── Scrollbar keyframes ── */
+@keyframes scrollbarFlowV {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+@keyframes scrollbarFlowH {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 100% 0%; }
+}
+
+/* ── Scrollbar — light mode ── */
 ::-webkit-scrollbar {
   width: var(--scrollbar-width);
   height: var(--scrollbar-width);
@@ -126,45 +165,54 @@ html {
 ::-webkit-scrollbar-track {
   background: var(--scrollbar-track-light);
 }
-::-webkit-scrollbar-thumb:horizontal {
-  background: var(--scrollbar-thumb-light);
-  border-radius: calc(var(--scrollbar-width) / 2);
-}
 ::-webkit-scrollbar-thumb:vertical {
-  background: var(--scrollbar-thumb-light);
+  border-radius: calc(var(--scrollbar-width) / 2);
+  background: linear-gradient(180deg, #aab9cf, #468189, #0a1628, #468189, #aab9cf);
+  background-size: 100% 300%;
+  animation: scrollbarFlowV 3s linear infinite;
 }
-::-webkit-scrollbar-thumb:hover:horizontal {
-  background: var(--color-light-btn-hover-bg);
+::-webkit-scrollbar-thumb:vertical:hover {
+  background: linear-gradient(180deg, #cdd3dc, #355f66, #031926, #355f66, #cdd3dc);
+  background-size: 100% 300%;
+  animation: scrollbarFlowV 1.5s linear infinite;
 }
-::-webkit-scrollbar-thumb:hover:vertical {
-  background: var(--color-light-btn-hover-bg);
+::-webkit-scrollbar-thumb:horizontal {
+  border-radius: calc(var(--scrollbar-width) / 2);
+  background: linear-gradient(90deg, #aab9cf, #468189, #0a1628, #468189, #aab9cf);
+  background-size: 300% 100%;
+  animation: scrollbarFlowH 3s linear infinite;
+}
+::-webkit-scrollbar-thumb:horizontal:hover {
+  background: linear-gradient(90deg, #cdd3dc, #355f66, #031926, #355f66, #cdd3dc);
+  background-size: 300% 100%;
+  animation: scrollbarFlowH 1.5s linear infinite;
 }
 
-/* Dark mode scrollbar */
+/* ── Scrollbar — dark mode ── */
 .dark ::-webkit-scrollbar-track {
   background: var(--scrollbar-track-dark);
 }
-.dark ::-webkit-scrollbar-thumb:horizontal {
-  background: var(--scrollbar-thumb-dark);
-  border-radius: calc(var(--scrollbar-width) / 2);
-}
 .dark ::-webkit-scrollbar-thumb:vertical {
-  background: var(--scrollbar-thumb-dark);
+  border-radius: calc(var(--scrollbar-width) / 2);
+  background: linear-gradient(180deg, #9dbebb, #468189, #031926, #468189, #9dbebb);
+  background-size: 100% 300%;
+  animation: scrollbarFlowV 3s linear infinite;
 }
-.dark ::-webkit-scrollbar-thumb:hover:horizontal {
-  background: var(--color-dark-btn-hover-bg);
+.dark ::-webkit-scrollbar-thumb:vertical:hover {
+  background: linear-gradient(180deg, #bdd4e7, #355f66, #0d2535, #355f66, #bdd4e7);
+  background-size: 100% 300%;
+  animation: scrollbarFlowV 1.5s linear infinite;
 }
-.dark ::-webkit-scrollbar-thumb:hover:vertical {
-  background: var(--color-dark-btn-hover-bg);
+.dark ::-webkit-scrollbar-thumb:horizontal {
+  border-radius: calc(var(--scrollbar-width) / 2);
+  background: linear-gradient(90deg, #9dbebb, #468189, #031926, #468189, #9dbebb);
+  background-size: 300% 100%;
+  animation: scrollbarFlowH 3s linear infinite;
 }
-
-/* Hide scrollbar */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.dark ::-webkit-scrollbar-thumb:horizontal:hover {
+  background: linear-gradient(90deg, #bdd4e7, #355f66, #0d2535, #355f66, #bdd4e7);
+  background-size: 300% 100%;
+  animation: scrollbarFlowH 1.5s linear infinite;
 }
 
 /* Vertical text */
@@ -172,38 +220,18 @@ html {
   writing-mode: vertical-lr;
   text-orientation: mixed;
 }
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-:root {
-  --strip-bg: #e9ecef; /* light-card — soft light background */
-  --hole-bg: rgba(52, 58, 64, 0.2); /* light-header tint — subtle dark holes */
-}
 
-.dark {
-  --strip-bg: #282828; /* dark-card — soft dark background */
-  --hole-bg: rgba(
-    238,
-    238,
-    238,
-    0.12
-  ); /* dark-body-text tint — subtle light holes */
-}
 /* ── Shooting stars ── */
 .star-dot {
   position: absolute;
   width: 4px;
   height: 4px;
-  background: #ad858d;
+  background: #468189;
   border-radius: 50%;
   box-shadow:
-     0 0 0 4px rgba(173, 133, 141, 0.1),
-    0 0 0 8px rgba(173, 133, 141, 0.1),
-    0 0 20px rgba(173, 133, 141, 0.15);
+    0 0 0 4px rgba(70, 129, 137, 0.1),
+    0 0 0 8px rgba(70, 129, 137, 0.08),
+    0 0 20px rgba(70, 129, 137, 0.15);
   animation: shootingStar linear infinite;
 }
 
@@ -215,18 +243,18 @@ html {
   transform: translateY(-50%);
   width: 300px;
   height: 1px;
-  background: linear-gradient(270deg, transparent, #9ca3af);
+  background: linear-gradient(270deg, transparent, #8693ab);
 }
 
 .dark .star-dot {
-  background: #d4a373;
+  background: #468189;
   box-shadow:
-    0 0 0 4px rgba(212, 163, 115, 0.1),
-    0 0 0 8px rgba(212, 163, 115, 0.1),
-    0 0 20px rgba(212, 163, 115, 0.1);
+    0 0 0 4px rgba(70, 129, 137, 0.12),
+    0 0 0 8px rgba(70, 129, 137, 0.08),
+    0 0 20px rgba(70, 129, 137, 0.15);
 }
 .dark .star-dot::before {
-  background: linear-gradient(270deg, transparent, #fff);
+  background: linear-gradient(270deg, transparent, #bdd4e7);
 }
 
 @keyframes shootingStar {

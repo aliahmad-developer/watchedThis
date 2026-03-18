@@ -40,26 +40,26 @@ function buildSlicePath(
 }
 
 const COLORS = [
-  "#e879a0",
-  "#7c6af7",
-  "#f97316",
-  "#0ea5e9",
-  "#10b981",
-  "#f59e0b",
-  "#ec4899",
-  "#6366f1",
-  "#14b8a6",
-  "#f43f5e",
-  "#8b5cf6",
-  "#84cc16",
-  "#e879a0",
-  "#7c6af7",
-  "#f97316",
-  "#0ea5e9",
-  "#10b981",
-  "#f59e0b",
-  "#ec4899",
-  "#6366f1",
+  "#468189", // teal accent
+  "#355f66", // teal dark
+  "#9dbebb", // teal light
+  "#8693ab", // lavender grey
+  "#3e7cb1", // steel blue
+  "#2d6a8f", // ocean blue
+  "#5b8db8", // sky blue
+  "#4a7c8e", // muted teal-blue
+  "#6b8fa6", // slate blue
+  "#3a6b7a", // deep teal
+  "#7aabb8", // pale teal
+  "#2e5f74", // ink teal
+  "#5d7f99", // dusty blue
+  "#4d8fa0", // medium teal
+  "#7ba7bc", // powder teal
+  "#325d72", // dark slate
+  "#6a9eb5", // soft steel
+  "#3b7a8c", // mid teal
+  "#5e8a9a", // muted cyan
+  "#2c5364", // deep navy teal
 ];
 
 const SKELETON_COUNT = 20;
@@ -88,23 +88,26 @@ function getImgUrl(item: SpinnerItem): string | null {
 // Static component — never changes, no props that vary
 const PointerEl = memo(({ faded = false }: { faded?: boolean }) => (
   <g transform={`translate(${CX}, ${PTR_TRANS_Y})`}>
+    {/* Drop shadow */}
     <polygon
       points={`0,${PTR_H + 2} ${-PTR_W / 2 - 1},-1 ${PTR_W / 2 + 1},-1`}
-      fill={faded ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.35)"}
+      fill={faded ? "rgba(3,25,38,0.08)" : "rgba(3,25,38,0.30)"}
       transform="translate(1,2)"
     />
+    {/* Main body */}
     <polygon
       points={`0,${PTR_H} ${-PTR_W / 2},0 ${PTR_W / 2},0`}
       style={{ fill: faded ? undefined : "var(--color-light-nav)" }}
-      fill={faded ? "rgba(128,128,128,0.35)" : undefined}
-      className={faded ? "" : "dark:fill-dark-card"}
-      stroke={faded ? "rgba(128,128,128,0.2)" : "rgba(255,255,255,0.15)"}
+      fill={faded ? "rgba(70,129,137,0.25)" : undefined}
+      className={faded ? "" : "dark:fill-dark-accent"}
+      stroke={faded ? "rgba(70,129,137,0.15)" : "rgba(189,212,231,0.2)"}
       strokeWidth="1"
       strokeLinejoin="round"
     />
+    {/* Highlight sheen */}
     <polygon
       points={`0,${PTR_H - 6} ${-PTR_W / 2 + 4},3 ${PTR_W / 2 - 4},3`}
-      fill={faded ? "rgba(128,128,128,0.08)" : "rgba(255,255,255,0.08)"}
+      fill={faded ? "rgba(70,129,137,0.06)" : "rgba(189,212,231,0.10)"}
     />
   </g>
 ));
