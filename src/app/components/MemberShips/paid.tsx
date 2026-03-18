@@ -79,16 +79,16 @@ export default function Membership() {
     <section
       ref={cardRef}
       className="
-        membership-card
-        relative w-full max-w-5xl mx-auto
-        flex flex-col md:flex-row items-center justify-between
-        gap-8 p-8 cursor-default
-        bg-light-card dark:bg-dark-card
-        text-light-body-text dark:text-dark-body-text
-        border border-light-border dark:border-dark-border
-        rounded-2xl shadow-md
-        transition-colors duration-300 overflow-hidden
-      "
+    membership-card
+    relative max-w-5xl mx-3 sm:mx-auto
+    flex flex-col md:flex-row items-center justify-between
+    gap-4 md:gap-8 p-5 sm:p-6 cursor-default
+    bg-light-card dark:bg-dark-card
+    text-light-body-text dark:text-dark-body-text
+    border border-light-border dark:border-dark-border
+    rounded-2xl shadow-md
+    transition-colors duration-300 overflow-hidden
+  "
     >
       {/* Stars — purely decorative, hidden from screen readers */}
       <div aria-hidden="true">
@@ -108,7 +108,7 @@ export default function Membership() {
 
       {/* Left content */}
       <div className="flex-1 text-center md:text-left relative z-10">
-        <div className="flex items-center gap-2 mb-6 px-1">
+        <div className="flex items-center gap-2 mb-3 px-1">
           <FontAwesomeIcon
             icon={faHashtag}
             className="text-light-accent dark:text-dark-accent ml-1"
