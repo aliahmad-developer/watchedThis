@@ -13,6 +13,7 @@ import {
   faMagnifyingGlass,
   faBars,
   faXmark,
+  faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 import Toggle from "../utilities/toggle";
 import SearchInput from "../utilities/search/searchInput";
@@ -86,6 +87,7 @@ export default function Navbar() {
     router.prefetch("/random");
     router.prefetch("/spinner");
     router.prefetch("/find");
+    router.prefetch("/echoe");
   }, [router]);
 
   // Scroll-aware show/hide — 10px threshold, pinned while search is open
@@ -210,8 +212,22 @@ export default function Navbar() {
     { label: "Random", icon: faShuffle, href: "/random" },
     { label: "Spinner", icon: faSpinner, href: "/spinner" },
     { label: "Find", icon: faMagnifyingGlass, href: "/find" },
-    { label: "Movie Like", icon: faMagnifyingGlass, href: "/like" },
+    { label: "Echo", icon: faLayerGroup, href: "/echo" },
   ];
+  useEffect(() => {
+    const el = document.getElementById("main-navbar");
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty(
+        "--navbar-h",
+        `${el.offsetHeight}px`,
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <>
@@ -221,7 +237,7 @@ export default function Navbar() {
         - Once scrolled past: sticks to top of viewport
         `transition-transform` + navVisible handles the hide-on-scroll-down behaviour.
       */}
-      <div className="sticky top-0 z-50 opacity-95">
+      <div id="main-navbar" className="sticky top-0 z-50 opacity-95">
         <div
           className={`transition-all duration-400 ${
             navVisible

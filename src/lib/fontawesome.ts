@@ -6,6 +6,7 @@ import {
   faAngleUp,
   faArrowRight,
   faHashtag,
+  faLayerGroup,
   faBan,
   faBars,
   faCalendar,

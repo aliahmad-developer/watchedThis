@@ -28,10 +28,10 @@ const FilmIcon = () => (
   >
     <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
     <line x1="7" y1="2" x2="7" y2="22" />
-    <line x1="17" y1="2" x2="17" y2="22" />
     <line x1="2" y1="12" x2="22" y2="12" />
     <line x1="2" y1="7" x2="7" y2="7" />
     <line x1="2" y1="17" x2="7" y2="17" />
+    <line x1="17" y1="2" x2="17" y2="22" />
     <line x1="17" y1="17" x2="22" y2="17" />
     <line x1="17" y1="7" x2="22" y2="7" />
   </svg>
@@ -42,13 +42,14 @@ const BADGE_MAP: Record<string, string> = {
   tv: "SERIES",
 };
 
-
-/** Used when no backdrop is available (e.g. MediaCard grid) */
 const FALLBACK_AMBIENT: AmbientTextColors = {
   primary:   "rgba(255,255,255,0.95)",
   secondary: "rgba(255,255,255,0.70)",
   muted:     "rgba(255,255,255,0.40)",
 };
+
+const BLUR_DATA_URL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
 function MediaPoster({
   data,
@@ -57,25 +58,45 @@ function MediaPoster({
   priority = false,
 }: MediaPosterProps) {
   const [hasError, setHasError] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const displayTitle = data.title || data.name || "Untitled";
   const hasPoster = !!data.poster_path && !hasError;
   const badgeText = BADGE_MAP[data.media_type ?? ""] ?? "MEDIA";
+  const posterSrc = `https://image.tmdb.org/t/p/w342${data.poster_path}`;
 
   return (
-    <div className="relative aspect-2/3 w-full max-w-xs rounded-2xl overflow-hidden shadow-lg group transition-all duration-300 hover:shadow-xl bg-light-border dark:bg-dark-border">
+    <div
+      className={`
+        relative aspect-[2/3] mx-auto rounded-2xl overflow-hidden shadow-lg
+        transition-all duration-300 hover:shadow-xl
+        bg-light-border dark:bg-dark-border
+        w-32 sm:w-48 md:w-56 lg:w-full lg:max-w-[240px] xl:max-w-xs
+      `}
+    >
       {hasPoster ? (
-        <Image
-          draggable={false}
-          src={`https://image.tmdb.org/t/p/w342${data.poster_path}`}
-          alt={`Poster for ${displayTitle}`}
-          fill
-          onContextMenu={(e) => e.preventDefault()}
-          className="object-contain object-center transition-opacity duration-300 select-none"
-          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 200px"
-          priority={priority}
-          onError={() => setHasError(true)}
-        />
+        <>
+          {!loaded && (
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/5 via-white/10 to-white/5" />
+          )}
+          <Image
+            draggable={false}
+            src={posterSrc}
+            alt={`Poster for ${displayTitle}`}
+            fill
+            onContextMenu={(e) => e.preventDefault()}
+            className={`object-contain object-center select-none transition-opacity duration-300 ${
+              loaded ? "opacity-100" : "opacity-0"
+            }`}
+            priority={priority}
+            fetchPriority={priority ? "high" : "auto"}
+            sizes="(max-width: 640px) 128px, (max-width: 768px) 192px, (max-width: 1024px) 224px, 260px"
+            placeholder="blur"
+            blurDataURL={BLUR_DATA_URL}
+            onLoad={() => setLoaded(true)}
+            onError={() => setHasError(true)}
+          />
+        </>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
           <FilmIcon />
@@ -88,15 +109,11 @@ function MediaPoster({
         </div>
       )}
 
-      {/* Badge — ambient tinted text + border, only when poster is showing */}
       <div
         className="absolute top-3 left-3 bg-transparent px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10 border transition-colors duration-700"
         style={
           hasPoster
-            ? {
-                color: ambientText.primary,
-                borderColor: ambientText.secondary,
-              }
+            ? { color: ambientText.primary, borderColor: ambientText.secondary }
             : undefined
         }
       >

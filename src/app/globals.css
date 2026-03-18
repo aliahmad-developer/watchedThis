@@ -114,6 +114,9 @@ html {
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 }
+:root {
+  --navbar-h: 64px;
+}
 
 /* Base scrollbar */
 ::-webkit-scrollbar {

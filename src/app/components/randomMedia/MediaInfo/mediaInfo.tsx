@@ -19,12 +19,14 @@ interface MediaInfoProps {
   };
   textScheme?: "light" | "dark";
   ambientText: AmbientTextColors;
+  rawRgb?: string;
 }
 
 export default function MediaInfo({
   data,
   textScheme = "light",
   ambientText,
+  rawRgb,
 }: MediaInfoProps) {
   const [showTrailer, setShowTrailer] = useState(false);
   const displayTitle = data.title || data.name || "Untitled";
@@ -55,6 +57,7 @@ export default function MediaInfo({
             overview={overview}
             textScheme={textScheme}
             ambientText={ambientText}
+            rawRgb={rawRgb}
           />
         </div>
 

@@ -6,6 +6,7 @@ interface OverviewProps {
   overview: string;
   textScheme: "light" | "dark";
   ambientText: AmbientTextColors;
+  rawRgb?: string;
 }
 
 const SCROLL_THRESHOLD = 500;
@@ -41,7 +42,12 @@ function ExpandToggle({
   );
 }
 
-export default function OverviewSection({ overview, textScheme, ambientText }: OverviewProps) {
+export default function OverviewSection({
+  overview,
+  textScheme,
+  ambientText,
+  rawRgb,
+}: OverviewProps) {
   const isLong = overview.length > SCROLL_THRESHOLD;
   const [expanded, setExpanded] = useState(false);
   const MAX_CHARS = 150;
@@ -49,46 +55,59 @@ export default function OverviewSection({ overview, textScheme, ambientText }: O
   const truncated =
     shouldTruncate && !expanded ? overview.slice(0, MAX_CHARS) + "…" : overview;
 
-  // Nudge secondary's alpha down slightly for that softer prose feel —
-  // but only touch opacity, keep the same hue as the rest of the ambient system
-  // so it harmonizes whether the safety net fired or not.
-  const overviewColor = ambientText.secondary.replace(/,[^,]+\)$/, ",0.82)");
+  const overviewColor = ambientText.secondary.replace(/,[^,]+\)$/, ",0.9)");
 
-  const scrollBoxBg =
-    textScheme === "light" ? "bg-black/30 backdrop-blur-sm" : "bg-white/40 backdrop-blur-sm";
+  // Use raw dominant color for the highlight — it's vivid enough to register
+  // whereas the processed ambientText values can be too dark/washed in dark mode.
+  const glowRgb = rawRgb ?? (textScheme === "light" ? "20,20,20" : "255,255,255");
+  const highlightBg = `rgba(${glowRgb},0.10)`;
+  const highlightBorder = `rgba(${glowRgb},0.18)`;
+
+  const overviewBoxClass = "rounded-lg px-3 py-2.5 transition-colors duration-700";
+  const overviewBoxStyle = {
+    background: highlightBg,
+    border: `1px solid ${highlightBorder}`,
+  };
 
   return (
-    <div
-      className="leading-relaxed transition-colors duration-700"
-      style={{ color: overviewColor }}
-    >
-      {/* Mobile: always scrollable */}
+    <div className="leading-relaxed transition-colors duration-700">
+      {/* Mobile */}
       <div
-        className={`md:hidden max-h-24 overflow-y-auto rounded-lg px-3 py-2 ${scrollBoxBg} scrollbar-thin`}
+        className={`md:hidden max-h-28 overflow-y-auto scrollbar-thin ${overviewBoxClass}`}
+        style={overviewBoxStyle}
       >
-        <p className="text-sm whitespace-pre-wrap">{overview}</p>
+        <p className="text-sm whitespace-pre-wrap" style={{ color: overviewColor }}>
+          {overview}
+        </p>
       </div>
 
       {/* Desktop */}
       <div className="hidden md:block">
         {isLong ? (
           <div
-            className={`overflow-y-auto rounded-lg px-3 py-2.5 ${scrollBoxBg} scrollbar-thin`}
-            style={{ maxHeight: "7.5rem" }}
+            className={`overflow-y-auto scrollbar-thin ${overviewBoxClass}`}
+            style={{ maxHeight: "8.5rem", ...overviewBoxStyle }}
           >
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{overview}</p>
+            <p
+              className="text-sm leading-relaxed whitespace-pre-wrap"
+              style={{ color: overviewColor }}
+            >
+              {overview}
+            </p>
           </div>
         ) : (
-          <p>
-            {truncated}
-            {shouldTruncate && (
-              <ExpandToggle
-                expanded={expanded}
-                ambientText={ambientText}
-                onClick={() => setExpanded((v) => !v)}
-              />
-            )}
-          </p>
+          <div className={overviewBoxClass} style={overviewBoxStyle}>
+            <p className="text-sm" style={{ color: overviewColor }}>
+              {truncated}
+              {shouldTruncate && (
+                <ExpandToggle
+                  expanded={expanded}
+                  ambientText={ambientText}
+                  onClick={() => setExpanded((v) => !v)}
+                />
+              )}
+            </p>
+          </div>
         )}
       </div>
     </div>
