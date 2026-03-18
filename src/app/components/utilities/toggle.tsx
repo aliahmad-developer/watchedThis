@@ -15,61 +15,86 @@ export default function ThemeToggle({ size = "md" }: ThemeToggleProps) {
     setMounted(true);
   }, []);
 
-  const translateClasses = {
-    sm: "translate-x-6",
-    md: "translate-x-6",
-    lg: "translate-x-7",
-  };
-
-  // Size configuration
-  const sizeClasses = {
+  const sizes = {
     sm: {
       container: "h-6 w-12",
-      toggle: "h-5 w-5",
+      thumb: "h-5 w-5",
       icon: "h-3 w-3",
+      translate: "translate-x-6",
     },
     md: {
       container: "h-8 w-14",
-      toggle: "h-7 w-7",
+      thumb: "h-7 w-7",
       icon: "h-4 w-4",
+      translate: "translate-x-6",
     },
     lg: {
       container: "h-10 w-16",
-      toggle: "h-9 w-9",
+      thumb: "h-9 w-9",
       icon: "h-5 w-5",
+      translate: "translate-x-7",
     },
   };
+
+  const s = sizes[size];
+  const isDark = theme === "dark";
 
   if (!mounted) {
     return (
       <div
-        className={`${sizeClasses[size].container} rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse`}
+        className={`${s.container} rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border animate-pulse`}
       />
     );
   }
 
   return (
     <button
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      aria-label={`Toggle ${theme === "light" ? "dark" : "light"} mode`}
-      className={`flex items-center ${sizeClasses[size].container} rounded-full p-0.5 transition-colors duration-300 z-50
-        bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600
-        focus:outline-none`}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+      className={`
+        relative flex items-center ${s.container} rounded-full p-0.5
+        transition-colors duration-300
+        ${
+          isDark
+            ? "bg-dark-card border border-dark-border"
+            : "bg-light-card border border-light-border"
+        }
+        hover:border-light-accent dark:hover:border-dark-accent
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-light-accent dark:focus-visible:ring-dark-accent
+      `}
     >
-      <div
-        className={`flex items-center justify-center ${
-          sizeClasses[size].toggle
-        } rounded-full transform transition-transform duration-300
-    ${
-      theme === "light"
-        ? "translate-x-0 bg-white"
-        : `${translateClasses[size]} bg-gray-900`
-    }`}
+      {/* Track icons — sun on left, moon on right */}
+      <span
+        style={{ marginTop: 0 }}
+        className={`absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center transition-opacity duration-300 ${isDark ? "opacity-30" : "opacity-0"}`}
       >
-        {theme === "light" ? (
-          <SunIcon className={`${sizeClasses[size].icon} text-yellow-500`} />
+        <SunIcon className={`${s.icon} text-light-disabled`} />
+      </span>
+      <span
+        style={{ marginTop: 0 }}
+        className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center transition-opacity duration-300 ${isDark ? "opacity-0" : "opacity-30"}`}
+      >
+        <MoonIcon className={`${s.icon} text-light-secondary-text`} />
+      </span>
+
+      {/* Sliding thumb */}
+      <div
+        className={`
+          relative flex items-center justify-center
+          ${s.thumb} rounded-full
+          transform transition-all duration-300 ease-in-out
+          shadow-sm
+          ${
+            isDark
+              ? `${s.translate} bg-dark-accent`
+              : "translate-x-0 bg-light-accent"
+          }
+        `}
+      >
+        {isDark ? (
+          <MoonIcon className={`${s.icon} text-white`} />
         ) : (
-          <MoonIcon className={`${sizeClasses[size].icon} text-gray-300`} />
+          <SunIcon className={`${s.icon} text-white`} />
         )}
       </div>
     </button>
