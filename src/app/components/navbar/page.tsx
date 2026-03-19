@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { trackSearch } from "../../components/Recommendation/behaviourTracker";
 import AuthButton from "../../components/auth/navButton/authButton";
-import { useState, useEffect, FormEvent, ChangeEvent, useRef } from "react";
+import { useState, useEffect, useTransition, FormEvent, ChangeEvent, useRef } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -21,7 +21,22 @@ import SearchButton from "../utilities/search/searchButton";
 import SearchResultsDropdown from "../utilities/search/searchResultsDropdown";
 import { MediaResult } from "../utilities/search/searchInput";
 
-// ── Search helpers ────────────────────────────────────────────
+// ── Fuse options — defined once outside component, never re-allocated ─────────
+
+const FUSE_OPTIONS = {
+  keys: [
+    { name: "title", weight: 0.6 },
+    { name: "name", weight: 0.6 },
+    { name: "original_name", weight: 0.3 },
+  ],
+  threshold: 0.5,
+  distance: 200,
+  minMatchCharLength: 2,
+  includeScore: true,
+  ignoreLocation: true,
+};
+
+// ── Search helpers ────────────────────────────────────────────────────────────
 
 async function fetchTMDB(query: string): Promise<MediaResult[]> {
   try {
@@ -56,9 +71,13 @@ async function fetchAllVariants(query: string): Promise<MediaResult[]> {
   return merged;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [, startTransition] = useTransition();
+
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MediaResult[]>([]);
@@ -90,7 +109,7 @@ export default function Navbar() {
     router.prefetch("/echoe");
   }, [router]);
 
-  // Scroll-aware show/hide — 10px threshold, pinned while search is open
+  // Scroll-aware show/hide — empty deps so listener is never re-registered
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
@@ -101,9 +120,10 @@ export default function Navbar() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [searchVisible]);
+  }, []); // ← was [searchVisible], removed — avoids re-registering on search toggle
 
   // Debounced search — multi-variant fetch + Fuse re-rank
+  // startTransition wraps setSearchResults so input painting is never blocked
   useEffect(() => {
     const fetchResults = async () => {
       if (searchQuery.length < 2) {
@@ -113,31 +133,23 @@ export default function Navbar() {
       setIsSearchLoading(true);
       try {
         const merged = await fetchAllVariants(searchQuery);
-
-        const fuse = new Fuse(merged, {
-          keys: [
-            { name: "title", weight: 0.6 },
-            { name: "name", weight: 0.6 },
-            { name: "original_name", weight: 0.3 },
-          ],
-          threshold: 0.5,
-          distance: 200,
-          minMatchCharLength: 2,
-          includeScore: true,
-          ignoreLocation: true,
-        });
-
+        const fuse = new Fuse(merged, FUSE_OPTIONS);
         const fuseResults = fuse.search(searchQuery);
-
         const reranked =
           fuseResults.length > 0 ? fuseResults.map((r) => r.item) : merged;
 
-        setSearchResults(reranked.slice(0, 5));
+        // Non-blocking — lets the browser paint the typed character first,
+        // then updates the dropdown. This is what fixes the 640ms INP.
+        startTransition(() => {
+          setSearchResults(reranked.slice(0, 5));
+          setIsSearchLoading(false);
+        });
       } catch (err) {
         console.error("Search error:", err);
-        setSearchResults([]);
-      } finally {
-        setIsSearchLoading(false);
+        startTransition(() => {
+          setSearchResults([]);
+          setIsSearchLoading(false);
+        });
       }
     };
 
@@ -168,6 +180,22 @@ export default function Navbar() {
       document.body.style.overflow = "";
     };
   }, [drawerOpen]);
+
+  // Sync --navbar-h CSS variable with actual navbar height
+  useEffect(() => {
+    const el = document.getElementById("main-navbar");
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty(
+        "--navbar-h",
+        `${el.offsetHeight}px`,
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const handleSearchToggle = () => {
     setSearchVisible((prev) => !prev);
@@ -214,29 +242,9 @@ export default function Navbar() {
     { label: "Find", icon: faMagnifyingGlass, href: "/find" },
     { label: "Echo", icon: faLayerGroup, href: "/echo" },
   ];
-  useEffect(() => {
-    const el = document.getElementById("main-navbar");
-    if (!el) return;
-    const update = () => {
-      document.documentElement.style.setProperty(
-        "--navbar-h",
-        `${el.offsetHeight}px`,
-      );
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   return (
     <>
-      {/*
-        `sticky top-0` means:
-        - At page top: sits in normal flow, pushes content down like a regular element
-        - Once scrolled past: sticks to top of viewport
-        `transition-transform` + navVisible handles the hide-on-scroll-down behaviour.
-      */}
       <div id="main-navbar" className="sticky top-0 z-50 opacity-95">
         <div
           className={`transition-all duration-400 ${

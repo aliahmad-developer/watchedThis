@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useSwipeable } from "react-swipeable";
-import { useState } from "react";
 import SliderContainer from "./clientSubCom/SliderContainer";
 import NavigationControls from "./clientSubCom/NavigationControls";
 import IndicatorDots from "./clientSubCom/IndicatorDots";
@@ -23,7 +22,7 @@ interface Props {
 
 export default function PopularSpotlightSliderClient({
   items,
-  isMobile,
+  isMobile: isMobileServer,
   slideDuration = 5000,
   className = "",
   height = "420px",
@@ -32,6 +31,20 @@ export default function PopularSpotlightSliderClient({
   showSpotlightNumber = true,
   autoPlay = true,
 }: Props) {
+  // Start with the server-detected value to avoid hydration mismatch,
+  // then sync to the real viewport width after mount.
+  const [isMobile, setIsMobile] = useState(isMobileServer);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    // Sync immediately on mount in case the viewport differs from UA detection
+    setIsMobile(mq.matches);
+    // Update whenever the breakpoint is crossed (e.g. DevTools resize)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
@@ -74,7 +87,7 @@ export default function PopularSpotlightSliderClient({
     intervalRef.current = setInterval(() => {
       goToNext();
     }, slideDuration);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slideDuration, items.length]);
 
   const resetAutoPlayTimer = useCallback(() => {
@@ -146,7 +159,7 @@ export default function PopularSpotlightSliderClient({
         setIsTransitioning(false);
       }, 500);
     },
-    [isTransitioning, currentIndex, items.length, resetAutoPlayTimer]
+    [isTransitioning, currentIndex, items.length, resetAutoPlayTimer],
   );
 
   const handleCloseTrailer = useCallback(() => {
@@ -171,18 +184,19 @@ export default function PopularSpotlightSliderClient({
     };
   }, [autoPlay, showTrailer, startAutoPlay]);
 
-  const containerHeight =
-    isMobile
-      ? typeof mobileHeight === "number" ? `${mobileHeight}px` : mobileHeight
-      : typeof height === "number" ? `${height}px` : height;
+  const containerHeight = isMobile
+    ? typeof mobileHeight === "number"
+      ? `${mobileHeight}px`
+      : mobileHeight
+    : typeof height === "number"
+      ? `${height}px`
+      : height;
 
   if (!items || items.length === 0) return null;
 
   // Real index for indicator dots — clamp -1 and items.length edge cases
   const realIndex =
-    currentIndex === -1
-      ? items.length - 1
-      : currentIndex % items.length;
+    currentIndex === -1 ? items.length - 1 : currentIndex % items.length;
 
   return (
     <>

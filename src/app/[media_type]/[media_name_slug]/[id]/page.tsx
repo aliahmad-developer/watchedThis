@@ -1,140 +1,116 @@
-"use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { notFound } from "next/navigation";
 import { createSlug } from "@/app/components/utilities/createSlug";
-import { useRouter } from "next/navigation";
-import Head from "next/head";
 import CastScroll from "@/app/components/mediaCard/castScroll";
-import CastSkeleton from "@/app/components/mediaCard/castSkeleton";
 import Desc from "@/app/components/randomMedia/detailsPage";
+import DetailsClientShell from "./clientShell";
+import type { Metadata } from "next";
 
-export default function SpecificRandomMediaPage({
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface PageParams {
+  media_type: string;
+  media_name_slug: string;
+  id: string;
+}
+
+// ─── Server-side fetch ───────────────────────────────────────────────────────
+
+async function fetchMediaDetails(
+  media_type: string,
+  media_name_slug: string,
+  id: string,
+) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const res = await fetch(
+    `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
+    {
+      next: { revalidate: 3600 },
+    },
+  );
+
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ media_type: string; media_name_slug: string; id: string }>;
-}) {
-  const router = useRouter();
-  const { media_type, media_name_slug, id } = React.use(params);
+  params: Promise<PageParams>;
+}): Promise<Metadata> {
+  const { media_type, media_name_slug, id } = await params;
+  const data = await fetchMediaDetails(media_type, media_name_slug, id);
 
-  const [data, setData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  if (!data) {
+    return { title: "Media Not Found | RandoMovie" };
+  }
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
-  useEffect(() => {
-    if (!media_type || !id) {
-      setError("Invalid URL parameters");
-      setIsLoading(false);
-      return;
-    }
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(
-          `/api/media/${media_type}/${media_name_slug}/${id}`,
-        );
-        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-        const json = await res.json();
-        setData(json);
-
-        const expectedSlug = createSlug(json.title || json.name);
-        if (media_name_slug !== expectedSlug) {
-          router.replace(`/${media_type}/${expectedSlug}/${id}`);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load media");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [media_type, media_name_slug, id, router]);
-
-  const mediaTitle = data?.title || data?.name || "Media Details";
-  const metaDescription = data?.overview
+  const mediaTitle = data.title || data.name || "Media Details";
+  const description = data.overview
     ? `${data.overview.substring(0, 160)}...`
     : `Details about ${mediaTitle}`;
 
-  if (error) {
-    return (
-      <>
-        <Head>
-          <title>Error Loading Media | Your Site Name</title>
-          <meta
-            name="description"
-            content="An error occurred while loading media details"
-          />
-        </Head>
-        <div className="flex items-center justify-center min-h-screen text-light-accent dark:text-dark-accent">
-          {error}
-        </div>
-      </>
-    );
-  }
+  return {
+    title: `${mediaTitle} | RandoMovie`,
+    description,
+    openGraph: {
+      title: mediaTitle,
+      description,
+      images: data.poster_path
+        ? [`https://image.tmdb.org/t/p/original${data.poster_path}`]
+        : [],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: mediaTitle,
+      description,
+    },
+  };
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
+export default async function SpecificRandomMediaPage({
+  params,
+}: {
+  params: Promise<PageParams>;
+}) {
+  const { media_type, media_name_slug, id } = await params;
+
+  const data = await fetchMediaDetails(media_type, media_name_slug, id);
+
+  if (!data) notFound();
+
+  const mediaTitle = data.title || data.name || "Media Details";
+
+  // Canonical slug — if the URL slug is wrong the client shell will redirect
+  const expectedSlug = createSlug(mediaTitle);
 
   return (
-    <>
-      <Head>
-        <title>
-          {isLoading
-            ? "Loading... | Your Site Name"
-            : `${mediaTitle} | Your Site Name`}
-        </title>
-        <meta name="description" content={metaDescription} />
-        {!isLoading && (
-          <>
-            <meta property="og:title" content={mediaTitle} />
-            <meta property="og:description" content={metaDescription} />
-            {data.poster_path && (
-              <meta
-                property="og:image"
-                content={`https://image.tmdb.org/t/p/original${data.poster_path}`}
-              />
-            )}
-            <meta property="og:type" content="website" />
-            <meta name="twitter:card" content="summary_large_image" />
-          </>
-        )}
-      </Head>
-
+    // DetailsClientShell handles scroll-to-top + slug redirect only
+    <DetailsClientShell
+      mediaType={media_type}
+      currentSlug={media_name_slug}
+      expectedSlug={expectedSlug}
+      id={id}
+    >
       <div className="py-6 px-4 sm:px-6 lg:px-8 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-lg overflow-hidden transition-colors">
-          <h1 className="sr-only">
-            {isLoading ? "Loading media..." : mediaTitle}
-          </h1>
+          <h1 className="sr-only">{mediaTitle}</h1>
 
-          {/* Desc component with skeleton loading */}
+          {/* Data arrives with the HTML — no skeleton needed, no loading state */}
           <Desc
-            data={data || {}} // Pass empty object when loading
-            backdropUrl={
-              data?.backdrop_path
-                ? `https://image.tmdb.org/t/p/original${data.backdrop_path}`
-                : ""
-            }
-            isLoading={isLoading}
+            data={data}
+            backdropUrl={data.backdrop_path ?? ""} // e.g. "/8x9iKH8kWA0zdkgNdpAew7OstYe.jpg"
+            isLoading={false}
           />
         </div>
 
-        {/* Cast Section with Skeleton */}
-        {isLoading ? (
-          <div className="max-w-6xl mx-auto mt-8">
-            <div className="flex space-x-4 overflow-hidden">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <CastSkeleton key={i} showGradient={i >= 8} />
-              ))}
-            </div>
-          </div>
-        ) : (
-          data?.credits?.cast &&
-          data.credits.cast.length > 0 && (
-            <CastScroll cast={data.credits.cast} mediaType={media_type} />
-          )
+        {data.credits?.cast && data.credits.cast.length > 0 && (
+          <CastScroll cast={data.credits.cast} mediaType={media_type} />
         )}
       </div>
-    </>
+    </DetailsClientShell>
   );
 }

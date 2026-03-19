@@ -1,3 +1,4 @@
+'use client';
 import { useRef, useState, useEffect } from "react";
 import CastCard from "@/app/components/mediaCard/castCard";
 
@@ -9,7 +10,7 @@ export default function CastScroll({
   mediaType: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [visibleCount, setVisibleCount] = useState(10); // small buffer to keep scrollbar
+  const [visibleCount, setVisibleCount] = useState(10); 
   const [showGradient, setShowGradient] = useState(true);
   const CHUNK_SIZE = 10;
 
