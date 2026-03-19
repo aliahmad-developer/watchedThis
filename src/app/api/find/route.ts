@@ -1,4 +1,3 @@
-// src/app/api/find/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
@@ -19,7 +18,6 @@ async function fetchKeywords(id: number, mediaType: string): Promise<string[]> {
   }
 }
 
-// Resolve keyword text → TMDB keyword IDs, join with separator
 async function resolveKeywordIds(terms: string[], separator: "|" | ","): Promise<string> {
   if (!terms.length) return "";
   const results = await Promise.all(
@@ -44,7 +42,7 @@ export async function GET(req: NextRequest) {
   const mediaType      = searchParams.get("mediaType")      || "movie";
   const genres         = searchParams.get("genres")         || "";
   const excludeGenres  = searchParams.get("excludeGenres")  || "";
-  // keywords = include terms (comma-separated), keyword = legacy single term
+  
   const keywordsRaw    = searchParams.get("keywords")       || searchParams.get("keyword") || "";
   const excludeKwRaw   = searchParams.get("excludeKeywords") || "";
   const minYear        = searchParams.get("minYear")        || "";

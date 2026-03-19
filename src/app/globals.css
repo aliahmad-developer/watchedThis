@@ -149,12 +149,20 @@ html {
 
 /* ── Scrollbar keyframes ── */
 @keyframes scrollbarFlowV {
-  0%   { background-position: 0% 0%; }
-  100% { background-position: 0% 100%; }
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 0% 100%;
+  }
 }
 @keyframes scrollbarFlowH {
-  0%   { background-position: 0% 0%; }
-  100% { background-position: 100% 0%; }
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 0%;
+  }
 }
 
 /* ── Scrollbar — light mode ── */
@@ -167,23 +175,51 @@ html {
 }
 ::-webkit-scrollbar-thumb:vertical {
   border-radius: calc(var(--scrollbar-width) / 2);
-  background: linear-gradient(180deg, #aab9cf, #468189, #0a1628, #468189, #aab9cf);
+  background: linear-gradient(
+    180deg,
+    #aab9cf,
+    #468189,
+    #0a1628,
+    #468189,
+    #aab9cf
+  );
   background-size: 100% 300%;
   animation: scrollbarFlowV 3s linear infinite;
 }
 ::-webkit-scrollbar-thumb:vertical:hover {
-  background: linear-gradient(180deg, #cdd3dc, #355f66, #031926, #355f66, #cdd3dc);
+  background: linear-gradient(
+    180deg,
+    #cdd3dc,
+    #355f66,
+    #031926,
+    #355f66,
+    #cdd3dc
+  );
   background-size: 100% 300%;
   animation: scrollbarFlowV 1.5s linear infinite;
 }
 ::-webkit-scrollbar-thumb:horizontal {
   border-radius: calc(var(--scrollbar-width) / 2);
-  background: linear-gradient(90deg, #aab9cf, #468189, #0a1628, #468189, #aab9cf);
+  background: linear-gradient(
+    90deg,
+    #aab9cf,
+    #468189,
+    #0a1628,
+    #468189,
+    #aab9cf
+  );
   background-size: 300% 100%;
   animation: scrollbarFlowH 3s linear infinite;
 }
 ::-webkit-scrollbar-thumb:horizontal:hover {
-  background: linear-gradient(90deg, #cdd3dc, #355f66, #031926, #355f66, #cdd3dc);
+  background: linear-gradient(
+    90deg,
+    #cdd3dc,
+    #355f66,
+    #031926,
+    #355f66,
+    #cdd3dc
+  );
   background-size: 300% 100%;
   animation: scrollbarFlowH 1.5s linear infinite;
 }
@@ -194,23 +230,51 @@ html {
 }
 .dark ::-webkit-scrollbar-thumb:vertical {
   border-radius: calc(var(--scrollbar-width) / 2);
-  background: linear-gradient(180deg, #9dbebb, #468189, #031926, #468189, #9dbebb);
+  background: linear-gradient(
+    180deg,
+    #9dbebb,
+    #468189,
+    #031926,
+    #468189,
+    #9dbebb
+  );
   background-size: 100% 300%;
   animation: scrollbarFlowV 3s linear infinite;
 }
 .dark ::-webkit-scrollbar-thumb:vertical:hover {
-  background: linear-gradient(180deg, #bdd4e7, #355f66, #0d2535, #355f66, #bdd4e7);
+  background: linear-gradient(
+    180deg,
+    #bdd4e7,
+    #355f66,
+    #0d2535,
+    #355f66,
+    #bdd4e7
+  );
   background-size: 100% 300%;
   animation: scrollbarFlowV 1.5s linear infinite;
 }
 .dark ::-webkit-scrollbar-thumb:horizontal {
   border-radius: calc(var(--scrollbar-width) / 2);
-  background: linear-gradient(90deg, #9dbebb, #468189, #031926, #468189, #9dbebb);
+  background: linear-gradient(
+    90deg,
+    #9dbebb,
+    #468189,
+    #031926,
+    #468189,
+    #9dbebb
+  );
   background-size: 300% 100%;
   animation: scrollbarFlowH 3s linear infinite;
 }
 .dark ::-webkit-scrollbar-thumb:horizontal:hover {
-  background: linear-gradient(90deg, #bdd4e7, #355f66, #0d2535, #355f66, #bdd4e7);
+  background: linear-gradient(
+    90deg,
+    #bdd4e7,
+    #355f66,
+    #0d2535,
+    #355f66,
+    #bdd4e7
+  );
   background-size: 300% 100%;
   animation: scrollbarFlowH 1.5s linear infinite;
 }
@@ -269,4 +333,38 @@ html {
     transform: rotate(315deg) translateX(-1000px);
     opacity: 0;
   }
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dropDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition-wrapper {
+  opacity: 0;
 }

@@ -1,13 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
+
 export default function CastCard({
   actor,
   mediaType,
   showGradient = false,
+  index = 0,
 }: {
   actor: any;
   mediaType: string;
   showGradient?: boolean;
+  index?: number;
 }) {
   const actorName = actor.name || "Unknown Actor";
   const characterName =
@@ -20,24 +23,30 @@ export default function CastCard({
           )
           .join(", ");
 
+  // Cap stagger at 320ms so the last cards don't feel delayed
+  const delay = `${Math.min(index * 40, 320)}ms`;
+
   return (
     <div
-      className="flex flex-col items-center text-center p-2 w-28 sm:w-32 shrink-0"
+      className="flex flex-col items-center text-center p-2 w-28 sm:w-32 shrink-0 opacity-0 animate-[fadeUp_0.4s_ease_forwards]"
+      style={{ animationDelay: delay }}
       role="listitem"
     >
       {/* Image */}
-      <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-light-border dark:bg-dark-border">
+      <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-light-border dark:bg-dark-border group">
         {actor.profile_path ? (
           <>
-            <Link href={`/person/${actor.id}`}>
-              <div className="relative w-full h-full"> {/* Added this wrapper div */}
+            <Link href={`/person/${actor.id}`} className="block w-full h-full">
+              <div className="relative w-full h-full">
                 <Image
                   src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
                   alt={actorName}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.05] transform-gpu will-change-transform"
                   sizes="(max-width: 640px) 112px, 128px"
                 />
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-300 pointer-events-none" />
               </div>
             </Link>
             {showGradient && (
@@ -53,7 +62,7 @@ export default function CastCard({
 
       {/* Name */}
       <p
-        className="mt-2 font-semibold text-sm sm:text-base leading-snug truncate w-full text-light-body-text dark:text-dark-body-text"
+        className="mt-2 font-semibold text-sm sm:text-base leading-snug truncate w-full text-light-body-text dark:text-dark-body-text transition-colors duration-200 hover:text-light-accent dark:hover:text-dark-accent"
         title={actorName}
       >
         {actorName}

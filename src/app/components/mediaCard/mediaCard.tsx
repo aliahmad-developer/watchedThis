@@ -15,9 +15,10 @@ interface MediaCardProps {
   };
   displayTitle?: string;
   hideMetaData?: boolean;
+  index?: number; // for stagger delay
 }
 
-export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCardProps) {
+export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 }: MediaCardProps) {
   const title = item.title || item.name || "Untitled";
   const mediaType = item.media_type || "movie";
   const duration =
@@ -28,22 +29,28 @@ export default function MediaCard({ item, displayTitle, hideMetaData }: MediaCar
   const slug = createSlug(title);
   const href = `/${mediaType}/${slug}/${item.id}`;
 
+  // Cap stagger at 300ms so late cards don't feel sluggish
+  const delay = `${Math.min(index * 40, 300)}ms`;
+
   return (
     <Link
       href={href}
       draggable
       onClick={() => trackClick(item.id, mediaType === "tv" ? "tv" : "movie")}
-      className="p-2 group cursor-pointer rounded-xl hover:shadow-md transition block"
+      className="p-2 group cursor-pointer rounded-xl hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-black/50 transition-shadow duration-300 block opacity-0 animate-[fadeUp_0.4s_ease_forwards]"
+      style={{ animationDelay: delay }}
     >
       {/* Poster */}
       <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl">
-        <div className="absolute inset-0 transition-transform duration-200 group-hover:scale-[1.03] transform-gpu will-change-transform">
-          <MediaPoster data={item}/>
+        <div className="absolute inset-0 transition-transform duration-300 ease-out group-hover:scale-[1.04] transform-gpu will-change-transform">
+          <MediaPoster data={item} />
         </div>
+        {/* Subtle shine on hover */}
+        <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/0 group-hover:ring-white/10 transition-all duration-300 pointer-events-none" />
       </div>
 
       {/* Title */}
-      <div className="mt-2 text-sm font-semibold text-center line-clamp-2 wrap-break-word">
+      <div className="mt-2 text-sm font-semibold text-center line-clamp-2 wrap-break-word transition-colors duration-200 group-hover:text-light-accent dark:group-hover:text-dark-accent">
         {title}
       </div>
 

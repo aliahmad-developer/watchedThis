@@ -29,12 +29,8 @@ export interface AmbientTextColors {
 
 const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
 
-// w1280 instead of original — visually identical on 99% of screens, ~60% smaller
 const BACKDROP_QUALITY = 55;
 const BACKDROP_SIZE = "w1280";
-
-// Tiny separate image used ONLY for ColorThief extraction.
-// w92 is ~4KB vs ~300KB for w1280 — color extraction result is identical.
 const COLOR_SAMPLE_SIZE = "w92";
 
 const BLUR_DATA_URL =
@@ -48,10 +44,6 @@ const calculateLuminance = (r: number, g: number, b: number): number =>
 const isValidBackdropUrl = (url: string): boolean =>
   Boolean(url?.trim() && url !== "undefined");
 
-/**
- * Returns a full TMDB image URL with the given size prefix.
- * If the url is already absolute it is returned as-is.
- */
 const getTmdbSrc = (url: string, size: string): string =>
   url.startsWith("http") ? url : `https://image.tmdb.org/t/p/${size}${url}`;
 
@@ -197,14 +189,6 @@ const useThemeDetection = () => {
   return isLightMode;
 };
 
-/**
- * Extracts the dominant color from a tiny w92 thumbnail instead of waiting
- * for the full backdrop to load. The w92 image is ~4KB vs ~300KB for w1280 —
- * ColorThief result is identical since it only needs representative pixels.
- *
- * Falls back to extracting from the visible backdrop image if the tiny one
- * fails (e.g. absolute URLs we can't rewrite).
- */
 const useAmbientColor = (
   backdropUrl: string,
   hasBackdrop: boolean,
@@ -240,7 +224,6 @@ const useAmbientColor = (
   useEffect(() => {
     if (!hasBackdrop) return;
 
-    // For TMDB relative paths: load a tiny w92 thumbnail for color extraction
     if (!backdropUrl.startsWith("http")) {
       const sampleSrc = getTmdbSrc(backdropUrl, COLOR_SAMPLE_SIZE);
       const img = new window.Image();
@@ -248,12 +231,11 @@ const useAmbientColor = (
 
       const handleLoad = () => extractColor(img);
       const handleError = () => {
-        // Fallback: try visible backdrop image
         const visible = imgRef.current;
         if (visible?.complete && visible.naturalWidth > 0)
           extractColor(visible);
         else
-          visible?.addEventListener("load", () => extractColor(visible), {
+          visible?.addEventListener("load", () => extractColor(visible!), {
             once: true,
           });
       };
@@ -270,7 +252,6 @@ const useAmbientColor = (
       };
     }
 
-    // For absolute URLs: extract from the visible backdrop image directly
     const img = imgRef.current;
     if (!img) return;
     const handleLoad = () => extractColor(img);
@@ -395,35 +376,46 @@ export default function Desc({
       {/* Main content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
+
+          {/* Poster — fades up immediately */}
           <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">
             {isLoading ? (
               <MediaPosterSkeleton />
             ) : (
-              <MediaPoster
-                data={data}
-                textScheme={textScheme}
-                ambientText={ambientText}
-                priority
-              />
+              <div className="animate-[fadeUp_0.5s_ease_both]">
+                <MediaPoster
+                  data={data}
+                  textScheme={textScheme}
+                  ambientText={ambientText}
+                  priority
+                />
+              </div>
             )}
           </div>
+
+          {/* Info — staggered 80ms after poster */}
           <div className="w-full lg:w-2/3 xl:w-3/4">
             {isLoading ? (
               <MediaInfoSkeleton />
             ) : (
-              <MediaInfo
-                data={data}
-                textScheme={textScheme}
-                ambientText={ambientText}
-                rawRgb={ambient?.rawRgb}
-              />
+              <div
+                className="animate-[fadeUp_0.5s_ease_both]"
+                style={{ animationDelay: "80ms" }}
+              >
+                <MediaInfo
+                  data={data}
+                  textScheme={textScheme}
+                  ambientText={ambientText}
+                  rawRgb={ambient?.rawRgb}
+                />
+              </div>
             )}
           </div>
+
         </div>
       </div>
 
-      {/* Keywords strip */}
-      {/* Keywords strip */}
+      {/* Keywords strip — staggered 150ms after poster */}
       {isLoading ? (
         <div className="relative z-10 px-4 sm:px-6 pb-6 animate-pulse">
           <div className="flex flex-wrap gap-2">
@@ -437,7 +429,10 @@ export default function Desc({
           </div>
         </div>
       ) : keywords.length > 0 ? (
-        <div className="relative z-10 px-4 sm:px-6 pb-6">
+        <div
+          className="relative z-10 px-4 sm:px-6 pb-6 animate-[fadeUp_0.5s_ease_both]"
+          style={{ animationDelay: "150ms" }}
+        >
           <KeywordsSection
             keywords={keywords}
             textScheme={textScheme}

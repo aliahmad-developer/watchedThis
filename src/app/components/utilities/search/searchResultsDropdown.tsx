@@ -51,33 +51,37 @@ export default function SearchResultsDropdown({
   }, [limitedResults]);
 
   return (
-    <div className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg shadow-lg overflow-hidden">
+    <div className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg shadow-lg overflow-hidden animate-[dropDown_0.2s_ease_out]">
       {/* Scrollable results list */}
       <div className="max-h-[50vh] sm:max-h-[60vh] overflow-y-auto">
         {isLoading ? (
-          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm">
+          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm animate-[pageFade_0.2s_ease]">
             Searching...
           </div>
         ) : formattedResults.length > 0 ? (
           formattedResults.map((item, index) => (
-            <div key={item.id}>
+            <div
+              key={item.id}
+              className="opacity-0 animate-[fadeUp_0.25s_ease_forwards]"
+              style={{ animationDelay: `${index * 30}ms` }}
+            >
               <Link
                 href={item.link}
                 onClick={onClose}
                 className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
               >
                 <div className="flex items-start gap-2.5 px-3 sm:px-4 py-2">
-                  {/* Poster — slightly smaller */}
+                  {/* Poster */}
                   {item.poster ? (
                     <Image
                       src={`https://image.tmdb.org/t/p/w92${item.poster}`}
                       alt={item.title}
                       width={36}
                       height={50}
-                      className="w-8 h-[46px] sm:w-9 sm:h-[52px] rounded object-cover shrink-0 mt-0.5"
+                      className="w-8 h-11.5 sm:w-9 sm:h-13 rounded object-cover shrink-0 mt-0.5"
                     />
                   ) : (
-                    <div className="w-8 h-[46px] sm:w-9 sm:h-[52px] bg-light-disabled dark:bg-dark-disabled rounded shrink-0 mt-0.5" />
+                    <div className="w-8 h-11.5 sm:w-9 sm:h-13 bg-light-disabled dark:bg-dark-disabled rounded shrink-0 mt-0.5" />
                   )}
 
                   <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start sm:gap-3">
@@ -129,13 +133,13 @@ export default function SearchResultsDropdown({
             </div>
           ))
         ) : (
-          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm">
+          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm animate-[pageFade_0.2s_ease]">
             No results found
           </div>
         )}
       </div>
 
-      {/* Button lives OUTSIDE the scroll container — always visible */}
+      {/* View all — always visible outside scroll */}
       {results.length > 0 && (
         <Link
           href={`/search?q=${encodeURIComponent(searchQuery)}`}
@@ -151,14 +155,10 @@ export default function SearchResultsDropdown({
 
 function formatMediaType(type: string) {
   switch (type) {
-    case "tv":
-      return "TV";
-    case "movie":
-      return "Movie";
-    case "ona":
-      return "ONA";
-    default:
-      return type.toUpperCase();
+    case "tv":    return "TV";
+    case "movie": return "Movie";
+    case "ona":   return "ONA";
+    default:      return type.toUpperCase();
   }
 }
 
