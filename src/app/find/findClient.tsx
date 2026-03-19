@@ -326,7 +326,7 @@ function FindPageInner() {
 
           <button
             onClick={() => setFilters(DEFAULT_FILTERS)}
-           className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition underline underline-offset-2"
+            className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition underline underline-offset-2"
           >
             Reset
           </button>
@@ -437,7 +437,7 @@ function FindPageInner() {
                   onClick={() =>
                     setFilters((prev) => ({ ...prev, keywords: [] }))
                   }
-                 className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition underline underline-offset-2"
+                  className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition underline underline-offset-2"
                 >
                   clear all
                 </button>
@@ -655,7 +655,12 @@ function FindPageInner() {
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, sortBy: e.target.value }))
               }
-              className="w-full sm:flex-1 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border hover:bg-light-card dark:hover:bg-dark-card rounded-xl px-3 py-2.5 text-sm"
+              className="w-full sm:flex-1 bg-light-bg dark:bg-dark-bg border border-light-border 
+             dark:border-dark-border hover:bg-light-card dark:hover:bg-dark-card 
+             rounded-xl px-4 py-2.5 pr-10 text-sm
+             appearance-none cursor-pointer
+             bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23468189%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%2F%3E%3C%2Fsvg%3E')]
+             bg-no-repeat bg-position-[right_0.85rem_center] bg-size-[18px_18px]"
             >
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>

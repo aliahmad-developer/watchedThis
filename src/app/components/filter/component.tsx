@@ -3,9 +3,20 @@ import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 // ── DualRangeSlider ────────────────────────────────────────────────────────
 
-export function DualRangeSlider({ min, max, step = 1, value, onChange, formatLabel }: {
-  min: number; max: number; step?: number; value: [number, number];
-  onChange: (v: [number, number]) => void; formatLabel?: (v: number) => string;
+export function DualRangeSlider({
+  min,
+  max,
+  step = 1,
+  value,
+  onChange,
+  formatLabel,
+}: {
+  min: number;
+  max: number;
+  step?: number;
+  value: [number, number];
+  onChange: (v: [number, number]) => void;
+  formatLabel?: (v: number) => string;
 }) {
   const [low, high] = value;
   const pct = (v: number) => ((v - min) / (max - min)) * 100;
@@ -13,20 +24,39 @@ export function DualRangeSlider({ min, max, step = 1, value, onChange, formatLab
   return (
     <div className="w-full space-y-2">
       <div className="flex justify-between text-xs font-semibold text-light-text dark:text-dark-text">
-        <span>{fmt(low)}</span><span>{fmt(high)}</span>
+        <span>{fmt(low)}</span>
+        <span>{fmt(high)}</span>
       </div>
       <div className="relative h-6 flex items-center">
         <div className="absolute w-full h-1.5 rounded-full bg-light-border dark:bg-dark-border" />
-        <div className="absolute h-1.5 rounded-full bg-light-accent dark:bg-dark-accent"
-          style={{ left: `${pct(low)}%`, right: `${100 - pct(high)}%` }} />
-        <input type="range" min={min} max={max} step={step} value={low}
-          onChange={e => onChange([Math.min(Number(e.target.value), high - step), high])}
+        <div
+          className="absolute h-1.5 rounded-full bg-light-accent dark:bg-dark-accent"
+          style={{ left: `${pct(low)}%`, right: `${100 - pct(high)}%` }}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={low}
+          onChange={(e) =>
+            onChange([Math.min(Number(e.target.value), high - step), high])
+          }
           className="dual-thumb absolute w-full appearance-none bg-transparent pointer-events-none"
-          style={{ zIndex: low > max - (max - min) * 0.1 ? 5 : 3 }} />
-        <input type="range" min={min} max={max} step={step} value={high}
-          onChange={e => onChange([low, Math.max(Number(e.target.value), low + step)])}
+          style={{ zIndex: low > max - (max - min) * 0.1 ? 5 : 3 }}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={high}
+          onChange={(e) =>
+            onChange([low, Math.max(Number(e.target.value), low + step)])
+          }
           className="dual-thumb absolute w-full appearance-none bg-transparent pointer-events-none"
-          style={{ zIndex: 4 }} />
+          style={{ zIndex: 4 }}
+        />
       </div>
     </div>
   );
@@ -34,12 +64,27 @@ export function DualRangeSlider({ min, max, step = 1, value, onChange, formatLab
 
 // ── SectionLabel ───────────────────────────────────────────────────────────
 
-export function SectionLabel({ icon, label, children }: { icon?: any; label?: string; children?: React.ReactNode }) {
+export function SectionLabel({
+  icon,
+  label,
+  children,
+}: {
+  icon?: any;
+  label?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-light-secondary-text dark:text-dark-secondary-text mb-2">
-      {icon && <FontAwesomeIcon icon={icon} className="h-3 text-light-accent dark:text-dark-accent" />}
-      {label ?? children}
-    </p>
+    <div className="flex items-center gap-1.5 leading-none text-xs font-semibold uppercase tracking-wider text-light-secondary-text dark:text-dark-secondary-text mb-2">
+      {icon && (
+        <span className="inline-flex items-center justify-center shrink-0">
+          <FontAwesomeIcon
+            icon={icon}
+            className="h-3 w-3 text-light-accent dark:text-dark-accent"
+          />
+        </span>
+      )}
+      <span>{label ?? children}</span>
+    </div>
   );
 }
 
@@ -47,21 +92,37 @@ export function SectionLabel({ icon, label, children }: { icon?: any; label?: st
 
 export type GenreState = "neutral" | "include" | "exclude";
 
-export function GenreChip({ name, state, onClick }: {
-  name: string; state: GenreState; onClick: () => void;
+export function GenreChip({
+  name,
+  state,
+  onClick,
+}: {
+  name: string;
+  state: GenreState;
+  onClick: () => void;
 }) {
   const styles: Record<GenreState, string> = {
-    neutral: "bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text hover:border-light-accent dark:hover:border-dark-accent",
-    include: "bg-light-accent dark:bg-dark-accent text-white border-transparent scale-105",
+    neutral:
+      "bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text hover:border-light-accent dark:hover:border-dark-accent",
+    include:
+      "bg-light-accent dark:bg-dark-accent text-white border-transparent scale-105",
     exclude: "bg-red-500/15 border-red-500/40 text-red-400",
   };
   return (
     <button
       onClick={onClick}
-      title={state === "neutral" ? "Click to include" : state === "include" ? "Click to exclude" : "Click to clear"}
+      title={
+        state === "neutral"
+          ? "Click to include"
+          : state === "include"
+            ? "Click to exclude"
+            : "Click to clear"
+      }
       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${styles[state]}`}
     >
-      {state === "exclude" && <FontAwesomeIcon icon={faBan} className="h-2.5 mr-1 opacity-75" />}
+      {state === "exclude" && (
+        <FontAwesomeIcon icon={faBan} className="h-2.5 mr-1 opacity-75" />
+      )}
       {name}
     </button>
   );
