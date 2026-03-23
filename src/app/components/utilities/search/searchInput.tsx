@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, ChangeEvent } from "react";
+import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 export interface MediaResult {
   id: number;
@@ -25,7 +26,10 @@ interface SearchInputProps {
   className?: string;
   onFocus?: () => void;
   onBlur?: () => void;
-  inputRef?: (el: HTMLInputElement | null) => void;
+  // React.Ref covers useRef objects, callback refs, and null
+  inputRef?: React.Ref<HTMLInputElement>;
+  autoFocus?: boolean;
+  placeholder?: string;
 }
 
 export default function SearchInput({
@@ -38,45 +42,55 @@ export default function SearchInput({
   onFocus,
   onBlur,
   inputRef,
+  autoFocus,
+  placeholder = "Search movies, TV shows...",
 }: SearchInputProps) {
+  const showClear = showClearButton && !!searchQuery && !!clearInput;
+
   return (
     <form
       onSubmit={onSearchSubmit}
       className={`relative flex items-center w-full ${className}`}
     >
-      <div className="relative flex-1 flex items-center">
+      {/*
+        Flex row: input fills space, buttons sit to the right.
+        No absolute positioning — icon positions are never magic numbers.
+        pr-2 on the wrapper gives the buttons a small right margin.
+      */}
+      <div className="relative flex-1 flex items-center gap-1 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg focus-within:ring-2 focus-within:ring-light-accent dark:focus-within:ring-dark-accent transition-colors pr-2">
         <input
-          ref={inputRef || undefined}
+          ref={inputRef}
           type="text"
           value={searchQuery}
           onChange={onInputChange}
           onFocus={onFocus}
           onBlur={onBlur}
-          required
-          className="w-full p-3 md:p-3.5 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-body-text dark:text-dark-body-text placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent pr-10 transition-colors"
-          placeholder="Search movies, TV shows..."
+          autoFocus={autoFocus}
+          autoComplete="off"
+          className="flex-1 min-w-0 p-3 md:p-3.5 bg-transparent text-light-body-text dark:text-dark-body-text placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text focus:outline-none"
+          placeholder={placeholder}
           aria-label="Search input"
         />
 
-        {/* Clear button — only when there's input */}
-        {showClearButton && searchQuery && (
+        {/* Clear button */}
+        {showClear && (
           <button
             type="button"
             onClick={clearInput}
             aria-label="Clear search"
-            className="absolute right-12 p-1 bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
+            className="shrink-0 p-1.5 bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
           >
-            <FontAwesomeIcon icon={faTimes} className="text-sm" />
+            <FontAwesomeIcon icon={faXmark} className="text-sm" />
           </button>
         )}
 
         {/* Submit button */}
         <button
           type="submit"
-          aria-label="Search"
-          className="absolute right-3 bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
+          aria-label="Submit search"
+          className="shrink-0 p-1.5 bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
         >
-          <FontAwesomeIcon icon={faSearch} />
+          <FontAwesomeIcon icon={faMagnifyingGlass} />
         </button>
       </div>
     </form>

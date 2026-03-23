@@ -2,9 +2,18 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Fuse from "fuse.js";
+import { createSlug } from "../utilities/createSlug";
 import { trackSearch } from "../../components/Recommendation/behaviourTracker";
 import AuthButton from "../../components/auth/navButton/authButton";
-import { useState, useEffect, useTransition, FormEvent, ChangeEvent, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useTransition,
+  FormEvent,
+  ChangeEvent,
+  useRef,
+  useCallback,
+} from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -21,7 +30,7 @@ import SearchButton from "../utilities/search/searchButton";
 import SearchResultsDropdown from "../utilities/search/searchResultsDropdown";
 import { MediaResult } from "../utilities/search/searchInput";
 
-// ── Fuse options — defined once outside component, never re-allocated ─────────
+// ── Static constants ──────────────────────────────────────────────────────────
 
 const FUSE_OPTIONS = {
   keys: [
@@ -35,6 +44,14 @@ const FUSE_OPTIONS = {
   includeScore: true,
   ignoreLocation: true,
 };
+
+// Defined outside component — stable reference, never re-allocated on render
+const NAV_ITEMS = [
+  { label: "Random", icon: faShuffle, href: "/random" },
+  { label: "Spinner", icon: faSpinner, href: "/spinner" },
+  { label: "Find", icon: faMagnifyingGlass, href: "/find" },
+  { label: "Echo", icon: faLayerGroup, href: "/echo" },
+] as const;
 
 // ── Search helpers ────────────────────────────────────────────────────────────
 
@@ -71,6 +88,37 @@ async function fetchAllVariants(query: string): Promise<MediaResult[]> {
   return merged;
 }
 
+// ── Focus trap for mobile drawer ─────────────────────────────────────────────
+
+function useFocusTrap(
+  containerRef: React.RefObject<HTMLElement | null>,
+  active: boolean,
+) {
+  useEffect(() => {
+    if (!active || !containerRef.current) return;
+    const container = containerRef.current;
+    const focusable = container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      if (focusable.length === 0) { e.preventDefault(); return; }
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+
+    first?.focus();
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [active, containerRef]);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
@@ -89,9 +137,12 @@ export default function Navbar() {
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
   const lastScrollY = useRef(0);
 
-  // Route change reset
+  useFocusTrap(drawerRef, drawerOpen);
+
+  // ── Reset on route change ──
   useEffect(() => {
     setSearchVisible(false);
     setSearchQuery("");
@@ -99,17 +150,40 @@ export default function Navbar() {
     setDrawerOpen(false);
   }, [pathname]);
 
-  // Mount + prefetch
+  // ── bfcache reset ──
+  // The component does NOT remount on bfcache restore — useEffect([]) won't
+  // re-run. Manually reset every piece of state that could leave the UI broken:
+  //   • navVisible: could be false (navbar hidden) → clicks silently no-op
+  //   • hasMounted: stays false → search overlay / drawer never renders
+  //   • lastScrollY: stale position → first scroll calculates wrong delta
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setSearchVisible(false);
+        setSearchQuery("");
+        setSearchResults([]);
+        setDrawerOpen(false);
+        setIsFocused(false);
+        setNavVisible(true);
+        setHasMounted(true);
+        lastScrollY.current = window.scrollY;
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  // ── Mount + prefetch ──
   useEffect(() => {
     setHasMounted(true);
     router.prefetch("/search");
     router.prefetch("/random");
     router.prefetch("/spinner");
     router.prefetch("/find");
-    router.prefetch("/echoe");
+    router.prefetch("/echo");
   }, [router]);
 
-  // Scroll-aware show/hide — empty deps so listener is never re-registered
+  // ── Scroll-aware show/hide ──
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
@@ -120,10 +194,35 @@ export default function Navbar() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []); // ← was [searchVisible], removed — avoids re-registering on search toggle
+  }, []);
 
-  // Debounced search — multi-variant fetch + Fuse re-rank
-  // startTransition wraps setSearchResults so input painting is never blocked
+  // ── Keyboard shortcuts: "/" to open search, Escape to close ──
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isTyping = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+      if (e.key === "Escape") {
+        if (searchVisible) {
+          setSearchVisible(false);
+          setSearchQuery("");
+          setSearchResults([]);
+        }
+        if (drawerOpen) setDrawerOpen(false);
+        return;
+      }
+
+      if (e.key === "/" && !isTyping && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setSearchVisible(true);
+        setTimeout(() => inputRef.current?.focus(), 0);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [searchVisible, drawerOpen]);
+
+  // ── Debounced search ──
   useEffect(() => {
     const fetchResults = async () => {
       if (searchQuery.length < 2) {
@@ -138,8 +237,6 @@ export default function Navbar() {
         const reranked =
           fuseResults.length > 0 ? fuseResults.map((r) => r.item) : merged;
 
-        // Non-blocking — lets the browser paint the typed character first,
-        // then updates the dropdown. This is what fixes the 640ms INP.
         startTransition(() => {
           setSearchResults(reranked.slice(0, 5));
           setIsSearchLoading(false);
@@ -153,11 +250,11 @@ export default function Navbar() {
       }
     };
 
-    const delayDebounce = setTimeout(fetchResults, 300);
-    return () => clearTimeout(delayDebounce);
+    const timer = setTimeout(fetchResults, 300);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Close dropdown on outside click
+  // ── Close dropdown on outside click ──
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -173,23 +270,18 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Lock body scroll when drawer is open
+  // ── Body scroll lock when drawer open ──
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  // Sync --navbar-h CSS variable with actual navbar height
+  // ── Sync --navbar-h CSS variable ──
   useEffect(() => {
     const el = document.getElementById("main-navbar");
     if (!el) return;
     const update = () => {
-      document.documentElement.style.setProperty(
-        "--navbar-h",
-        `${el.offsetHeight}px`,
-      );
+      document.documentElement.style.setProperty("--navbar-h", `${el.offsetHeight}px`);
     };
     update();
     const ro = new ResizeObserver(update);
@@ -197,186 +289,238 @@ export default function Navbar() {
     return () => ro.disconnect();
   }, []);
 
-  const handleSearchToggle = () => {
-    setSearchVisible((prev) => !prev);
-    if (!searchVisible) {
-      setSearchQuery("");
-      setSearchResults([]);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  };
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    trackSearch(searchQuery);
-    const query = searchQuery.trim();
-    if (query) {
-      setSearchQuery("");
-      setSearchVisible(false);
-      router.push(`/search?q=${encodeURIComponent(query)}`);
-    }
-  };
+  const handleSearchToggle = useCallback(() => {
+    setSearchVisible((prev) => {
+      if (!prev) {
+        setSearchQuery("");
+        setSearchResults([]);
+        setTimeout(() => inputRef.current?.focus(), 0);
+      }
+      return !prev;
+    });
+  }, []);
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleSearchSubmit = useCallback(
+    (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      trackSearch(searchQuery);
+      const query = searchQuery.trim();
+      if (query) {
+        setSearchQuery("");
+        setSearchVisible(false);
+        router.push(`/search?q=${encodeURIComponent(query)}`);
+      }
+    },
+    [searchQuery, router],
+  );
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-  };
+  }, []);
 
-  const handleClearInput = () => {
+  const handleClearInput = useCallback(() => {
     setSearchQuery("");
     setSearchResults([]);
     inputRef.current?.focus();
-  };
+  }, []);
 
-  const handleRandomClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    router.push(`/random?ts=${Date.now()}`);
-  };
+  // Preserved from original: API-driven random navigation with createSlug
+  const handleRandomClick = useCallback(
+    async (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      try {
+        const res = await fetch("/api/randomCall", { cache: "no-store" });
+        const data = await res.json();
+        const slug = createSlug(data.title || data.name || "");
+        const newUrl = `/random/${data.media_type}/${slug}/${data.id}`;
+        if (window.location.pathname === newUrl) {
+          window.location.reload();
+        } else {
+          window.location.href = newUrl;
+        }
+      } catch (err) {
+        console.error("Random nav failed:", err);
+      }
+    },
+    [],
+  );
 
-  const handleCloseDropdown = () => {
+  const handleCloseDropdown = useCallback(() => {
     setIsFocused(false);
-  };
+  }, []);
 
-  const navItems = [
-    { label: "Random", icon: faShuffle, href: "/random" },
-    { label: "Spinner", icon: faSpinner, href: "/spinner" },
-    { label: "Find", icon: faMagnifyingGlass, href: "/find" },
-    { label: "Echo", icon: faLayerGroup, href: "/echo" },
-  ];
+  const handleDropdownMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+    },
+    [],
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <>
-      <div id="main-navbar" className="sticky top-0 z-50 opacity-95">
+      <div id="main-navbar" className="sticky top-0 z-50">
         <div
-          className={`transition-all duration-400 ${
-            navVisible
-              ? "translate-y-0 opacity-100"
-              : "-translate-y-full opacity-0 pointer-events-none"
+          className={`transition-transform duration-300 ${
+            navVisible ? "translate-y-0" : "-translate-y-full"
           }`}
         >
-          <nav className="w-full bg-light-nav dark:bg-dark-nav px-4 py-2">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div className="flex items-center justify-between w-full sm:w-auto">
-                <div className="flex items-center gap-3">
-                  <button
-                    className="sm:hidden bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
-                    onClick={() => setDrawerOpen(true)}
-                    aria-label="Open menu"
-                  >
-                    <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
-                  </button>
+          <nav className="w-full bg-light-nav dark:bg-dark-nav border-b border-light-border dark:border-dark-border shadow-sm">
+            {/*
+              Layout strategy:
+              - mobile/tablet (<lg): flex row — hamburger | logo | [spacer] | controls
+              - desktop (≥lg):       3-column grid — [logo] | [nav pills] | [controls]
+                Each column is `1fr`, so the center is always the exact middle of the
+                navbar regardless of asymmetric side widths.
+            */}
 
-                  <Link
-                    href="/"
-                    className="text-lg font-bold text-dark-accent whitespace-nowrap"
-                  >
-                    RandoMovie
-                  </Link>
-                </div>
+            {/* ── Mobile / Tablet row (hidden on lg+) ── */}
+            <div className="flex lg:hidden items-center h-14 px-3 sm:px-4 gap-2">
+              <button
+                className="shrink-0 flex items-center justify-center w-8 h-8 rounded-md
+                           text-light-secondary-text dark:text-dark-secondary-text
+                           hover:text-light-accent dark:hover:text-dark-accent
+                           hover:bg-light-card dark:hover:bg-dark-card transition-colors bg-transparent"
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Open menu"
+                aria-expanded={drawerOpen}
+                aria-controls="mobile-drawer"
+              >
+                <FontAwesomeIcon icon={faBars} className="h-4 w-4" />
+              </button>
 
-                <div className="flex items-center gap-2 sm:hidden">
-                  <SearchButton
-                    isActive={searchVisible}
-                    onClick={handleSearchToggle}
-                    size="sm"
-                  />
-                  <Toggle size="sm" />
-                  <AuthButton />
-                </div>
-              </div>
+              <Link
+                href="/"
+                className="shrink-0 text-base sm:text-lg font-bold text-dark-accent whitespace-nowrap"
+              >
+                RandoMovie
+              </Link>
 
-              {/* Desktop nav pills */}
-              <div className="hidden sm:block w-full sm:w-[60%] md:w-[40%] min-w-65">
-                <div className="flex justify-evenly items-center gap-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1 px-2 shadow-sm text-xs sm:text-sm">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={(e) =>
-                        item.label === "Random" && handleRandomClick(e)
-                      }
-                      className={`flex flex-col items-center justify-center font-medium transition-colors duration-200 ${
-                        pathname === item.href
-                          ? "text-light-accent dark:text-dark-accent"
-                          : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
-                      }`}
-                    >
-                      <FontAwesomeIcon
-                        icon={item.icon}
-                        className="h-3 mb-0.5"
-                      />
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <div className="flex-1" aria-hidden="true" />
 
-              <div className="hidden sm:flex items-center gap-2">
-                <SearchButton
-                  isActive={searchVisible}
-                  onClick={handleSearchToggle}
-                  size="sm"
-                />
+              <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
+                <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
                 <Toggle size="sm" />
                 <AuthButton />
               </div>
             </div>
-          </nav>
-        </div>
 
-        {/* ── Search Input + Dropdown — absolute so they float over page content ── */}
-        {hasMounted && searchVisible && (
-          <div
-            className={`absolute left-0 right-0 transition-all duration-300 ${
-              navVisible ? "top-full" : "top-0"
-            }`}
-          >
-            <div className="w-full bg-light-nav dark:bg-dark-nav shadow-md px-4 py-2 border-t border-light-border dark:border-dark-border">
-              <SearchInput
-                clearInput={handleClearInput}
-                searchQuery={searchQuery}
-                onSearchSubmit={handleSearchSubmit}
-                onInputChange={handleInputChange}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-                className="w-full text-sm"
-                inputRef={(el) => {
-                  inputRef.current = el;
-                  if (el) el.focus();
-                }}
-              />
+            {/* ── Desktop 3-column grid (hidden below lg) ── */}
+            <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center h-14 px-6">
+
+              {/* Col 1 — Logo, left-aligned */}
+              <div className="flex items-center">
+                <Link href="/" className="text-lg font-bold text-dark-accent whitespace-nowrap">
+                  RandoMovie
+                </Link>
+              </div>
+
+              {/* Col 2 — Nav pills, dead-center */}
+              <div className="flex items-center gap-8 xl:gap-12 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1.5 px-8 xl:px-12 shadow-sm">
+                {NAV_ITEMS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={item.label === "Random" ? handleRandomClick : undefined}
+                    className={`flex flex-col items-center justify-center text-sm font-medium transition-colors duration-200 ${
+                      pathname === item.href
+                        ? "text-light-accent dark:text-dark-accent"
+                        : "text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={item.icon} className="h-3 mb-0.5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Col 3 — Controls, right-aligned */}
+              <div className="flex items-center justify-end gap-2">
+                <div className="relative group">
+                  <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
+                  {!searchVisible && (
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-0 top-full mt-2 flex items-center gap-1 whitespace-nowrap rounded-md border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card px-2 py-1 text-[11px] text-light-secondary-text dark:text-dark-secondary-text shadow-md opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-150"
+                    >
+                      Press
+                      <kbd className="mx-0.5 px-1 py-0.5 rounded border border-light-border dark:border-dark-border font-mono text-[10px]">
+                        /
+                      </kbd>
+                      to search
+                    </div>
+                  )}
+                </div>
+                <Toggle size="sm" />
+                <AuthButton />
+              </div>
             </div>
 
-            {isFocused && searchQuery.length >= 2 && (
-              <div ref={dropdownRef} className="px-4">
-                <SearchResultsDropdown
-                  results={searchResults}
+          </nav>
+
+          {/* ── Search overlay — absolutely positioned below navbar, never pushes content ── */}
+          {hasMounted && searchVisible && (
+            <div className="absolute left-0 right-0 top-full z-40">
+              <div className="bg-light-nav dark:bg-dark-nav border-b border-light-border dark:border-dark-border shadow-md px-3 sm:px-4 lg:px-6 py-2">
+                <SearchInput
+                  clearInput={handleClearInput}
                   searchQuery={searchQuery}
-                  isLoading={isSearchLoading}
-                  onClose={handleCloseDropdown}
+                  onSearchSubmit={handleSearchSubmit}
+                  onInputChange={handleInputChange}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  className="w-full text-sm"
+                  inputRef={(el) => { inputRef.current = el; }}
+                  autoFocus
                 />
               </div>
-            )}
-          </div>
-        )}
+
+              {isFocused && searchQuery.length >= 2 && (
+                <div
+                  ref={dropdownRef}
+                  className="px-3 sm:px-4 lg:px-6"
+                  onMouseDown={handleDropdownMouseDown}
+                >
+                  <SearchResultsDropdown
+                    results={searchResults}
+                    searchQuery={searchQuery}
+                    isLoading={isSearchLoading}
+                    onClose={handleCloseDropdown}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── Mobile Drawer ── */}
+      {/* ── Mobile / Tablet Drawer ── */}
       {hasMounted && (
         <>
+          {/* Backdrop */}
           <div
             onClick={() => setDrawerOpen(false)}
-            className={`sm:hidden fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
-              drawerOpen
-                ? "opacity-50 pointer-events-auto"
-                : "opacity-0 pointer-events-none"
+            aria-hidden="true"
+            className={`lg:hidden fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
+              drawerOpen ? "opacity-50 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
           />
+
+          {/* Drawer panel */}
           <div
-            className={`sm:hidden fixed top-0 left-0 z-50 h-full w-64 bg-light-nav dark:bg-dark-nav shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
+            id="mobile-drawer"
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+            className={`lg:hidden fixed top-0 left-0 z-50 h-full w-72 sm:w-80 bg-light-nav dark:bg-dark-nav shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
               drawerOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
-            <div className="bg-transparent flex items-center justify-between px-4 py-4 border-b border-light-border dark:border-dark-border">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-light-border dark:border-dark-border">
               <Link
                 href="/"
                 className="text-lg font-bold text-dark-accent"
@@ -386,15 +530,18 @@ export default function Navbar() {
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent transition-colors"
+                className="flex items-center justify-center w-8 h-8 rounded-md bg-transparent
+                           text-light-secondary-text dark:text-dark-secondary-text
+                           hover:text-light-accent dark:hover:text-dark-accent
+                           hover:bg-light-card dark:hover:bg-dark-card transition-colors"
                 aria-label="Close menu"
               >
-                <FontAwesomeIcon icon={faXmark} className="h-5 w-5" />
+                <FontAwesomeIcon icon={faXmark} className="h-4 w-4" />
               </button>
             </div>
 
-            <nav className="flex flex-col gap-1 px-3 py-4 flex-1">
-              {navItems.map((item) => (
+            <nav className="flex flex-col gap-1 px-3 py-4 flex-1 overflow-y-auto">
+              {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -402,13 +549,13 @@ export default function Navbar() {
                     if (item.label === "Random") handleRandomClick(e);
                     setDrawerOpen(false);
                   }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
                     pathname === item.href
                       ? "bg-light-card dark:bg-dark-card text-light-accent dark:text-dark-accent"
                       : "text-light-secondary-text dark:text-dark-secondary-text hover:bg-light-card dark:hover:bg-dark-card hover:text-light-accent dark:hover:text-dark-accent"
                   }`}
                 >
-                  <FontAwesomeIcon icon={item.icon} className="h-4 w-4" />
+                  <FontAwesomeIcon icon={item.icon} className="h-4 w-4 shrink-0" />
                   {item.label}
                 </Link>
               ))}
