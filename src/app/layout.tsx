@@ -5,7 +5,7 @@ import ClientProviders from "./components/utilities/clientProvider/clientProvide
 import BackButton from "./components/utilities/backButton";
 import Navbar from "./components/navbar/page";
 import Footer from "./components/footer/footer";
-import PageStack from "./components/utilities/stackAnimation/pageStack";
+import PageStack from "./components/utilities/stackAnimation/stackTransition";
 
 export const metadata = {
   title: "RandoMovie.com",
@@ -42,6 +42,7 @@ export default function RootLayout({
         />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
+
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">
         <ClientProviders>
           <Navbar />
@@ -49,11 +50,10 @@ export default function RootLayout({
             <div className="absolute top-2 left-3 z-40">
               <BackButton />
             </div>
-            <PageStack>
-              {children}
-            </PageStack>
+            <PageStack>{children}</PageStack>
           </div>
         </ClientProviders>
+
         <Footer />
       </body>
     </html>

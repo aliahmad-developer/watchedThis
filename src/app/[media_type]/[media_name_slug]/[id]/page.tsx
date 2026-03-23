@@ -1,5 +1,6 @@
 import React from "react";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 import Desc from "@/app/components/randomMedia/detailsPage";
@@ -16,22 +17,22 @@ interface PageParams {
 
 // ─── Server-side fetch ───────────────────────────────────────────────────────
 
-async function fetchMediaDetails(
-  media_type: string,
-  media_name_slug: string,
-  id: string,
-) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const res = await fetch(
-    `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
-    {
-      next: { revalidate: 3600 },
-    },
-  );
-
-  if (!res.ok) return null;
-  return res.json();
-}
+const fetchMediaDetails = cache(
+  async (
+    // ← wrap with cache()
+    media_type: string,
+    media_name_slug: string,
+    id: string,
+  ) => {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const res = await fetch(
+      `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
+      { next: { revalidate: 3600 } },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  },
+);
 
 export async function generateMetadata({
   params,

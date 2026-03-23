@@ -1,9 +1,7 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
 
-interface BackButtonProps {
-  className?: string;
-}
+interface BackButtonProps { className?: string; }
 
 const HIDDEN_ON = ["/", "/find", "/random", "/spinner"];
 
