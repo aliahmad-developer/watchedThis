@@ -8,6 +8,8 @@ import MediaPoster from "./mediaPoster";
 import MediaInfo from "./MediaInfo/mediaInfo";
 import MediaInfoSkeleton from "./MediaInfo/Skeleton/MainInfoSkeleton";
 import MediaPosterSkeleton from "./MediaInfo/Skeleton/PosterSkeleton";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCopy, faShareNodes, faCheck } from "@fortawesome/free-solid-svg-icons";
 
 interface DescProps {
   data: any;
@@ -263,6 +265,141 @@ const useAmbientColor = (
   return { imgRef, ambient };
 };
 
+// ─── MediaActions (copy + share FABs) ─────────────────────────────────────────
+
+function MediaActions({
+  title,
+  rgbColor,
+  textScheme,
+}: {
+  title: string;
+  rgbColor: string;
+  textScheme: "light" | "dark";
+}) {
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Button appearance adapts to the ambient backdrop
+  const btnBg =
+    textScheme === "light"
+      ? `rgba(${rgbColor},0.55)`
+      : `rgba(${rgbColor},0.65)`;
+  const btnBorder =
+    textScheme === "light"
+      ? "rgba(255,255,255,0.18)"
+      : "rgba(0,0,0,0.25)";
+  const iconColor =
+    textScheme === "light" ? "rgba(255,255,255,0.88)" : "rgba(20,20,20,0.82)";
+
+  const handleCopy = useCallback(async () => {
+    if (copied) return;
+    try {
+      await navigator.clipboard.writeText(title);
+      setCopied(true);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback for browsers that block clipboard without interaction
+      const el = document.createElement("textarea");
+      el.value = title;
+      el.style.cssText = "position:fixed;top:-9999px;left:-9999px";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    }
+  }, [title, copied]);
+
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title,
+      url: window.location.href,
+    };
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // user dismissed — no-op
+      }
+    } else {
+      // Fallback: copy the page URL
+      await navigator.clipboard.writeText(window.location.href).catch(() => {});
+    }
+  }, [title]);
+
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+
+  const btnStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "2.5rem",
+    height: "2.5rem",
+    borderRadius: "0.625rem",
+    background: btnBg,
+    border: `1px solid ${btnBorder}`,
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    color: iconColor,
+    cursor: "pointer",
+    transition: "transform 150ms ease, opacity 150ms ease",
+    flexShrink: 0,
+  };
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: "1.25rem",
+        right: "1.25rem",
+        display: "flex",
+        gap: "0.5rem",
+        zIndex: 20,
+      }}
+    >
+      {/* Copy title */}
+      <button
+        onClick={handleCopy}
+        title={copied ? "Copied!" : `Copy title: ${title}`}
+        aria-label={copied ? "Copied!" : "Copy title"}
+        style={btnStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
+        onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      >
+        <FontAwesomeIcon
+          icon={copied ? faCheck : faCopy}
+          style={{
+            width: "0.875rem",
+            height: "0.875rem",
+            transition: "opacity 200ms ease",
+            color: copied ? (textScheme === "light" ? "rgba(134,239,172,0.95)" : "rgba(21,128,61,0.95)") : iconColor,
+          }}
+        />
+      </button>
+
+      {/* Share */}
+      <button
+        onClick={handleShare}
+        title="Share"
+        aria-label="Share"
+        style={btnStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
+        onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      >
+        <FontAwesomeIcon
+          icon={faShareNodes}
+          style={{ width: "0.875rem", height: "0.875rem" }}
+        />
+      </button>
+    </div>
+  );
+}
+
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function Desc({
@@ -431,7 +568,7 @@ export default function Desc({
       ) : keywords.length > 0 ? (
         <div
           className="relative z-10 px-4 sm:px-6 pb-6 animate-[fadeUp_0.5s_ease_both]"
-          style={{ animationDelay: "150ms" }}
+          style={{ animationDelay: "150ms", paddingRight: "6rem" }}
         >
           <KeywordsSection
             keywords={keywords}
@@ -440,6 +577,15 @@ export default function Desc({
           />
         </div>
       ) : null}
+
+      {/* Copy & Share FABs — bottom-right, hidden while loading */}
+      {!isLoading && (
+        <MediaActions
+          title={mediaTitle}
+          rgbColor={rgbColor}
+          textScheme={textScheme}
+        />
+      )}
     </section>
   );
 }

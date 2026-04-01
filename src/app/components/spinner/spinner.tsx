@@ -53,76 +53,111 @@ export default function Spinner() {
   };
 
   return (
-    <div
-      className="relative bg-light-bg dark:bg-dark-bg flex flex-col items-center justify-start  md:justify-center gap-4 px-4 overflow-hidden pt-6 md:pt-0"
-      style={{ minHeight: "calc(100dvh - var(--navbar-h, 64px))" }}
-    >
-      <div
-        style={{
-          width: "min(90vw, calc(100svh - var(--navbar-h, 64px) - 120px))",
-          height: "min(90vw, calc(100svh - var(--navbar-h, 64px) - 120px))",
-          maxWidth: "480px",
-          maxHeight: "480px",
-          flexShrink: 0,
-        }}
-      >
-        <SpinWheel
-          slots={slots}
-          rotation={rotation}
-          isSpinning={isSpinning}
-          loading={loading}
-          onRemoveSlot={handleRemoveSlot}
-        />
+    <>
+      <div className="bg-light-bg dark:bg-dark-bg sm:min-h-[calc(100svh-var(--navbar-h,70px))] flex items-center">
+        <div className="w-full max-w-7xl mx-auto px-4 py-2 sm:py-4">
+          {/* Main container - always column layout */}
+          <div className="flex flex-col items-center justify-center gap-3 sm:gap-4">
+            {/* Wheel container */}
+            <div className="shrink-0">
+              <div
+                style={{
+                  width: "min(85vw, 85vh, 450px)",
+                  height: "min(85vw, 85vh, 450px)",
+                }}
+                className="mx-auto"
+              >
+                <SpinWheel
+                  slots={slots}
+                  rotation={rotation}
+                  isSpinning={isSpinning}
+                  loading={loading}
+                  onRemoveSlot={handleRemoveSlot}
+                />
+              </div>
+            </div>
+
+            {/* Controls container - always below the wheel */}
+            <div className="w-full flex justify-center">
+              <div className="flex flex-col items-center gap-2 sm:gap-3">
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Reshuffle */}
+                  <button
+                    onClick={() => reshuffle(blacklist)}
+                    disabled={isSpinning || loading || reshuffling}
+                    title="Fetch new random media"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center
+                      bg-light-card dark:bg-dark-card
+                      border border-light-border dark:border-dark-border
+                      hover:bg-light-border dark:hover:bg-dark-border
+                      transition-all duration-200 hover:scale-105 active:scale-95
+                      disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    <FontAwesomeIcon
+                      icon={faRotate}
+                      className={`h-3.5 w-3.5 sm:h-4 sm:w-4 text-light-secondary-text dark:text-dark-secondary-text ${
+                        reshuffling ? "animate-spin" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {/* Spin */}
+                  <button
+                    onClick={handleSpin}
+                    disabled={
+                      isSpinning ||
+                      loading ||
+                      slots.filter(Boolean).length === 0
+                    }
+                    className="px-5 sm:px-10 h-10 sm:h-12 min-w-[90px] sm:min-w-[120px] rounded-xl
+                      bg-light-accent dark:bg-dark-accent
+                      text-white font-bold text-sm sm:text-base tracking-wide
+                      hover:bg-light-accent-hover dark:hover:bg-dark-accent-hover
+                      transition-all duration-200 hover:scale-105 active:scale-95
+                      disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    {isSpinning ? "Spinning…" : "Spin"}
+                  </button>
+
+                  {/* Filter */}
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    disabled={isSpinning}
+                    title="Filter wheel"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center
+                      bg-light-card dark:bg-dark-card
+                      border border-light-border dark:border-dark-border
+                      hover:bg-light-border dark:hover:bg-dark-border
+                      transition-all duration-200 hover:scale-105 active:scale-95
+                      disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    <FontAwesomeIcon
+                      icon={faSliders}
+                      className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-light-secondary-text dark:text-dark-secondary-text"
+                    />
+                  </button>
+                </div>
+
+                {/* Optional: Status indicator for empty wheel */}
+                {slots.filter(Boolean).length === 0 && !loading && (
+                  <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text text-center">
+                    No items to spin. Click the filter button to add items.
+                  </div>
+                )}
+
+                {/* Optional: Loading indicator */}
+                {loading && (
+                  <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text text-center">
+                    Loading items...
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        {/* Reshuffle */}
-        <button
-          onClick={() => reshuffle(blacklist)}
-          disabled={isSpinning || loading || reshuffling}
-          title="Fetch new random media"
-          className="w-12 h-12 rounded-xl flex items-center justify-center
-      bg-light-card dark:bg-dark-card
-      border border-light-border dark:border-dark-border
-      hover:bg-light-border dark:hover:bg-dark-border
-      transition disabled:opacity-40"
-        >
-          <FontAwesomeIcon
-            icon={faRotate}
-            className={`h-4 w-4 text-light-secondary-text dark:text-dark-secondary-text ${reshuffling ? "animate-spin" : ""}`}
-          />
-        </button>
-
-        {/* Spin */}
-        <button
-          onClick={handleSpin}
-          disabled={isSpinning || loading || slots.filter(Boolean).length === 0}
-          className="px-14 h-12 rounded-xl
-      bg-light-accent dark:bg-dark-accent
-      text-white font-bold text-base tracking-wide
-      hover:bg-light-accent-hover dark:hover:bg-dark-accent-hover
-      transition disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {isSpinning ? "Spinning…" : "Spin"}
-        </button>
-
-        {/* Filter */}
-        <button
-          onClick={() => setModalOpen(true)}
-          disabled={isSpinning}
-          title="Filter wheel"
-          className="w-12 h-12 rounded-xl flex items-center justify-center
-      bg-light-card dark:bg-dark-card
-      border border-light-border dark:border-dark-border
-      hover:bg-light-border dark:hover:bg-dark-border
-      transition disabled:opacity-40"
-        >
-          <FontAwesomeIcon
-            icon={faSliders}
-            className="h-4 w-4 text-light-secondary-text dark:text-dark-secondary-text"
-          />
-        </button>
-      </div>
       <EditModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -131,6 +166,6 @@ export default function Spinner() {
         onUpdateBlacklist={setBlacklist}
       />
       {result && <ResultModal item={result} onClose={() => setResult(null)} />}
-    </div>
+    </>
   );
 }

@@ -34,7 +34,7 @@ function ProductionLink({ company, ambientText }: { company: Company; ambientTex
 }
 
 export function ProductionList({ companies, ambientText }: ProductionListProps) {
-  const filtered = companies?.filter((c) => c.name?.trim()) ?? [];
+  const filtered = companies?.filter((c) => c.name?.trim()).slice(0, 8) ?? [];
 
   if (filtered.length === 0) {
     return (
@@ -44,13 +44,23 @@ export function ProductionList({ companies, ambientText }: ProductionListProps) 
     );
   }
 
-  return (
-    <ul className="grid grid-cols-2 gap-y-1 gap-x-4">
-      {filtered.map((c) => (
-        <li key={c.id} className="flex items-center">
-          <ProductionLink company={c} ambientText={ambientText} />
-        </li>
-      ))}
-    </ul>
-  );
+  if (filtered.length > 0) {
+    const showMore = filtered.length > 6;
+    return (
+      <div className="max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-ambient-muted scrollbar-track-transparent pr-2">
+        <ul className="grid grid-cols-2 gap-y-1 gap-x-4 -mr-2">
+          {filtered.slice(0, showMore ? 6 : filtered.length).map((c) => (
+            <li key={c.id} className="flex items-center">
+              <ProductionLink company={c} ambientText={ambientText} />
+            </li>
+          ))}
+          {showMore && (
+            <li className="flex items-center col-span-2 text-sm" style={{ color: ambientText.muted }}>
+              +{filtered.length - 6} more production companies
+            </li>
+          )}
+        </ul>
+      </div>
+    );
+  }
 }

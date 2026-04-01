@@ -16,7 +16,7 @@ export const metadata = {
   description: "How RandoMovie collects, uses, and protects your data.",
 };
 
-const LAST_UPDATED = "March 15, 2026";
+const LAST_UPDATED = "March, 2026";
 const CONTACT_EMAIL = "privacy@randomovie.app";
 
 export default function PrivacyPolicyPage() {

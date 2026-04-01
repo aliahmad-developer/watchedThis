@@ -11,9 +11,9 @@ interface Filters {
   genres: number[];
   excludeGenres: number[];
   excludeKeywords: string[];
+  keywords: string[];  // Changed from keyword: string to keywords: string[]
   yearRange: [number, number];
   ratingRange: [number, number];
-  keyword: string;
   sortBy: string;
   strictMode: boolean;
 }
@@ -40,8 +40,9 @@ const MIN_YEAR = 1950;
 
 const DEFAULT_FILTERS: Filters = {
   mediaType: "movie", genres: [], excludeGenres: [], excludeKeywords: [],
+  keywords: [],  // Changed from keyword: "" to keywords: []
   yearRange: [MIN_YEAR, CURRENT_YEAR], ratingRange: [0, 10],
-  keyword: "", sortBy: "popularity.desc", strictMode: false,
+  sortBy: "popularity.desc", strictMode: false,
 };
 
 interface EditModalProps {
@@ -63,6 +64,7 @@ interface TMDBResult {
 export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdateBlacklist }: EditModalProps) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [keywordInput, setKeywordInput] = useState("");
+  const [blacklistKeywordInput, setBlacklistKeywordInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -74,6 +76,7 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
   }, [isOpen]);
 
   const genres = filters.mediaType === "movie" ? MOVIE_GENRES : TV_GENRES;
+  const hasKeywords = filters.keywords.length > 0;
   const hasExclusions = filters.excludeGenres.length > 0 || filters.excludeKeywords.length > 0;
 
   // Genre tri-state
@@ -94,14 +97,32 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
     });
   };
 
-  // Keyword blacklist
+  // Regular keywords (for inclusion) - multiple allowed
   const addKeyword = () => {
     const kw = keywordInput.trim().toLowerCase();
-    if (!kw || filters.excludeKeywords.includes(kw)) { setKeywordInput(""); return; }
-    setFilters(prev => ({ ...prev, excludeKeywords: [...prev.excludeKeywords, kw] }));
+    if (!kw || filters.keywords.includes(kw)) { 
+      setKeywordInput(""); 
+      return; 
+    }
+    setFilters(prev => ({ ...prev, keywords: [...prev.keywords, kw] }));
     setKeywordInput("");
   };
+
   const removeKeyword = (kw: string) =>
+    setFilters(prev => ({ ...prev, keywords: prev.keywords.filter(k => k !== kw) }));
+
+  // Blacklist keywords - multiple allowed
+  const addBlacklistKeyword = () => {
+    const kw = blacklistKeywordInput.trim().toLowerCase();
+    if (!kw || filters.excludeKeywords.includes(kw)) { 
+      setBlacklistKeywordInput(""); 
+      return; 
+    }
+    setFilters(prev => ({ ...prev, excludeKeywords: [...prev.excludeKeywords, kw] }));
+    setBlacklistKeywordInput("");
+  };
+  
+  const removeBlacklistKeyword = (kw: string) =>
     setFilters(prev => ({ ...prev, excludeKeywords: prev.excludeKeywords.filter(k => k !== kw) }));
 
   const handleFill = async () => {
@@ -120,7 +141,7 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
       if (filters.genres.length)          params.set("genres",          filters.genres.join(","));
       if (filters.excludeGenres.length)   params.set("excludeGenres",   filters.excludeGenres.join(","));
       if (filters.excludeKeywords.length) params.set("excludeKeywords", filters.excludeKeywords.join(","));
-      if (filters.keyword.trim())         params.set("keyword",         filters.keyword.trim());
+      if (filters.keywords.length)        params.set("keywords",        filters.keywords.join(","));  // Changed from keyword to keywords
       if (filters.strictMode)             params.set("strict",          "true");
       params.set("limit", String(20 + blacklist.length + 10));
 
@@ -223,22 +244,52 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
               </div>
             </div>
 
-            {/* Keyword */}
+            {/* Keywords - Multiple allowed */}
             <div>
-              <SectionLabel icon={faTag} label="Keyword" />
-              <div className="relative">
-                <input type="text" placeholder="e.g. heist, space, vampire…"
-                  value={filters.keyword}
-                  onChange={e => setFilters(prev => ({ ...prev, keyword: e.target.value }))}
-                  className="w-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl px-4 py-2.5 pr-10 text-sm text-light-text dark:text-dark-text placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent" />
-                <FontAwesomeIcon icon={faSearch} className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 text-light-secondary-text dark:text-dark-secondary-text pointer-events-none" />
+              <SectionLabel icon={faTag} label="Keywords" />
+              <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2 -mt-1">
+                Search for media containing these keywords
+              </p>
+              <div className="flex gap-2 mb-3">
+                <input 
+                  type="text" 
+                  placeholder="e.g. heist, space, vampire…"
+                  value={keywordInput}
+                  onChange={e => setKeywordInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addKeyword()}
+                  className="flex-1 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl px-3 py-2 text-sm text-light-text dark:text-dark-text placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent" 
+                />
+                <button 
+                  onClick={addKeyword}
+                  disabled={!keywordInput.trim()}
+                  className="px-3 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="h-3.5" />
+                </button>
               </div>
+              {hasKeywords ? (
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {filters.keywords.map(kw => (
+                    <button key={kw} onClick={() => removeKeyword(kw)}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-light-accent/10 dark:bg-dark-accent/10 border border-light-accent/25 dark:border-dark-accent/25 text-light-accent dark:text-dark-accent hover:bg-light-accent/20 dark:hover:bg-dark-accent/20 transition">
+                      {kw}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setFilters(prev => ({ ...prev, keywords: [] }))}
+                    className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-text dark:hover:text-dark-text transition underline underline-offset-2">
+                    clear all
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-light-secondary-text/50 dark:text-dark-secondary-text/50 italic">No keywords added yet.</p>
+              )}
             </div>
 
             {/* Genres */}
             <div>
               <SectionLabel icon={faTag} label="Genres" />
-              <p className="text-xs text-light-secondary-text inline dark:text-dark-secondary-text mb-2 -mt-1 leading-snug">
+              <p className="text-xs text-light-secondary-text inline dark:text-dark-secondary-text m-2 -mt-1 leading-snug">
                 Tap once to <span className="inline text-light-accent dark:text-dark-accent font-semibold">include</span>{", "}twice to <span className="inline text-red-400 font-semibold">exclude</span>{", "}again to clear.
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -280,13 +331,19 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
                 Exclude media containing these words in title, description, or tags.
               </p>
               <div className="flex gap-2 mb-3">
-                <input type="text" placeholder="e.g. violence, war, zombies…"
-                  value={keywordInput}
-                  onChange={e => setKeywordInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && addKeyword()}
-                  className="flex-1 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl px-3 py-2 text-sm text-light-text dark:text-dark-text placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent" />
-                <button onClick={addKeyword}
-                  className="px-3 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold transition hover:opacity-90">
+                <input 
+                  type="text" 
+                  placeholder="e.g. violence, war, zombies…"
+                  value={blacklistKeywordInput}
+                  onChange={e => setBlacklistKeywordInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addBlacklistKeyword()}
+                  className="flex-1 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl px-3 py-2 text-sm text-light-text dark:text-dark-text placeholder:text-light-secondary-text dark:placeholder:text-dark-secondary-text outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent" 
+                />
+                <button 
+                  onClick={addBlacklistKeyword}
+                  disabled={!blacklistKeywordInput.trim()}
+                  className="px-3 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
                   <FontAwesomeIcon icon={faPlus} className="h-3.5" />
                 </button>
               </div>
@@ -303,7 +360,7 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
                     );
                   })}
                   {filters.excludeKeywords.map(kw => (
-                    <button key={kw} onClick={() => removeKeyword(kw)}
+                    <button key={kw} onClick={() => removeBlacklistKeyword(kw)}
                       className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/25 transition">
                       {kw}
                     </button>
