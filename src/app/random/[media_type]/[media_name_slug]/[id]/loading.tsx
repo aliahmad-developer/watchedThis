@@ -1,4 +1,4 @@
-import DiceRoll from "./[media_type]/[media_name_slug]/[id]/diceRoll";
+import DiceRoll from "./diceRoll";
 
 export default function RandomLoading() {
   return (
