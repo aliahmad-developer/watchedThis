@@ -27,6 +27,19 @@ export default function RandomMediaShell({ children, mediaTitle }: Props) {
     };
   }, []);
 
+  // Handle body overflow when loader is shown
+  useEffect(() => {
+    if (showLoader) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showLoader]);
+
   if (showLoader) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">

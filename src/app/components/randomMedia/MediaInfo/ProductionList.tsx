@@ -34,7 +34,8 @@ function ProductionLink({ company, ambientText }: { company: Company; ambientTex
 }
 
 export function ProductionList({ companies, ambientText }: ProductionListProps) {
-  const filtered = companies?.filter((c) => c.name?.trim()).slice(0, 8) ?? [];
+  const [showAllHidden, setShowAllHidden] = useState(false);
+  const filtered = companies?.filter((c) => c.name?.trim()) ?? [];
 
   if (filtered.length === 0) {
     return (
@@ -44,23 +45,38 @@ export function ProductionList({ companies, ambientText }: ProductionListProps) 
     );
   }
 
-  if (filtered.length > 0) {
-    const showMore = filtered.length > 6;
-    return (
-      <div className="max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-ambient-muted scrollbar-track-transparent pr-2">
-        <ul className="grid grid-cols-2 gap-y-1 gap-x-4 -mr-2">
-          {filtered.slice(0, showMore ? 6 : filtered.length).map((c) => (
-            <li key={c.id} className="flex items-center">
-              <ProductionLink company={c} ambientText={ambientText} />
-            </li>
-          ))}
-          {showMore && (
-            <li className="flex items-center col-span-2 text-sm" style={{ color: ambientText.muted }}>
-              +{filtered.length - 6} more production companies
-            </li>
+  const displayList = showAllHidden ? filtered : filtered.slice(0, 6);
+  const showMore = filtered.length > 6;
+
+  return (
+    <div className="relative">
+      <ul className="grid grid-cols-2 gap-y-1 gap-x-4">
+        {displayList.map((c) => (
+          <li key={c.id} className="flex items-center">
+            <ProductionLink company={c} ambientText={ambientText} />
+          </li>
+        ))}
+      </ul>
+      {showMore && (
+        <div className="mt-1">
+          <button
+            onClick={() => setShowAllHidden(!showAllHidden)}
+            className="text-xs underline" 
+            style={{ color: ambientText.muted }}
+          >
+            {showAllHidden ? 'Show less' : `+${filtered.length - 6} more`}
+          </button>
+          {showAllHidden && (
+            <ul className="mt-1 grid grid-cols-2 gap-y-1 gap-x-4 absolute z-10 bg-white/90 dark:bg-black/90 backdrop-blur-sm border rounded p-2 shadow-lg w-full left-0 top-full">
+              {filtered.slice(6).map((c) => (
+                <li key={c.id} className="flex items-center">
+                  <ProductionLink company={c} ambientText={ambientText} />
+                </li>
+              ))}
+            </ul>
           )}
-        </ul>
-      </div>
-    );
-  }
+        </div>
+      )}
+    </div>
+  );
 }

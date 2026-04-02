@@ -1,8 +1,527 @@
-export default function EchoPage() {
+"use client";
+
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSearch, faXmark, faLayerGroup, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import ColorThief from "color-thief-browser";
+import Fuse from "fuse.js";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface SearchHit {
+  id: number;
+  title: string;
+  type: "movie" | "tv";
+  year: string;
+  poster: string | null;
+  vote: number;
+}
+
+interface SimilarItem {
+  id: number;
+  title: string;
+  type: "movie" | "tv";
+  year: string;
+  poster: string | null;
+  backdrop: string | null;
+  vote: number;
+  overview: string;
+  genre_ids: number[];
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const slugify = (title: string) =>
+  title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+const mediaUrl = (type: string, title: string, id: number) =>
+  `/${type}/${slugify(title)}/${id}`;
+
+// ── Ambient color helpers ─────────────────────────────────────────────────────
+
+const COLOR_SCHEME_MQ = "(prefers-color-scheme: light)";
+const calcLuminance = (r: number, g: number, b: number) =>
+  (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+interface AmbientColor { solid: string; rgb: string; rawRgb: string; luminance: number; }
+
+const buildAmbient = (r: number, g: number, b: number, light: boolean): AmbientColor => {
+  const lum = calcLuminance(r, g, b);
+  if (light) {
+    const f = lum < 0.5 ? 1.5 : 1.2;
+    const cr = Math.min(Math.floor(r * f + 50), 235);
+    const cg = Math.min(Math.floor(g * f + 50), 235);
+    const cb = Math.min(Math.floor(b * f + 50), 235);
+    return { solid: `rgb(${cr},${cg},${cb})`, rgb: `${cr},${cg},${cb}`, rawRgb: `${r},${g},${b}`, luminance: calcLuminance(cr, cg, cb) };
+  } else {
+    const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
+    const cr = Math.max(Math.floor(r * f), 0);
+    const cg = Math.max(Math.floor(g * f), 0);
+    const cb = Math.max(Math.floor(b * f), 0);
+    return { solid: `rgb(${cr},${cg},${cb})`, rgb: `${cr},${cg},${cb}`, rawRgb: `${r},${g},${b}`, luminance: lum };
+  }
+};
+
+const getAmbientText = (light: boolean, rawRgb: string, processedLum: number) => {
+  const [r, g, b] = rawRgb.split(",").map(Number);
+  const useLightText = !light || processedLum < 0.45;
+  if (!useLightText) {
+    const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
+    const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
+    return { primary: `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`, secondary: `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`, muted: `rgba(${ds(r)},${ds(g)},${ds(b)},0.55)` };
+  } else {
+    const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
+    const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85), 255);
+    return { primary: `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`, secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`, muted: `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)` };
+  }
+};
+
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+
+function useTheme() {
+  const [light, setLight] = useState(false);
+  const check = useCallback(() => {
+    setLight(document.documentElement.classList.contains("light") || window.matchMedia(COLOR_SCHEME_MQ).matches);
+  }, []);
+  useEffect(() => {
+    check();
+    const mq = window.matchMedia(COLOR_SCHEME_MQ);
+    mq.addEventListener("change", check);
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => { mq.removeEventListener("change", check); obs.disconnect(); };
+  }, [check]);
+  return light;
+}
+
+function useAmbient(imageUrl: string | null, light: boolean) {
+  const [ambient, setAmbient] = useState<AmbientColor | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const busy = useRef(false);
+  const extract = useCallback(() => {
+    if (!imgRef.current || busy.current) return;
+    const img = imgRef.current;
+    if (img.naturalWidth === 0) return;
+    busy.current = true;
+    try { const ct = new ColorThief(); const [r, g, b] = ct.getColor(img); setAmbient(buildAmbient(r, g, b, light)); }
+    catch { setAmbient(null); } finally { busy.current = false; }
+  }, [light]);
+  useEffect(() => { setAmbient(null); }, [imageUrl, light]);
+  useEffect(() => {
+    if (!imgRef.current) return;
+    const img = imgRef.current;
+    const run = () => setTimeout(extract, 80);
+    if (img.complete) run(); else img.addEventListener("load", run);
+    return () => img.removeEventListener("load", run);
+  }, [extract, imageUrl]);
+  return { imgRef, ambient };
+}
+
+// ── Search Dropdown ───────────────────────────────────────────────────────────
+
+function SearchDropdown({
+  hits, query, onSelect, onClose,
+}: {
+  hits: SearchHit[];
+  query: string;
+  onSelect: (hit: SearchHit) => void;
+  onClose: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <h1 className="text-4xl font-bold mb-4">Echo Page</h1>
-      <p className="text-lg text-gray-600">This is the Echo page. Content coming soon!</p>
+    <div className="absolute top-full left-0 right-0 z-50 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border border-t-0 rounded-b-2xl shadow-2xl overflow-hidden animate-[dropDown_0.18s_ease_out]">
+      <div className="max-h-[52vh] overflow-y-auto">
+        {hits.map((hit, i) => (
+          <div
+            key={`${hit.type}-${hit.id}`}
+            className="opacity-0 animate-[fadeUp_0.22s_ease_forwards]"
+            style={{ animationDelay: `${i * 25}ms` }}
+          >
+            <button
+              onMouseDown={e => { e.preventDefault(); onSelect(hit); }}
+              className="flex items-start gap-3 w-full px-3 sm:px-4 py-2.5 text-left hover:bg-light-card dark:hover:bg-dark-card transition-colors"
+            >
+              {hit.poster ? (
+                <img src={hit.poster} alt="" className="w-8 h-12 object-cover rounded shrink-0 mt-0.5" />
+              ) : (
+                <div className="w-8 h-12 rounded shrink-0 mt-0.5 bg-light-disabled dark:bg-dark-disabled" />
+              )}
+
+              <div className="flex-1 min-w-0">
+                <div className="text-light-body-text dark:text-dark-body-text text-sm font-semibold truncate leading-tight">
+                  {hit.title}
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-light-card dark:bg-dark-card text-light-secondary-text dark:text-dark-secondary-text font-medium">
+                    {hit.type === "movie" ? "Movie" : "TV"}
+                  </span>
+                  <span className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
+                    {hit.year || "—"}
+                  </span>
+                  {hit.vote > 0 && (
+                    <>
+                      <span className="text-light-disabled dark:text-dark-disabled text-xs">•</span>
+                      <span className="text-color-accent text-xs font-bold font-mono">
+                        ★ {hit.vote.toFixed(1)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </button>
+
+            {i < hits.length - 1 && (
+              <div className="border-t border-light-border dark:border-dark-border mx-3 sm:mx-4" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <Link
+        href={`/search?q=${encodeURIComponent(query)}`}
+        onClick={onClose}
+        className="block text-center px-4 py-2.5 border-t border-light-border dark:border-dark-border bg-light-btn-bg text-light-btn-text font-medium hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text transition-colors text-xs tracking-wide"
+      >
+        View all results for &ldquo;{query}&rdquo;
+      </Link>
+    </div>
+  );
+}
+
+// ── Media Card ────────────────────────────────────────────────────────────────
+
+function MediaCard({ item, isLightMode }: { item: SimilarItem; isLightMode: boolean }) {
+  const imageUrl = item.backdrop
+    ? `https://image.tmdb.org/t/p/w1280${item.backdrop}`
+    : item.poster ? `https://image.tmdb.org/t/p/w780${item.poster}` : null;
+
+  const { imgRef, ambient } = useAmbient(imageUrl, isLightMode);
+
+  const fallbackRgb   = isLightMode ? "210,210,210" : "15,15,15";
+  const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
+  const solidColor    = ambient?.solid ?? fallbackSolid;
+  const rgbColor      = ambient?.rgb ?? fallbackRgb;
+  const rawRgb        = ambient?.rawRgb ?? fallbackRgb;
+  const processedLum  = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
+  const textColor     = getAmbientText(isLightMode, rawRgb, processedLum);
+
+  const fullTint    = `rgba(${rgbColor}, 0.45)`;
+  const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
+  const layerTop    = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
+  const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
+  const rating      = item.vote ? item.vote.toFixed(1) : null;
+
+  return (
+    <Link
+      href={mediaUrl(item.type, item.title, item.id)}
+      className="block group w-full rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden"
+      style={{ backgroundColor: solidColor, transition: "background-color 700ms ease-in-out" }}
+    >
+      <div className="relative w-full overflow-hidden aspect-4/3 sm:aspect-16/6 lg:aspect-16/5">
+        {imageUrl ? (
+          <Image
+            ref={imgRef}
+            src={imageUrl}
+            alt={item.title}
+            fill
+            crossOrigin="anonymous"
+            className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, 1280px"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-linear-to-br from-gray-700 to-gray-900" />
+        )}
+        <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
+        <div className="absolute inset-0 transition-all duration-700" style={{ background: layerBottom }} />
+        <div className="absolute inset-0" style={{ background: layerTop }} />
+        <div className="absolute inset-0" style={{ background: layerCenter }} />
+
+        {rating && (
+          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/40 backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
+            ★ {rating}
+          </div>
+        )}
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 text-[10px] text-white sm:text-xs px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm">
+          {item.type === "movie" ? "Film" : "Series"}
+        </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-8 lg:px-12 gap-1">
+          <h3
+            className="text-base sm:text-2xl lg:text-3xl font-bold text-center drop-shadow-lg line-clamp-2 transition-colors duration-700 leading-snug"
+            style={{ color: textColor.primary }}
+          >
+            {item.title}
+          </h3>
+          <p className="text-[10px] sm:text-sm italic transition-colors duration-700" style={{ color: textColor.muted }}>
+            {item.year}
+          </p>
+        </div>
+      </div>
+
+      <div className="px-3 sm:px-4 py-2 sm:py-3 transition-all duration-700" style={{ backgroundColor: solidColor }}>
+        <p className="text-xs sm:text-sm leading-snug line-clamp-2 transition-colors duration-700" style={{ color: textColor.secondary }}>
+          {item.overview || "No description available."}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="w-full rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse">
+      <div style={{ aspectRatio: "16/5" }} />
+      <div className="px-3 sm:px-4 py-2 sm:py-3 space-y-2">
+        <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-2/3" />
+        <div className="h-2.5 bg-gray-300 dark:bg-gray-700 rounded w-1/2" />
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function EchoPage() {
+  const isLightMode = useTheme();
+
+  const [query, setQuery]             = useState("");
+  const [rawHits, setRawHits]         = useState<SearchHit[]>([]);
+  const [dropOpen, setDropOpen]       = useState(false);
+  const [sugLoading, setSugLoading]   = useState(false);
+
+  const [cards, setCards]             = useState<SimilarItem[]>([]);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [sourceTitle, setSourceTitle] = useState<string | null>(null);
+  const [isTrending, setIsTrending]   = useState(true);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapRef     = useRef<HTMLDivElement>(null);
+
+  // ── Fuse.js: re-rank raw API hits client-side ─────────────────────────────
+  const fuse = useMemo(
+    () => new Fuse(rawHits, {
+      keys: [{ name: "title", weight: 0.8 }, { name: "year", weight: 0.2 }],
+      threshold: 0.45,
+      distance: 120,
+      includeScore: true,
+      minMatchCharLength: 1,
+    }),
+    [rawHits]
+  );
+
+  const suggestions = useMemo<SearchHit[]>(() => {
+    if (!query.trim() || rawHits.length === 0) return rawHits;
+    const results = fuse.search(query.trim());
+    // Use fuse-ranked order only when it finds confident matches
+    if (results.length > 0 && results[0].score !== undefined && results[0].score < 0.35) {
+      return results.map(r => r.item);
+    }
+    return rawHits;
+  }, [query, rawHits, fuse]);
+
+  // ── Load trending on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res  = await fetch("/api/echo?trending=true");
+        const data = await res.json();
+        setCards(data.results ?? []);
+        setIsTrending(true);
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  // ── Close on outside click ────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setDropOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // ── Fetch suggestions ─────────────────────────────────────────────────────
+  const fetchSuggestions = useCallback(async (q: string) => {
+    if (!q.trim()) { setRawHits([]); setDropOpen(false); return; }
+    setSugLoading(true);
+    try {
+      const res  = await fetch(`/api/echo?query=${encodeURIComponent(q.trim())}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const hits: SearchHit[] = data.results ?? [];
+      setRawHits(hits);
+      setDropOpen(hits.length > 0);
+    } catch {
+      setRawHits([]);
+      setDropOpen(false);
+    } finally {
+      setSugLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    // 300ms — snappier than before
+    debounceRef.current = setTimeout(() => fetchSuggestions(query), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, fetchSuggestions]);
+
+  // ── Select title ──────────────────────────────────────────────────────────
+  const selectTitle = useCallback(async (hit: SearchHit) => {
+    setDropOpen(false);
+    setQuery(hit.title);
+    setRawHits([]);
+    setCards([]);
+    setError(null);
+    setLoading(true);
+    setIsTrending(false);
+    setSourceTitle(hit.title);
+    try {
+      const res  = await fetch(`/api/echo?id=${hit.id}&type=${hit.type}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setCards(data.similar ?? []);
+    } catch {
+      setError("Could not load results. Please check your TMDB API key.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ── Clear ─────────────────────────────────────────────────────────────────
+  const handleClear = useCallback(async () => {
+    setQuery("");
+    setRawHits([]);
+    setDropOpen(false);
+    setError(null);
+    setSourceTitle(null);
+    setIsTrending(true);
+    setLoading(true);
+    try {
+      const res  = await fetch("/api/echo?trending=true");
+      const data = await res.json();
+      setCards(data.results ?? []);
+    } catch { setCards([]); }
+    finally { setLoading(false); }
+  }, []);
+
+  const dimTextClass = "text-light-secondary-text dark:text-dark-secondary-text";
+
+  return (
+    <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
+
+        {/* ── Header ── */}
+        <div className="text-center space-y-3 pt-4">
+          <div className="inline-flex items-center gap-2 mb-1">
+            <FontAwesomeIcon icon={faLayerGroup} className="w-4 h-4 text-color-accent" />
+            <span className={`${dimTextClass} text-[10px] tracking-[4px] font-mono uppercase`}>Echo</span>
+          </div>
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">
+            Discover what to watch{" "}
+            <em className="text-color-accent not-italic">next.</em>
+          </h1>
+          <p className={`${dimTextClass} text-xs sm:text-sm max-w-lg mx-auto leading-relaxed`}>
+            Echo uses machine learning to find similar media based on synopsis, score, reviews, and more.{" "}
+            <span className="text-light-body-text dark:text-dark-body-text opacity-50">
+              Search any title to get started.
+            </span>
+          </p>
+        </div>
+
+        {/* ── Search ── */}
+        <div ref={wrapRef} className="relative">
+          <div
+            className={`flex items-center bg-light-card dark:bg-dark-card border-2 transition-all duration-200 ${
+              dropOpen && suggestions.length > 0
+                ? "border-color-accent rounded-t-2xl rounded-b-none"
+                : "border-light-border dark:border-dark-border rounded-2xl"
+            }`}
+          >
+            <span className="px-3.5 text-light-secondary-text dark:text-dark-secondary-text flex items-center shrink-0">
+              {sugLoading ? (
+                <FontAwesomeIcon icon={faSpinner} className="w-3.5 h-3.5 text-color-accent animate-spin" />
+              ) : (
+                <FontAwesomeIcon icon={faSearch} className="w-3.5 h-3.5" />
+              )}
+            </span>
+
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setDropOpen(true)}
+              placeholder="Search movies or TV series…"
+              className="flex-1 border-none outline-none bg-transparent text-light-body-text dark:text-dark-body-text placeholder-light-secondary-text dark:placeholder-dark-secondary-text text-base py-3.5 font-inherit"
+            />
+
+            {query && (
+              <button
+                onClick={handleClear}
+                className="px-4 text-light-secondary-text dark:text-dark-secondary-text hover:text-color-accent transition-colors"
+              >
+                <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {dropOpen && suggestions.length > 0 && (
+            <SearchDropdown
+              hits={suggestions}
+              query={query}
+              onSelect={selectTitle}
+              onClose={() => setDropOpen(false)}
+            />
+          )}
+        </div>
+
+        {/* ── Section label ── */}
+        {!loading && cards.length > 0 && (
+          <div className="flex items-center gap-3">
+            <div className="w-0.5 h-4 bg-color-accent rounded shrink-0" />
+            <p className={`${dimTextClass} text-[11px] font-mono tracking-wider m-0`}>
+              {isTrending ? "TRENDING THIS WEEK" : `SIMILAR TO — ${sourceTitle?.toUpperCase()}`}
+            </p>
+          </div>
+        )}
+
+        {/* ── Skeletons ── */}
+        {loading && (
+          <div className="space-y-3 sm:space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)}
+          </div>
+        )}
+
+        {/* ── Error ── */}
+        {error && (
+          <div className="text-center py-10">
+            <p className="text-red-500 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* ── Cards ── */}
+        {!loading && cards.length > 0 && (
+          <div className="space-y-3 sm:space-y-4">
+            {cards.map(item => (
+              <MediaCard key={`${item.type}-${item.id}`} item={item} isLightMode={isLightMode} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes dropDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
