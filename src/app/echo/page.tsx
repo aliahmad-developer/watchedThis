@@ -417,10 +417,7 @@ export default function EchoPage() {
 
         {/* ── Header ── */}
         <div className="text-center space-y-3 pt-4">
-          <div className="inline-flex items-center gap-2 mb-1">
-            <FontAwesomeIcon icon={faLayerGroup} className="w-4 h-4 text-color-accent" />
-            <span className={`${dimTextClass} text-[10px] tracking-[4px] font-mono uppercase`}>Echo</span>
-          </div>
+        
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">
             Discover what to watch{" "}
             <em className="text-color-accent not-italic">next.</em>
@@ -461,7 +458,7 @@ export default function EchoPage() {
             {query && (
               <button
                 onClick={handleClear}
-                className="px-4 text-light-secondary-text dark:text-dark-secondary-text hover:text-color-accent transition-colors"
+                className="bg-transparent px-4 text-light-secondary-text dark:text-dark-secondary-text hover:text-color-accent transition-colors"
               >
                 <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
               </button>
