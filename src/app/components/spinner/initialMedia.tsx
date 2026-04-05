@@ -38,17 +38,55 @@ function clearCache() {
   } catch {}
 }
 
-async function fetchFresh(): Promise<SpinnerItem[]> {
-  const res = await fetch("/api/randomCall?count=20");
+interface Filters {
+  mediaType: "movie" | "tv";
+  genres: number[];
+  excludeGenres: number[];
+  excludeKeywords: string[];
+  keywords: string[];
+  yearRange: [number, number];
+  ratingRange: [number, number];
+  sortBy: string;
+  strictMode: boolean;
+}
+
+async function fetchFresh(filters: Filters, blacklist: SpinnerItem[] = []): Promise<SpinnerItem[]> {
+  const isDefaultYear = filters.yearRange[0] === 1950 && filters.yearRange[1] === new Date().getFullYear();
+  const isDefaultRating = filters.ratingRange[0] === 0 && filters.ratingRange[1] === 10;
+
+  const params = new URLSearchParams({ 
+    mediaType: filters.mediaType, 
+    sortBy: filters.sortBy 
+  });
+  if (filters.strictMode || !isDefaultYear) {
+    params.set("minYear", String(filters.yearRange[0]));
+    params.set("maxYear", String(filters.yearRange[1]));
+  }
+  if (filters.strictMode || !isDefaultRating) {
+    params.set("minRating", String(filters.ratingRange[0]));
+    params.set("maxRating", String(filters.ratingRange[1]));
+  }
+  if (filters.genres.length) params.set("genres", filters.genres.join(","));
+  if (filters.excludeGenres.length) params.set("excludeGenres", filters.excludeGenres.join(","));
+  if (filters.excludeKeywords.length) params.set("excludeKeywords", filters.excludeKeywords.join(","));
+  if (filters.keywords.length) params.set("keywords", filters.keywords.join(","));
+  if (filters.strictMode) params.set("strict", "true");
+  params.set("limit", String(30)); // Extra for blacklist filtering
+
+  const res = await fetch(`/api/discover?${params.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const items = await res.json();
-  return (items as any[])
-    .filter((v) => v?.id)
-    .map((v) => ({
-      id: v.id,
-      mediaType: v.media_type as "movie" | "tv",
-      title: v.title || v.name || "Untitled",
-      poster_path: v.poster_path,
+  const data = await res.json();
+
+  const blacklistIds = new Set(blacklist.map(b => b.id));
+  return (data.results || [])
+    .filter((r: any) => (r.backdrop_path || r.poster_path) && !blacklistIds.has(r.id))
+    .slice(0, 20)
+    .map((r: any) => ({
+      id: r.id,
+      mediaType: filters.mediaType,
+      title: r.title || r.name || "Untitled",
+      poster_path: r.poster_path,
+      backdrop_path: r.backdrop_path,
     }));
 }
 
@@ -65,7 +103,7 @@ export function useInitialMedia() {
   const [loading, setLoading] = useState(true);
   const [reshuffling, setReshuffling] = useState(false);
 
-  // On mount — use cache if available, otherwise fetch
+  // On mount — use cache if available, otherwise fetch with default filters
   useEffect(() => {
     const cached = readCache();
     if (cached && cached.length > 0) {
@@ -74,7 +112,19 @@ export function useInitialMedia() {
       return;
     }
 
-    fetchFresh()
+    const defaultFilters: Filters = {
+      mediaType: "movie",
+      genres: [],
+      excludeGenres: [],
+      excludeKeywords: [],
+      keywords: [],
+      yearRange: [1950, new Date().getFullYear()],
+      ratingRange: [0, 10],
+      sortBy: "popularity.desc",
+      strictMode: false,
+    };
+
+    fetchFresh(defaultFilters, [])
       .then((items) => {
         writeCache(items);
         setSlots(toSlots(items));
@@ -83,17 +133,15 @@ export function useInitialMedia() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Reshuffle — busts cache, fetches fresh, respects blacklist
-  const reshuffle = async (blacklist: SpinnerItem[] = []) => {
+// Reshuffle — busts cache, fetches fresh with filters + blacklist
+  const reshuffle = async (filters: Filters, blacklist: SpinnerItem[] = []) => {
     if (reshuffling) return;
     setReshuffling(true);
     clearCache();
     try {
-      const items = await fetchFresh();
-      const blacklistIds = new Set(blacklist.map((b) => b.id));
-      const filtered = items.filter((item) => !blacklistIds.has(item.id));
-      writeCache(filtered);
-      setSlots(toSlots(filtered));
+      const items = await fetchFresh(filters, blacklist);
+      writeCache(items);
+      setSlots(toSlots(items));
     } finally {
       setReshuffling(false);
     }

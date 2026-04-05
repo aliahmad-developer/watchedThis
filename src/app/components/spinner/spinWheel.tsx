@@ -87,27 +87,55 @@ function getImgUrl(item: SpinnerItem): string | null {
 
 // Static component — never changes, no props that vary
 const PointerEl = memo(({ faded = false }: { faded?: boolean }) => (
-  <g transform={`translate(${CX}, ${PTR_TRANS_Y})`}>
-    {/* Drop shadow */}
+  <g transform={`translate(${CX}, ${PTR_TRANS_Y})`} opacity={faded ? 0.5 : 1}>
+    {/* Enhanced multi-layer drop shadow */}
     <polygon
-      points={`0,${PTR_H + 2} ${-PTR_W / 2 - 1},-1 ${PTR_W / 2 + 1},-1`}
-      fill={faded ? "rgba(3,25,38,0.08)" : "rgba(3,25,38,0.30)"}
+      points={`0,${PTR_H + 4} ${-PTR_W / 2 - 2},1 ${PTR_W / 2 + 2},1`}
+      fill="url(#shadowGrad)"
+      transform="translate(2,3)"
+    />
+    <polygon
+      points={`0,${PTR_H + 2} ${-PTR_W / 2 - 1},0 ${PTR_W / 2 + 1},0`}
+      fill="rgba(3,25,38,0.25)"
       transform="translate(1,2)"
     />
-    {/* Main body */}
+    
+    {/* Main metallic body - gradient fill + double stroke */}
     <polygon
       points={`0,${PTR_H} ${-PTR_W / 2},0 ${PTR_W / 2},0`}
-      style={{ fill: faded ? undefined : "var(--color-light-nav)" }}
-      fill={faded ? "rgba(70,129,137,0.25)" : undefined}
-      className={faded ? "" : "dark:fill-dark-accent"}
-      stroke={faded ? "rgba(70,129,137,0.15)" : "rgba(189,212,231,0.2)"}
+      fill={faded ? "rgba(70,129,137,0.4)" : "url(#metalGrad)"}
+      className={!faded ? "dark:fill-[#468189]" : ""}
+      stroke="rgba(255,255,255,0.3)"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      filter="url(#pointerGlow)"
+    />
+    {/* Inner stroke for depth */}
+    <polygon
+      points={`0,${PTR_H} ${-PTR_W / 2 + 1},1 ${PTR_W / 2 - 1},1`}
+      fill="none"
+      stroke="rgba(0,0,0,0.3)"
       strokeWidth="1"
       strokeLinejoin="round"
     />
-    {/* Highlight sheen */}
+    
+    {/* Multi-layer highlights for 3D chrome effect */}
     <polygon
-      points={`0,${PTR_H - 6} ${-PTR_W / 2 + 4},3 ${PTR_W / 2 - 4},3`}
-      fill={faded ? "rgba(70,129,137,0.06)" : "rgba(189,212,231,0.10)"}
+      points={`0,${PTR_H - 8} ${-PTR_W / 2 + 6},2 ${PTR_W / 2 - 6},2`}
+      fill={faded ? "rgba(189,212,231,0.15)" : "url(#chromeGrad)"}
+    />
+    {/* Edge rim light */}
+    <polygon
+      points={`0,${PTR_H - 12} ${-PTR_W / 4},-2 ${PTR_W / 4},-2`}
+      fill="rgba(255,255,255,0.4)"
+      opacity={faded ? 0.5 : 1}
+    />
+    
+    {/* Tip accent glow */}
+    <polygon
+      points={`0,${PTR_H - 3} ${-PTR_W / 6},0 ${PTR_W / 6},0`}
+      fill="rgba(70,129,137,0.6)"
+      filter="url(#tipGlow)"
     />
   </g>
 ));
@@ -361,7 +389,7 @@ export default function SpinWheel({
           if (item) onRemoveSlot(item);
         }}
       >
-        <defs>
+<defs>
           <filter id="ptrShadow" x="-40%" y="-40%" width="180%" height="180%">
             <feDropShadow
               dx="0"
@@ -370,6 +398,32 @@ export default function SpinWheel({
               floodColor="rgba(0,0,0,0.5)"
             />
           </filter>
+          
+          {/* Pointer styling gradients & filters */}
+          <linearGradient id="shadowGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="rgba(3,25,38,0.6)"/>
+            <stop offset="70%" stopColor="rgba(3,25,38,0.15)"/>
+            <stop offset="100%" stopColor="transparent"/>
+          </linearGradient>
+          <linearGradient id="metalGrad" x1="0%" y1="100%" x2="30%" y2="0%">
+            <stop offset="0%" stopColor="#355f66"/>
+            <stop offset="50%" stopColor="#468189"/>
+            <stop offset="100%" stopColor="#6b9da5"/>
+          </linearGradient>
+          <radialGradient id="chromeGrad" cx="30%" cy="20%" r="60%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.8)"/>
+            <stop offset="50%" stopColor="rgba(255,255,255,0.2)"/>
+            <stop offset="100%" stopColor="transparent"/>
+          </radialGradient>
+          
+          <filter id="pointerGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="rgba(70,129,137,0.4)"/>
+            <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="rgba(70,129,137,0.2)"/>
+          </filter>
+          <filter id="tipGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#468189"/>
+          </filter>
+          
           {clipPaths}
         </defs>
 

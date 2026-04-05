@@ -66,13 +66,30 @@ async function fetchTMDB(query: string): Promise<MediaResult[]> {
   }
 }
 
-async function fetchAllVariants(query: string): Promise<MediaResult[]> {
-  const words = query
-    .trim()
-    .split(/\s+/)
-    .filter((w) => w.length >= 3);
+function generateVariants(query: string): string[] {
+  const q = query.trim();
+  const set = new Set<string>([q]);
+  const words = q.split(/\s+/);
 
-  const variants = [...new Set([query, ...words])];
+  // Word splits for multi-word queries ("breaking bad" → "breaking", "bad")
+  words.filter((w) => w.length >= 3).forEach((w) => set.add(w));
+
+  // Adjacent-char transpositions for single words only
+  // "freiren" → fires swap at every position, one of them is "frieren"
+  if (words.length === 1) {
+    for (let i = 0; i < q.length - 1; i++) {
+      const chars = q.split("");
+      [chars[i], chars[i + 1]] = [chars[i + 1], chars[i]];
+      set.add(chars.join(""));
+    }
+  }
+
+  return [...set].filter((v) => v.length >= 2);
+}
+
+async function fetchAllVariants(query: string): Promise<MediaResult[]> {
+  const variants = generateVariants(query); // ← was just word splits before
+
   const allResults = await Promise.all(variants.map(fetchTMDB));
 
   const seen = new Set<number>();
@@ -87,6 +104,8 @@ async function fetchAllVariants(query: string): Promise<MediaResult[]> {
   }
   return merged;
 }
+
+
 
 // ── Focus trap for mobile drawer ─────────────────────────────────────────────
 

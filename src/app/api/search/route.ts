@@ -141,6 +141,80 @@ export async function GET(req: NextRequest) {
         fetchSearchPage(`${TMDB_BASE}/search/tv?${base}&query=${broad}&page=1`, "tv")
       );
     }
+    // ── # → numeric titles ────────────────────────────────────────────────────
+if (query === "#") {
+  const numWords = ["zero","one","two","three","four","five","six","seven","eight","nine"];
+  const digits   = ["0","1","2","3","4","5","6","7","8","9"];
+  const allVariants = [...digits, ...numWords];
+
+  const batches = await Promise.all(
+    allVariants.map((v) => {
+      const enc = encodeURIComponent(v);
+      return Promise.all([
+        fetchSearchPage(`${TMDB_BASE}/search/multi?api_key=${apiKey}&language=en-US&query=${enc}&page=1`),
+        fetchSearchPage(`${TMDB_BASE}/search/movie?api_key=${apiKey}&language=en-US&query=${enc}&page=1`, "movie"),
+        fetchSearchPage(`${TMDB_BASE}/search/tv?api_key=${apiKey}&language=en-US&query=${enc}&page=1`, "tv"),
+      ]);
+    })
+  );
+
+  const allRaw = batches.flat(2);
+
+  // Keep only titles that actually START with a digit or number-word
+  const startsWithNumber = (item: TMDBResult) => {
+    const t = (item.title ?? item.name ?? "").toLowerCase();
+    return /^[0-9]/.test(t) || numWords.some((w) => t.startsWith(w));
+  };
+
+  const scored = allRaw
+    .filter((item) => (item.title || item.name) && startsWithNumber(item))
+    .map((item) => ({ ...item, _score: buildScore(item, query) }));
+
+  const deduped = deduplicateByScore(scored);
+  const sorted  = deduped.sort((a, b) => b._score - a._score);
+
+  const totalResults = sorted.length;
+  const totalPages   = Math.max(1, Math.ceil(totalResults / RESULTS_PER_PAGE));
+  const startIdx     = (currentPage - 1) * RESULTS_PER_PAGE;
+  const pageSlice    = sorted.slice(startIdx, startIdx + RESULTS_PER_PAGE);
+
+  // reuse the same detail-fetching block as below...
+  const detailedResults = await Promise.all(
+    pageSlice.map(async (item): Promise<DetailedResult | null> => {
+      try {
+        const res = await fetch(`${TMDB_BASE}/${item.media_type}/${item.id}?api_key=${apiKey}&language=en-US`);
+        if (!res.ok) return null;
+        const detail = await res.json();
+        const runtime = item.media_type === "movie"
+          ? detail.runtime ?? null
+          : detail.episode_run_time?.[0] ?? detail.runtime ?? null;
+        return {
+          id: item.id,
+          media_type: item.media_type,
+          title: item.title || item.name || "Untitled",
+          original_name: item.original_name || item.original_title || undefined,
+          poster_path: item.poster_path ?? null,
+          backdrop_path: item.backdrop_path ?? null,
+          release_date: item.release_date || item.first_air_date || null,
+          runtime,
+          popularity: item.popularity,
+          vote_average: detail.vote_average ?? 0,
+          vote_count: detail.vote_count ?? 0,
+          overview: detail.overview || item.overview || "",
+          genres: detail.genres?.map((g: { name: string }) => g.name) ?? [],
+        };
+      } catch { return null; }
+    })
+  );
+
+  return NextResponse.json({
+    results: detailedResults.filter(Boolean),
+    page: currentPage,
+    total_pages: totalPages,
+    has_more: currentPage < totalPages,
+  });
+}
+// ── normal search continues below ─────────────────────────────────────────
 
     // Year-aware fallback — "Inception 2010" → search "Inception" filtered by year
     const yearMatch = query.match(/^(.*?)\s+(\d{4})$/);

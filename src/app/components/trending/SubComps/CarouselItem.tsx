@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { memo, useMemo } from "react";
 import { MediaItem } from "./types";
 
 interface CarouselItemProps {
@@ -11,22 +12,28 @@ interface CarouselItemProps {
   showSidebar: boolean;
 }
 
-export function CarouselItem({
+export const CarouselItem = memo(function CarouselItem({
   item,
   position,
   isPriority,
   itemWidth,
   showSidebar,
 }: CarouselItemProps) {
-  const mediaType = item.title ? "movie" : "tv";
-  const mediaTitle = (item.title || item.name || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-  const href = `/${mediaType}/${mediaTitle}/${item.id}`;
-
-  const posterWidth = showSidebar ? itemWidth - 44 : itemWidth;
-  const itemHeight = (posterWidth * 3) / 2;
+  const { href, mediaTitle, posterWidth, itemHeight } = useMemo(() => {
+    const mediaType  = item.title ? "movie" : "tv";
+    const mediaTitle = (item.title || item.name || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    const posterWidth = showSidebar ? itemWidth - 44 : itemWidth;
+    const itemHeight  = (posterWidth * 3) / 2;
+    return {
+      href: `/${mediaType}/${mediaTitle}/${item.id}`,
+      mediaTitle,
+      posterWidth,
+      itemHeight,
+    };
+  }, [item.title, item.name, item.id, itemWidth, showSidebar]);
 
   return (
     <div
@@ -43,7 +50,7 @@ export function CarouselItem({
           >
             <div className="flex-1 flex justify-center pt-4">
               <p
-                className="cursor-default text-sm font-semibold rotate-180 [writing-mode:vertical-lr] whitespace-nowrap 
+                className="cursor-default text-sm font-semibold rotate-180 [writing-mode:vertical-lr] whitespace-nowrap
                            text-light-accent dark:text-dark-accent line-clamp-3"
                 title={item.title || item.name}
               >
@@ -62,7 +69,6 @@ export function CarouselItem({
           style={{ width: `${posterWidth}px`, height: `${itemHeight}px` }}
           prefetch={isPriority}
         >
-          {/* Mobile badge */}
           <div className="absolute top-0 left-0 z-10 md:hidden w-8 h-8 bg-black/70 flex items-center justify-center">
             <span className="text-light-accent dark:text-dark-accent font-bold text-sm">
               {position}
@@ -81,13 +87,11 @@ export function CarouselItem({
             />
           ) : (
             <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-              <span className="text-gray-500 dark:text-gray-400 text-sm">
-                No image
-              </span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">No image</span>
             </div>
           )}
         </Link>
       </div>
     </div>
   );
-}
+});

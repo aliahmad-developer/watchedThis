@@ -51,6 +51,20 @@ interface EditModalProps {
   onFill: (items: SpinnerItem[]) => void;
   blacklist: SpinnerItem[];
   onUpdateBlacklist: (items: SpinnerItem[]) => void;
+  filters?: Filters;
+  onSetFilters?: (filters: Filters) => void;
+}
+
+interface Filters {
+  mediaType: "movie" | "tv";
+  genres: number[];
+  excludeGenres: number[];
+  excludeKeywords: string[];
+  keywords: string[];
+  yearRange: [number, number];
+  ratingRange: [number, number];
+  sortBy: string;
+  strictMode: boolean;
 }
 
 interface TMDBResult {
@@ -61,8 +75,11 @@ interface TMDBResult {
   backdrop_path?: string;
 }
 
-export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdateBlacklist }: EditModalProps) {
+export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdateBlacklist, filters: propFilters, onSetFilters }: EditModalProps) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  useEffect(() => {
+    if (propFilters) setFilters(propFilters);
+  }, [propFilters]);
   const [keywordInput, setKeywordInput] = useState("");
   const [blacklistKeywordInput, setBlacklistKeywordInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -126,6 +143,7 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
     setFilters(prev => ({ ...prev, excludeKeywords: prev.excludeKeywords.filter(k => k !== kw) }));
 
   const handleFill = async () => {
+    if (onSetFilters) onSetFilters(filters);
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
     setLoading(true);
@@ -141,7 +159,7 @@ export default function EditModal({ isOpen, onClose, onFill, blacklist, onUpdate
       if (filters.genres.length)          params.set("genres",          filters.genres.join(","));
       if (filters.excludeGenres.length)   params.set("excludeGenres",   filters.excludeGenres.join(","));
       if (filters.excludeKeywords.length) params.set("excludeKeywords", filters.excludeKeywords.join(","));
-      if (filters.keywords.length)        params.set("keywords",        filters.keywords.join(","));  // Changed from keyword to keywords
+      if (filters.keywords.length)        params.set("keywords",        filters.keywords.join(","));  
       if (filters.strictMode)             params.set("strict",          "true");
       params.set("limit", String(20 + blacklist.length + 10));
 

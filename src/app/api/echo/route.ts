@@ -30,31 +30,43 @@ export async function GET(req: NextRequest) {
   const id       = searchParams.get("id");
   const type     = searchParams.get("type") as "movie" | "tv" | null;
   const trending = searchParams.get("trending");
+  const page     = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
 
   try {
-    // ── Trending / random mode ────────────────────────────────────────────────
+    // ── Trending ──────────────────────────────────────────────────────────────
     if (trending) {
-      const res = await fetch(`${BASE}/trending/all/week?api_key=${KEY}`);
+      // TMDB trending only has 1 page of 20 results — use page param to slice
+      const res  = await fetch(`${BASE}/trending/all/week?api_key=${KEY}&page=${page}`);
       const data = await res.json();
-      const items = (data.results as TMDBItem[] ?? [])
-        .filter(i => i.media_type === "movie" || i.media_type === "tv")
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 5)
-        .map(item => ({
-          id:       item.id,
-          title:    item.title ?? item.name ?? "",
-          type:     (item.media_type ?? "movie") as "movie" | "tv",
-          year:     (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
-          poster:   item.poster_path ?? null,
-          backdrop: item.backdrop_path ?? null,
-          vote:     item.vote_average ?? 0,
-          overview: item.overview ?? "",
-          genre_ids: item.genre_ids ?? [],
-        }));
-      return NextResponse.json({ results: items });
+
+      const all = (data.results as TMDBItem[] ?? [])
+        .filter(i => i.media_type === "movie" || i.media_type === "tv");
+
+      const PAGE_SIZE = 5;
+      const start     = 0;                          // already paginated by TMDB page
+      const slice     = all.slice(start, PAGE_SIZE).map(item => ({
+        id:        item.id,
+        title:     item.title ?? item.name ?? "",
+        type:      (item.media_type ?? "movie") as "movie" | "tv",
+        year:      (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
+        poster:    item.poster_path ?? null,
+        backdrop:  item.backdrop_path ?? null,
+        vote:      item.vote_average ?? 0,
+        overview:  item.overview ?? "",
+        genre_ids: item.genre_ids ?? [],
+      }));
+
+      const totalPages = data.total_pages ?? 1;
+
+      return NextResponse.json({
+        results:  slice,
+        has_more: page < totalPages,
+        page,
+        total_pages: totalPages,
+      });
     }
 
-    // ── Search mode ──────────────────────────────────────────────────────────
+    // ── Search (suggestions dropdown — no pagination needed) ──────────────────
     if (query && !id) {
       const [mRes, tRes] = await Promise.all([
         fetch(`${BASE}/search/movie?api_key=${KEY}&query=${encodeURIComponent(query)}&page=1`),
@@ -87,11 +99,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ results });
     }
 
-    // ── Similar mode ─────────────────────────────────────────────────────────
+    // ── Similar ───────────────────────────────────────────────────────────────
     if (id && type) {
       const [detRes, simRes, credRes] = await Promise.all([
         fetch(`${BASE}/${type}/${id}?api_key=${KEY}`),
-        fetch(`${BASE}/${type}/${id}/similar?api_key=${KEY}&page=1`),
+        fetch(`${BASE}/${type}/${id}/similar?api_key=${KEY}&page=${page}`),
         fetch(`${BASE}/${type}/${id}/credits?api_key=${KEY}`),
       ]);
       const [det, sim, cred] = await Promise.all([
@@ -106,7 +118,8 @@ export async function GET(req: NextRequest) {
           ? ((cred.crew ?? []) as TMDBCrew[]).find(c => c.job === "Director")?.name ?? null
           : null;
 
-      const source = {
+      // Only include source on page 1 (client already has it for subsequent pages)
+      const source = page === 1 ? {
         id:       det.id,
         title:    det.title ?? det.name ?? "",
         type,
@@ -119,9 +132,11 @@ export async function GET(req: NextRequest) {
         runtime:  det.runtime ?? det.episode_run_time?.[0] ?? null,
         cast,
         director,
-      };
+      } : undefined;
 
-      const similar = (sim.results as TMDBItem[] ?? []).slice(0, 12).map(item => ({
+      const totalPages = sim.total_pages ?? 1;
+
+      const similar = (sim.results as TMDBItem[] ?? []).map(item => ({
         id:        item.id,
         title:     item.title ?? item.name ?? "",
         type,
@@ -133,7 +148,13 @@ export async function GET(req: NextRequest) {
         genre_ids: item.genre_ids ?? [],
       }));
 
-      return NextResponse.json({ source, similar });
+      return NextResponse.json({
+        source,
+        similar,
+        has_more: page < totalPages,
+        page,
+        total_pages: totalPages,
+      });
     }
 
     return NextResponse.json({ error: "Provide query or id+type" }, { status: 400 });

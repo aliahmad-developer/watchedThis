@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SpinnerItem } from "./types";
 import SpinWheel from "./spinWheel";
 import EditModal from "./spinnerEditModal";
@@ -11,9 +11,32 @@ import { faSliders, faRotate } from "@fortawesome/free-solid-svg-icons";
 
 const MAX_SLOTS = 20;
 
+interface Filters {
+  mediaType: "movie" | "tv";
+  genres: number[];
+  excludeGenres: number[];
+  excludeKeywords: string[];
+  keywords: string[];
+  yearRange: [number, number];
+  ratingRange: [number, number];
+  sortBy: string;
+  strictMode: boolean;
+}
+
 export default function Spinner() {
   const { slots, setSlots, loading, reshuffling, reshuffle } =
     useInitialMedia();
+  const [filters, setFilters] = useState<Filters>({
+    mediaType: "movie",
+    genres: [],
+    excludeGenres: [],
+    excludeKeywords: [],
+    keywords: [],
+    yearRange: [1950, new Date().getFullYear()],
+    ratingRange: [0, 10],
+    sortBy: "popularity.desc",
+    strictMode: false,
+  });
   const [rotation, setRotation] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -43,12 +66,14 @@ export default function Spinner() {
 
     setTimeout(() => {
       setIsSpinning(false);
-      const count = slots.filter(Boolean).length;
+      const activeSlots = slots.filter(Boolean) as SpinnerItem[]; // ✅ compact array
+      const count = activeSlots.length;
+      if (count === 0) return;
       const deg = 360 / count;
       const normalized = ((newRotation % 360) + 360) % 360;
       const pointer = (360 - normalized) % 360;
       const index = Math.floor(pointer / deg) % count;
-      if (slots[index]) setResult(slots[index]!);
+      setResult(activeSlots[index]); // ✅ index into filtered array
     }, 4000);
   };
 
@@ -84,9 +109,9 @@ export default function Spinner() {
                 <div className="flex items-center gap-2 sm:gap-3">
                   {/* Reshuffle */}
                   <button
-                    onClick={() => reshuffle(blacklist)}
+                    onClick={() => reshuffle(filters, blacklist)}
                     disabled={isSpinning || loading || reshuffling}
-                    title="Fetch new random media"
+                    title="Fetch new filtered media"
                     className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center
                       bg-light-card dark:bg-dark-card
                       border border-light-border dark:border-dark-border
@@ -145,13 +170,6 @@ export default function Spinner() {
                     No items to spin. Click the filter button to add items.
                   </div>
                 )}
-
-                {/* Optional: Loading indicator */}
-                {loading && (
-                  <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text text-center">
-                    Loading items...
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -164,6 +182,8 @@ export default function Spinner() {
         onFill={handleFill}
         blacklist={blacklist}
         onUpdateBlacklist={setBlacklist}
+        filters={filters}
+        onSetFilters={setFilters}
       />
       {result && <ResultModal item={result} onClose={() => setResult(null)} />}
     </>

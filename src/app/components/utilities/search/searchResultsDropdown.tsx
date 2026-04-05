@@ -18,14 +18,11 @@ export default function SearchResultsDropdown({
   isLoading,
   onClose,
 }: SearchResultsDropdownProps) {
-  const limitedResults = useMemo(() => results.slice(0, 10), [results]);
-
+  // ── Single memo, no intermediate slice ───────────────────────────────────
   const formattedResults = useMemo(() => {
-    return limitedResults.map((item) => {
+    return results.slice(0, 10).map((item) => {
       const title = item.title || item.name || "Untitled";
-      const slug = createSlug(title);
       const year = item.release_date?.slice(0, 4) ?? "—";
-
       const runtime =
         item.runtime && item.runtime > 0
           ? formatRuntime(item.runtime)
@@ -34,7 +31,7 @@ export default function SearchResultsDropdown({
             : item.media_type === "ona"
               ? "9m"
               : "";
-
+      const slug = createSlug(title);
       return {
         id: item.id,
         title,
@@ -48,30 +45,35 @@ export default function SearchResultsDropdown({
         link: `/${item.media_type}/${slug}/${item.id}`,
       };
     });
-  }, [limitedResults]);
+  }, [results]);
 
   return (
-    <div className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg shadow-lg overflow-hidden animate-[dropDown_0.2s_ease_out]">
-      {/* Scrollable results list */}
+    <div className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg shadow-lg overflow-hidden animate-[dropDown_0.15s_ease_out]">
       <div className="max-h-[50vh] sm:max-h-[60vh] overflow-y-auto">
         {isLoading ? (
-          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm animate-[pageFade_0.2s_ease]">
-            Searching...
+          // ── Skeleton rows instead of plain text ──────────────────────────
+          <div className="divide-y divide-light-border dark:divide-dark-border">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-2.5 px-3 sm:px-4 py-2 animate-pulse">
+                <div className="w-8 h-12 rounded bg-light-disabled dark:bg-dark-disabled shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-3 bg-light-disabled dark:bg-dark-disabled rounded w-2/5" />
+                  <div className="h-2.5 bg-light-disabled dark:bg-dark-disabled rounded w-1/4" />
+                  <div className="h-2 bg-light-disabled dark:bg-dark-disabled rounded w-3/4" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : formattedResults.length > 0 ? (
-          formattedResults.map((item, index) => (
-            <div
-              key={item.id}
-              className="opacity-0 animate-[fadeUp_0.25s_ease_forwards]"
-              style={{ animationDelay: `${index * 30}ms` }}
-            >
-              <Link
-                href={item.link}
-                onClick={onClose}
-                className="block hover:bg-light-card dark:hover:bg-dark-card transition-colors"
-              >
-                <div className="flex items-start gap-2.5 px-3 sm:px-4 py-2">
-                  {/* Poster */}
+          // ── Results: single fast fade-in on the container, no per-item stagger ──
+          <div className="animate-[fadeUp_0.15s_ease_forwards]">
+            {formattedResults.map((item, index) => (
+              <div key={item.id}>
+                <Link
+                  href={item.link}
+                  onClick={onClose}
+                  className="flex items-start gap-2.5 px-3 sm:px-4 py-2 hover:bg-light-card dark:hover:bg-dark-card transition-colors"
+                >
                   {item.poster ? (
                     <Image
                       src={`https://image.tmdb.org/t/p/w92${item.poster}`}
@@ -85,17 +87,15 @@ export default function SearchResultsDropdown({
                   )}
 
                   <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start sm:gap-3">
-                    {/* Left — title + meta */}
                     <div className="sm:w-44 sm:shrink-0 min-w-0">
                       <div className="text-light-body-text dark:text-dark-body-text text-sm font-semibold line-clamp-1 leading-tight">
                         {item.title}
                       </div>
-                      {item.originalName &&
-                        item.originalName !== item.title && (
-                          <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
-                            {item.originalName}
-                          </div>
-                        )}
+                      {item.originalName && item.originalName !== item.title && (
+                        <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
+                          {item.originalName}
+                        </div>
+                      )}
                       <div className="flex flex-wrap items-center gap-1 mt-1">
                         <span className="text-xs px-1.5 py-0 rounded bg-light-card dark:bg-dark-card text-light-secondary-text dark:text-dark-secondary-text font-medium">
                           {formatMediaType(item.mediaType)}
@@ -105,9 +105,7 @@ export default function SearchResultsDropdown({
                         </span>
                         {item.runtime && (
                           <>
-                            <span className="text-light-disabled dark:text-dark-disabled text-xs">
-                              •
-                            </span>
+                            <span className="text-light-disabled dark:text-dark-disabled text-xs">•</span>
                             <span className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
                               {item.runtime}
                             </span>
@@ -116,7 +114,6 @@ export default function SearchResultsDropdown({
                       </div>
                     </div>
 
-                    {/* Overview */}
                     {item.overview && (
                       <div className="flex-1 min-w-0 mt-1 sm:mt-0 sm:border-l sm:border-light-border sm:dark:border-dark-border sm:pl-3">
                         <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-2 sm:line-clamp-3 leading-relaxed">
@@ -125,21 +122,21 @@ export default function SearchResultsDropdown({
                       </div>
                     )}
                   </div>
-                </div>
-              </Link>
-              {index < formattedResults.length - 1 && (
-                <div className="border-t border-light-border dark:border-dark-border mx-3 sm:mx-4" />
-              )}
-            </div>
-          ))
+                </Link>
+
+                {index < formattedResults.length - 1 && (
+                  <div className="border-t border-light-border dark:border-dark-border mx-3 sm:mx-4" />
+                )}
+              </div>
+            ))}
+          </div>
         ) : (
-          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm animate-[pageFade_0.2s_ease]">
+          <div className="px-4 py-6 text-center text-light-secondary-text dark:text-dark-secondary-text text-sm animate-[pageFade_0.15s_ease]">
             No results found
           </div>
         )}
       </div>
 
-      {/* View all — always visible outside scroll */}
       {results.length > 0 && (
         <Link
           href={`/search?q=${encodeURIComponent(searchQuery)}`}
