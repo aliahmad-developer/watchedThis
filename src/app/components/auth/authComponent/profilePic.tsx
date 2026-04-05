@@ -1,8 +1,7 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { updateProfile } from "firebase/auth";
-import { doc, updateDoc } from "firebase/firestore";
-import { auth, db } from "../../../firebase/firebaseConfig";
+
+
 import { User } from "firebase/auth";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -10,7 +9,9 @@ import toast from "react-hot-toast";
 const CLOUD_NAME    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!;
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!;
 
-type Props = { user: User; onUpdated?: (newPhotoURL: string) => void };
+
+type Props = { user: any; onUpdated?: (newPhotoURL: string) => void };
+
 
 /* ─── crop hook ──────────────────────────────────────────────────────────── */
 function useCrop(imgSrc: string | null) {
@@ -224,7 +225,9 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
   const [progress, setProgress]   = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const currentPhoto = auth.currentUser?.photoURL ?? null;
+
+
+
 
   const initials = (() => {
     const name  = user.displayName?.trim();
@@ -241,10 +244,10 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
     if (inputRef.current) inputRef.current.value = "";
   };
 
+
   const handleCropApply = async (blob: Blob) => {
     setImgSrc(null);
-    const currentUser = auth.currentUser;
-    if (!currentUser) { toast.error("Not logged in."); return; }
+    if (!user) { toast.error("Not logged in."); return; }
 
     setUploading(true);
     setProgress(0);
@@ -253,7 +256,7 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       const formData = new FormData();
       formData.append("file", blob, "profile.jpg");
       formData.append("upload_preset", UPLOAD_PRESET);
-      formData.append("public_id", `profile_${currentUser.uid}_${Date.now()}`);
+      formData.append("public_id", `profile_${user.uid}_${Date.now()}`);
       formData.append("folder", "profile_pictures");
 
       const downloadURL = await new Promise<string>((resolve, reject) => {
@@ -267,11 +270,13 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
         xhr.send(formData);
       });
 
-      await updateProfile(currentUser, { photoURL: downloadURL });
-      await currentUser.getIdToken(true);
-      await currentUser.reload();
+      const { updateProfile } = await import("firebase/auth");
+      await updateProfile(user, { photoURL: downloadURL });
 
-      try { await updateDoc(doc(db, "users", currentUser.uid), { photoURL: downloadURL }); }
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const firebaseConfig = await import("../../../firebase/firebaseConfig");
+      const db = firebaseConfig.getFirebaseDB();
+      try { await updateDoc(doc(db, "users", user.uid), { photoURL: downloadURL }); }
       catch (err) { console.warn("Firestore update non-critical:", err); }
 
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
@@ -284,6 +289,7 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       setProgress(0);
     }
   };
+
 
   const circumference = 2 * Math.PI * 46;
 
@@ -304,11 +310,12 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
           onClick={() => !uploading && inputRef.current?.click()}
           title="Click to change profile picture"
         >
-          {currentPhoto ? (
-            <Image src={currentPhoto} alt="Profile" width={96} height={96}
+          {user.photoURL ? (
+            <Image src={user.photoURL} alt="Profile" width={96} height={96}
               referrerPolicy="no-referrer" unoptimized
               className="rounded-full object-cover w-24 h-24 ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200" />
           ) : (
+
             <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold
               bg-light-accent/15 dark:bg-dark-accent/15 text-light-accent dark:text-dark-accent
               ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200">

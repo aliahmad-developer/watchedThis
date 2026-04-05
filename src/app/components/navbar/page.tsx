@@ -107,7 +107,6 @@ async function fetchAllVariants(query: string): Promise<MediaResult[]> {
 
 
 
-// ── Focus trap for mobile drawer ─────────────────────────────────────────────
 
 function useFocusTrap(
   containerRef: React.RefObject<HTMLElement | null>,
@@ -169,12 +168,6 @@ export default function Navbar() {
     setDrawerOpen(false);
   }, [pathname]);
 
-  // ── bfcache reset ──
-  // The component does NOT remount on bfcache restore — useEffect([]) won't
-  // re-run. Manually reset every piece of state that could leave the UI broken:
-  //   • navVisible: could be false (navbar hidden) → clicks silently no-op
-  //   • hasMounted: stays false → search overlay / drawer never renders
-  //   • lastScrollY: stale position → first scroll calculates wrong delta
   useEffect(() => {
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
@@ -192,7 +185,7 @@ export default function Navbar() {
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
-  // ── Mount + prefetch ──
+
   useEffect(() => {
     setHasMounted(true);
     router.prefetch("/search");
@@ -202,7 +195,7 @@ export default function Navbar() {
     router.prefetch("/echo");
   }, [router]);
 
-  // ── Scroll-aware show/hide ──
+
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
@@ -215,7 +208,6 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ── Keyboard shortcuts: "/" to open search, Escape to close ──
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -241,7 +233,6 @@ export default function Navbar() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [searchVisible, drawerOpen]);
 
-  // ── Debounced search ──
   useEffect(() => {
     const fetchResults = async () => {
       if (searchQuery.length < 2) {

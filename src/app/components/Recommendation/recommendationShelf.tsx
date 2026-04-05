@@ -9,8 +9,7 @@ import {
   faUserPlus,
   faSprayCanSparkles,
 } from "@fortawesome/free-solid-svg-icons";
-import { auth } from "../../firebase/firebaseConfig";
-import { onAuthStateChanged } from "firebase/auth";
+
 import MediaCard from "../mediaCard/mediaCard";
 import { useRecommendations } from "./useRecommendations";
 import type { ScoredItem } from "./types";
@@ -265,8 +264,14 @@ export default function RecommendationShelf({
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => setIsLoggedIn(!!user));
-    return () => unsub();
+    let unsub: any;
+    const initAuth = async () => {
+      const firebase = await import("../../firebase/firebaseConfig");
+      const authInstance = await firebase.getFirebaseAuth();
+      unsub = authInstance.onAuthStateChanged((user) => setIsLoggedIn(!!user));
+    };
+    initAuth();
+    return () => unsub?.();
   }, []);
 
   const { recommendations, isLoading, error } = useRecommendations({

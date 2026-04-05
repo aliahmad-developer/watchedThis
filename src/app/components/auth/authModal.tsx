@@ -3,12 +3,12 @@ import { createPortal } from "react-dom";
 import LoginForm from "./loginForm";
 import SignupForm from "./signUpForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClose } from "@fortawesome/free-solid-svg-icons";
-import { auth, sendEmailVerification } from "../../firebase/firebaseConfig";
+import { faClose, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { checkRedirectResult } from "./auth";
-import { User, onAuthStateChanged } from "firebase/auth";
+import type { User } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 
 type AuthModalProps = {
   isOpen: boolean;
@@ -23,8 +23,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isSendingVerification, setIsSendingVerification] = useState(false);
   const [message, setMessage] = useState("");
   const [messageKey, setMessageKey] = useState(0);
+  const [auth, setAuth] = useState<any>(null);
+  const [sendEmailVerification, setSendEmailVerification] = useState<((user: User) => Promise<void>) | null>(null);
 
-  // ── Drag state ────────────────────────────────────────────
+  // Drag state
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
   const dragCurrentY = useRef(0);
@@ -32,6 +34,55 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [dragOffset, setDragOffset] = useState(0);
   const [isSnapping, setIsSnapping] = useState(false);
 
+  // Initialize Firebase auth
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
+    const init = async () => {
+      try {
+        const firebase = await import("../../firebase/firebaseConfig");
+        const { getFirebaseAuth } = firebase;
+        const authInstance = await getFirebaseAuth();
+        setAuth(authInstance);
+
+        unsubscribe = onAuthStateChanged(authInstance, (u) => {
+          setUser(u ?? null);
+          setIsVerified(u?.emailVerified ?? false);
+        });
+      } catch (err) {
+        console.error("Auth init failed:", err);
+      }
+    };
+
+    init();
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
+
+  const showMessage = useCallback((text: string) => {
+    setMessage(text);
+    setMessageKey((prev) => prev + 1);
+    setTimeout(() => setMessage(""), 5000);
+  }, []);
+
+  const handleSendVerification = async () => {
+    if (!user || !auth) return;
+    
+    setIsSendingVerification(true);
+    try {
+      await auth.currentUser?.sendEmailVerification();
+      showMessage("Verification email sent! Check your inbox (including spam).");
+    } catch (err: any) {
+      showMessage("Failed to send verification email. Please try again.");
+      console.error("Verification error:", err);
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
+  // Modal show/hide animation
   useEffect(() => {
     if (isOpen) {
       setShow(true);
@@ -42,54 +93,36 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   }, [isOpen]);
 
+  // Body scroll lock
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
     return () => {
       document.body.style.overflow = "";
     };
   }, [isOpen]);
 
+  // Reset mode when opening
   useEffect(() => {
     if (isOpen) setMode("signup");
   }, [isOpen]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u ?? null);
-      setIsVerified(u?.emailVerified ?? false);
-    });
-    return () => unsubscribe();
-  }, []);
-
+  // Check redirect result
   useEffect(() => {
     checkRedirectResult().then((result) => {
-      if (result.success && result.user) onClose();
-    });
-  }, []);
+      if (result.success && result.user) {
+        onClose();
+      }
+    }).catch(console.error);
+  }, [onClose]);
 
-  const showMessage = (text: string) => {
-    setMessage(text);
-    setMessageKey((prev) => prev + 1);
-    setTimeout(() => setMessage(""), 5000);
-  };
+  if (!isOpen || !show) return null;
 
-  const handleSendVerification = async () => {
-    if (!user) return;
-    setIsSendingVerification(true);
-    try {
-      await sendEmailVerification(user);
-      showMessage("Verification email sent! Check your inbox.");
-    } catch (err: any) {
-      throw err;
-    } finally {
-      setIsSendingVerification(false);
-    }
-  };
-
-  // ── Drag handlers ─────────────────────────────────────────
+  // Drag handlers
   const onDragStart = (clientY: number) => {
-    // Only initiate drag from near the top of the sheet (handle area)
     isDragging.current = true;
     dragStartY.current = clientY;
     dragCurrentY.current = clientY;
@@ -100,8 +133,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     if (!isDragging.current) return;
     dragCurrentY.current = clientY;
     const delta = clientY - dragStartY.current;
-    // Resist dragging upward (rubber band feel)
-    const offset = delta > 0 ? delta : delta * 0.15;
+    const offset = delta > 0 ? delta : delta * 0.15; // Rubber band upward
     setDragOffset(offset);
   };
 
@@ -112,7 +144,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     setIsSnapping(true);
     if (delta > 120) {
-      // Dismiss — let it fly off screen then call onClose
+      // Dismiss
       const sheetHeight = sheetRef.current?.offsetHeight ?? 500;
       setDragOffset(sheetHeight + 40);
       setTimeout(() => {
@@ -127,14 +159,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  // Touch events
-  const handleTouchStart = (e: React.TouchEvent) =>
-    onDragStart(e.touches[0].clientY);
-  const handleTouchMove = (e: React.TouchEvent) =>
-    onDragMove(e.touches[0].clientY);
+  // Event handlers
+  const handleTouchStart = (e: React.TouchEvent) => onDragStart(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) => onDragMove(e.touches[0].clientY);
   const handleTouchEnd = () => onDragEnd();
 
-  // Mouse events (for desktop testing)
   const handleMouseDown = (e: React.MouseEvent) => {
     onDragStart(e.clientY);
     const onMove = (ev: MouseEvent) => onDragMove(ev.clientY);
@@ -150,17 +179,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const innerContent = (
     <div className="w-full max-w-sm mx-auto">
       {mode !== "forgot" && (
-        <div className="flex mb-4 border-b border-light-border dark:border-dark-border">
+        <div className="flex mb-4 border-b border-light-border dark:border-dark-border pb-2">
           {(["signup", "login"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setMode(tab)}
-              className={[
-                "flex-1 py-2 text-sm font-medium transition-colors border-b-2 -mb-px bg-transparent",
-                mode === tab
-                  ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent"
-                  : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text",
-              ].join(" ")}
+              className={`
+                flex-1 py-2 text-sm font-medium transition-colors border-b-2 -mb-px bg-transparent rounded-none
+                ${mode === tab
+                  ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent shadow-sm"
+                  : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text hover:border-light-border/50 dark:hover:border-dark-border/50"
+                }
+              `}
             >
               {tab === "signup" ? "Sign Up" : "Login"}
             </button>
@@ -168,8 +198,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
       )}
 
+      {/* Verification notice */}
       {user && !isVerified && mode !== "forgot" && (
-        <div className="flex flex-col gap-2 mb-4 p-3 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
+        <div className="flex flex-col gap-2 mb-4 p-3 rounded-lg bg-yellow-50/80 dark:bg-yellow-900/20 border border-yellow-200/50 dark:border-yellow-800/50">
           <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
             Signed in as{" "}
             <span className="font-medium text-light-body-text dark:text-dark-body-text">
@@ -179,26 +210,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button
             onClick={handleSendVerification}
             disabled={isSendingVerification}
-            className="w-full h-8 px-3 rounded-md font-medium text-xs
-                       bg-light-btn-bg text-light-btn-text
-                       hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text
-                       dark:bg-dark-btn-bg dark:text-dark-btn-text
-                       dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text
-                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full h-8 px-3 rounded-md font-medium text-xs bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isSendingVerification ? "Sending..." : "Send Verification Email"}
+            {isSendingVerification ? "Sending..." : "Resend Verification Email"}
           </button>
           {message && (
-            <p
-              key={messageKey}
-              className="text-xs text-light-accent dark:text-dark-accent"
-            >
+            <p key={messageKey} className="text-xs text-light-accent dark:text-dark-accent">
               {message}
             </p>
           )}
         </div>
       )}
 
+      {/* Forms */}
       {mode === "signup" && (
         <SignupForm
           onSuccess={onClose}
@@ -215,120 +239,81 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       {mode === "forgot" && (
         <ForgotPasswordForm
           onBack={() => setMode("login")}
-          onSuccess={() => {
-            showMessage("Password reset email sent! Check your inbox.");
-            setTimeout(() => setMode("login"), 2000);
-          }}
+          onSuccess={() => showMessage("Password reset email sent! Check your inbox.")}
         />
       )}
     </div>
   );
 
-  if (!show) return null;
-
-  // Backdrop opacity dims as you drag the sheet down
+  // Backdrop opacity based on drag
   const backdropOpacity = Math.max(0, 1 - dragOffset / 300);
 
   const modal = (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
-        style={{ zIndex: 9998, opacity: isOpen ? backdropOpacity : 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300"
+        style={{ opacity: backdropOpacity }}
         onClick={onClose}
       />
 
-      {/* ── MOBILE: draggable bottom sheet ── */}
+      {/* Mobile: Bottom sheet */}
       <div
         ref={sheetRef}
-        className={[
-          "fixed bottom-0 left-0 right-0 sm:hidden",
-          "bg-light-card dark:bg-dark-card shadow-xl rounded-t-2xl",
-          "px-4 pt-3 pb-6 overflow-y-auto max-h-[90dvh]",
-          // Transition only when snapping, not while dragging
-          isSnapping ? "transition-transform duration-300 ease-out" : "",
-          // Slide up on open, slide down on close (when not being dragged)
-          !isDragging.current && !isSnapping
-            ? isOpen
-              ? "translate-y-0"
-              : "translate-y-full"
-            : "",
-        ].join(" ")}
+        className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-light-card dark:bg-dark-card rounded-t-3xl shadow-2xl border border-light-border dark:border-dark-border overflow-hidden max-h-[90vh]"
         style={{
-          zIndex: 9999,
-          transform: `translateY(${
-            // If dragging or snapping, use dragOffset; otherwise CSS classes handle it
-            isDragging.current || isSnapping
-              ? `${dragOffset}px`
-              : isOpen
-                ? "0"
-                : "100%"
-          })`,
-          willChange: "transform",
+          transform: `translateY(${isDragging.current || isSnapping ? dragOffset : isOpen ? 0 : 100}%)`,
+          transition: isSnapping ? "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
         }}
       >
-        {/* ── Drag handle — attach all drag listeners here ── */}
+        {/* Drag handle */}
         <div
-          className="flex justify-center mb-3 cursor-grab active:cursor-grabbing select-none py-1"
+          className="flex justify-center p-3 cursor-grab active:cursor-grabbing select-none"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onMouseDown={handleMouseDown}
         >
-          <div
-            className="w-10 h-1 rounded-full bg-light-border dark:bg-dark-border transition-all duration-150"
-            style={{
-              // Pill widens slightly when dragging — subtle tactile feedback
-              width: isDragging.current ? "3rem" : "2.5rem",
-              opacity: isDragging.current ? 0.8 : 1,
-            }}
-          />
+          <div className="w-8 h-1.5 bg-light-border/60 dark:bg-dark-border/60 rounded-full shadow-sm transition-all duration-200 hover:w-10" />
         </div>
 
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="bg-transparent absolute top-3 right-3 p-1
-                     text-light-secondary-text dark:text-dark-secondary-text
-                     hover:text-light-accent dark:hover:text-dark-accent"
+          className="absolute top-3 right-3 p-2 rounded-full bg-light-bg/80 dark:bg-dark-bg/80 backdrop-blur-sm hover:bg-light-card dark:hover:bg-dark-card transition-all z-10"
+          aria-label="Close modal"
         >
-          <FontAwesomeIcon icon={faClose} className="w-4 h-4" />
+          <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-light-secondary-text dark:text-dark-secondary-text" />
         </button>
 
-        {innerContent}
+        <div className="p-4 pb-8 overflow-y-auto">
+          {innerContent}
+        </div>
       </div>
 
-      {/* ── DESKTOP: slide-up + fade-in centered card ── */}
-      <div
-        className="fixed hidden sm:flex inset-0 overflow-y-auto"
-        style={{ zIndex: 9999 }}
-        onClick={onClose}
-      >
-        <div className="flex w-full justify-center py-20 px-4">
-          <div
-            className={[
-              "relative w-full max-w-md h-fit",
-              "bg-light-card dark:bg-dark-card rounded-xl shadow-xl p-6",
-              "transition-all duration-500 ease-out",
-              isOpen
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-2 pointer-events-none",
-            ].join(" ")}
-            onClick={(e) => e.stopPropagation()}
+      {/* Desktop: Centered dialog */}
+      <div className="fixed inset-0 z-50 hidden sm:flex items-center justify-center p-4 overflow-y-auto">
+        <div
+          className="w-full max-w-md bg-light-card dark:bg-dark-card rounded-2xl shadow-2xl border border-light-border dark:border-dark-border p-6 relative transition-all duration-300"
+          style={{
+            opacity: isOpen ? 1 : 0,
+            transform: isOpen ? "scale(1) translateY(0)" : "scale(0.95) translateY(-10px)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 rounded-full bg-light-bg/80 dark:bg-dark-bg/80 backdrop-blur-sm hover:bg-light-card dark:hover:bg-dark-card transition-all z-10"
+            aria-label="Close modal"
           >
-            <button
-              onClick={onClose}
-              className="bg-transparent absolute top-3 right-3 p-1
-                         text-light-secondary-text dark:text-dark-secondary-text
-                         hover:text-light-accent dark:hover:text-dark-accent"
-            >
-              <FontAwesomeIcon icon={faClose} className="w-4 h-4" />
-            </button>
-            {innerContent}
-          </div>
+            <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-light-secondary-text dark:text-dark-secondary-text" />
+          </button>
+          {innerContent}
         </div>
       </div>
     </>
   );
 
   return createPortal(modal, document.body);
-}
+}  
+

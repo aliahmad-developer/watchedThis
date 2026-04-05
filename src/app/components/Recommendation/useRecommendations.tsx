@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "../../firebase/firebaseConfig";
-import { collection, getDocs } from "firebase/firestore";
+
 import { getRecommendations, deriveTasteProfile, deriveGenres } from "./Engine";
 import { loadBehaviour } from "./behaviourTracker";
 import type {
@@ -93,6 +91,9 @@ interface ListDoc {
 }
 
 async function fetchUserList(uid: string): Promise<ListDoc[]> {
+  const { getDocs, collection } = await import("firebase/firestore");
+  const firebase = await import("../../firebase/firebaseConfig");
+  const db = firebase.getFirebaseDB();
   try {
     const snap = await getDocs(collection(db, "users", uid, "lists"));
     return snap.docs.map((d) => d.data() as ListDoc);
@@ -138,110 +139,115 @@ export function useRecommendations(
   const abortRef = useRef(false);
 
   useEffect(() => {
-    // onAuthStateChanged waits for Firebase to restore the session
-    // before firing — fixes the null uid on first render problem
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      const uid = user?.uid;
+    let unsub: () => void;
+    const initAuth = async () => {
+      const firebaseAuth = await import("firebase/auth");
+      const firebaseConfig = await import("../../firebase/firebaseConfig");
+      const auth = await firebaseConfig.getFirebaseAuth();
+      unsub = firebaseAuth.onAuthStateChanged(auth, (user) => {
+        const uid = user?.uid;
 
-      if (!uid) {
-        setIsLoading(false);
-        setRecommendations([]);
-        return;
-      }
-
-      abortRef.current = false;
-      setIsLoading(true);
-      setError(null);
-
-      (async () => {
-        try {
-          // 1. Load user list + behaviour in parallel
-          const [listDocs, behaviour] = await Promise.all([
-            fetchUserList(uid),
-            loadBehaviour(uid),
-          ]);
-
-          // ADD these two lines — guard against missing fields
-          const clickLog = behaviour.clickLog ?? [];
-          const searchHistory = behaviour.searchHistory ?? [];
-          const findFilters = behaviour.findFilters ?? [];
-
-          if (abortRef.current) return;
-
-          const favouriteIds = listDocs
-            .filter((d) => d.status === "favourite")
-            .map((d) => d.mediaId);
-          const libraryIds = listDocs
-            .filter((d) => d.status === "plan_to_watch")
-            .map((d) => d.mediaId);
-          const watchedIds = listDocs
-            .filter((d) => d.status === "completed")
-            .map((d) => d.mediaId);
-
-          // 2. Derive top genre IDs from favourites for targeted TMDB fetches
-          const tempProfile: RecommendationProfile = {
-            allMedia: listDocs.map((d) => ({
-              id: d.mediaId,
-              media_type: d.mediaType,
-              title: d.title,
-              poster_path: d.poster_path,
-            })),
-            favouriteIds,
-            libraryIds,
-            watchedIds,
-            clickLog,
-            searchHistory,
-            findFilters,
-            ratings: {},
-          };
-          
-          const taste = deriveTasteProfile(tempProfile);
-          const topGenreNames = taste.topGenres.map((g) => g.genre);
-
-          // Map genre names back to TMDB IDs for the discover API
-          const { TMDB_GENRES } = await import("./types");
-          const nameToId = Object.fromEntries(
-            Object.entries(TMDB_GENRES).map(([id, name]) => [name, Number(id)]),
-          );
-          const topGenreIds = topGenreNames
-            .map((n) => nameToId[n])
-            .filter(Boolean) as number[];
-
-          // 3. Fetch candidates from TMDB
-          const candidates = await fetchCandidates(topGenreIds);
-          if (abortRef.current) return;
-
-          // 4. Build full profile and score
-          const profile: RecommendationProfile = {
-            allMedia: candidates,
-            favouriteIds,
-            libraryIds,
-            watchedIds,
-            clickLog,
-            searchHistory,
-            findFilters,
-            ratings: {},
-          };
-
-          const recs = getRecommendations(profile, {
-            limit,
-            excludeWatched,
-            excludeIds,
-          });
-          const taste2 = deriveTasteProfile(profile);
-
-          setRecommendations(recs);
-          setTasteProfile(taste2);
-        } catch {
-          if (!abortRef.current) setError("Could not load recommendations.");
-        } finally {
-          if (!abortRef.current) setIsLoading(false);
+        if (!uid) {
+          setIsLoading(false);
+          setRecommendations([]);
+          return;
         }
-      })();
-    });
+
+        abortRef.current = false;
+        setIsLoading(true);
+        setError(null);
+
+        (async () => {
+          try {
+            // 1. Load user list + behaviour in parallel
+            const [listDocs, behaviour] = await Promise.all([
+              fetchUserList(uid),
+              loadBehaviour(uid),
+            ]);
+
+            // ADD these two lines — guard against missing fields
+            const clickLog = behaviour.clickLog ?? [];
+            const searchHistory = behaviour.searchHistory ?? [];
+            const findFilters = behaviour.findFilters ?? [];
+
+            if (abortRef.current) return;
+
+            const favouriteIds = listDocs
+              .filter((d) => d.status === "favourite")
+              .map((d) => d.mediaId);
+            const libraryIds = listDocs
+              .filter((d) => d.status === "plan_to_watch")
+              .map((d) => d.mediaId);
+            const watchedIds = listDocs
+              .filter((d) => d.status === "completed")
+              .map((d) => d.mediaId);
+
+            // 2. Derive top genre IDs from favourites for targeted TMDB fetches
+            const tempProfile: RecommendationProfile = {
+              allMedia: listDocs.map((d) => ({
+                id: d.mediaId,
+                media_type: d.mediaType,
+                title: d.title,
+                poster_path: d.poster_path,
+              })),
+              favouriteIds,
+              libraryIds,
+              watchedIds,
+              clickLog,
+              searchHistory,
+              findFilters,
+              ratings: {},
+            };
+            
+            const taste = deriveTasteProfile(tempProfile);
+            const topGenreNames = taste.topGenres.map((g) => g.genre);
+
+            // Map genre names back to TMDB IDs for the discover API
+            const { TMDB_GENRES } = await import("./types");
+            const nameToId = Object.fromEntries(
+              Object.entries(TMDB_GENRES).map(([id, name]) => [name, Number(id)]),
+            );
+            const topGenreIds = topGenreNames
+              .map((n) => nameToId[n])
+              .filter(Boolean) as number[];
+
+            // 3. Fetch candidates from TMDB
+            const candidates = await fetchCandidates(topGenreIds);
+            if (abortRef.current) return;
+
+            // 4. Build full profile and score
+            const profile: RecommendationProfile = {
+              allMedia: candidates,
+              favouriteIds,
+              libraryIds,
+              watchedIds,
+              clickLog,
+              searchHistory,
+              findFilters,
+              ratings: {},
+            };
+
+            const recs = getRecommendations(profile, {
+              limit,
+              excludeWatched,
+              excludeIds,
+            });
+            const taste2 = deriveTasteProfile(profile);
+
+            setRecommendations(recs);
+            setTasteProfile(taste2);
+          } catch {
+            if (!abortRef.current) setError("Could not load recommendations.");
+          } finally {
+            if (!abortRef.current) setIsLoading(false);
+          }
+        })();
+      });
+    };
+    initAuth();
 
     return () => {
-      unsubAuth();
+      unsub?.();
       abortRef.current = true;
     };
   }, [tick, limit, excludeWatched, excludeIds.join(",")]); // eslint-disable-line

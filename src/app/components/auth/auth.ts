@@ -1,4 +1,3 @@
-import { auth, db } from "../../firebase/firebaseConfig";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -11,8 +10,10 @@ import {
   OAuthProvider,
   User,
 } from "firebase/auth";
+
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
+// ─── Providers (safe at top level) ─────────────────────────────────────────
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
@@ -26,10 +27,9 @@ const SESSION_COOKIE = "firebase-auth-token";
 async function setSessionCookie(user: User) {
   try {
     const token = await user.getIdToken();
-    //Firebase ID tokens last 1hr anyway
     document.cookie = `${SESSION_COOKIE}=${token}; path=/; SameSite=Strict; Secure; max-age=3600`;
   } catch {
-    // non-critical — middleware falls back gracefully
+    // non-critical
   }
 }
 
@@ -54,33 +54,38 @@ const friendlyAuthError = (
     case "auth/user-not-found":
     case "auth/invalid-credential":
       return {
-        message: "No account found with these details. Check your credentials or sign up.",
+        message: "No account found with these details.",
         noAccount: true,
       };
     case "auth/wrong-password":
-      return { message: "Incorrect password. Please try again or reset your password." };
+      return { message: "Incorrect password." };
     case "auth/too-many-requests":
-      return { message: "Too many failed attempts. Please wait a moment and try again." };
+      return { message: "Too many attempts. Try again later." };
     case "auth/user-disabled":
-      return { message: "This account has been disabled. Please contact support." };
+      return { message: "This account has been disabled." };
     case "auth/popup-blocked":
-      return { message: "Popup was blocked. Please allow popups for this site and try again." };
+      return { message: "Popup blocked. Allow popups and try again." };
     case "auth/popup-closed-by-user":
     case "auth/cancelled-popup-request":
-      return { message: "Sign-in was cancelled." };
+      return { message: "Sign-in cancelled." };
     case "auth/account-exists-with-different-credential":
       return {
-        message: "An account already exists with this email using a different sign-in method.",
+        message: "Account exists with different sign-in method.",
         accountExists: true,
       };
     default:
-      return { message: "Something went wrong. Please try again." };
+      return { message: "Something went wrong." };
   }
 };
 
 // ─── Signup ────────────────────────────────────────────────────────────────
 export async function signup(email: string, password: string, username: string) {
   try {
+    const { getFirebaseAuth, getFirebaseDB } = await import("../../firebase/firebaseConfig");
+
+    const auth = await getFirebaseAuth();
+    const db = getFirebaseDB();
+
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
@@ -97,7 +102,7 @@ export async function signup(email: string, password: string, username: string) 
 
     return {
       success: true,
-      message: `Signup successful! A verification email has been sent to ${email}.`,
+      message: `Signup successful! Verification email sent to ${email}.`,
       user,
       username,
     };
@@ -107,11 +112,15 @@ export async function signup(email: string, password: string, username: string) 
   }
 }
 
-// ─── Email login ───────────────────────────────────────────────────────────
+// ─── Login ─────────────────────────────────────────────────────────────────
 export const login = async (email: string, password: string) => {
   try {
+    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+    const auth = await getFirebaseAuth();
+
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     await setSessionCookie(userCredential.user);
+
     return { success: true, message: "Login successful!" };
   } catch (error: any) {
     const { message, noAccount } = friendlyAuthError(error.code);
@@ -122,19 +131,27 @@ export const login = async (email: string, password: string) => {
 // ─── Logout ────────────────────────────────────────────────────────────────
 export const logout = async () => {
   try {
+    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+    const auth = await getFirebaseAuth();
+
     clearSessionCookie();
     await signOut(auth);
+
     return { success: true, message: "Logged out successfully!" };
   } catch (error: any) {
     return { success: false, message: error.message };
   }
 };
 
-// ─── OAuth (popup on all devices) ─────────────────────────────────────────
+// ─── OAuth ────────────────────────────────────────────────────────────────
 async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
   try {
+    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+    const auth = await getFirebaseAuth();
+
     const result = await signInWithPopup(auth, provider);
     await setSessionCookie(result.user);
+
     return { success: true, redirect: false, user: result.user };
   } catch (error: any) {
     const { message } = friendlyAuthError(error.code);
@@ -150,15 +167,19 @@ export async function signInWithApple() {
   return oauthSignIn(appleProvider);
 }
 
-// No-op kept for API compatibility
+// ─── Redirect check (no-op) ───────────────────────────────────────────────
 export async function checkRedirectResult() {
-  return { success: false, redirect: false, user: null, message: undefined };
+  return { success: false, redirect: false, user: null };
 }
 
-// ─── Forgot password ───────────────────────────────────────────────────────
+// ─── Forgot password ──────────────────────────────────────────────────────
 export async function forgotPassword(email: string) {
   try {
+    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+    const auth = await getFirebaseAuth();
+
     await sendPasswordResetEmail(auth, email);
+
     return { success: true, message: "Password reset email sent!" };
   } catch (error: any) {
     const { message } = friendlyAuthError(error.code);

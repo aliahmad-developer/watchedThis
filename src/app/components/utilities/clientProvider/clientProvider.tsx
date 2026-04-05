@@ -8,8 +8,7 @@ const Membership = dynamic(() => import("../../MemberShips/paid"), {
 });
 const PushUp = dynamic(() => import("../backToTop"), { ssr: false });
 import { useEffect } from "react";
-import { onIdTokenChanged } from "firebase/auth";
-import { auth } from "../../../firebase/firebaseConfig";
+
 
 export default function ClientProviders({
   children,
@@ -18,15 +17,25 @@ export default function ClientProviders({
 }) {
   // Token refresh lives here — runs once for the whole app
   useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, async (u) => {
-      if (u) {
-        const token = await u.getIdToken();
-        document.cookie = `firebase-auth-token=${token}; path=/; SameSite=Strict; Secure; max-age=3600`;
-      } else {
-        document.cookie = `firebase-auth-token=; path=/; max-age=0; SameSite=Strict; Secure`;
-      }
-    });
-    return () => unsubscribe();
+    let cancelled = false;
+    let unsubscribe: any;
+    (async () => {
+      const firebaseAuth = await import("firebase/auth");
+      const firebaseConfig = await import("../../../firebase/firebaseConfig");
+      const auth = await firebaseConfig.getFirebaseAuth();
+      unsubscribe = firebaseAuth.onIdTokenChanged(auth, async (u: any) => {
+        if (u) {
+          const token = await u.getIdToken();
+          document.cookie = `firebase-auth-token=${token}; path=/; SameSite=Strict; Secure; max-age=3600`;
+        } else {
+          document.cookie = `firebase-auth-token=; path=/; max-age=0; SameSite=Strict; Secure`;
+        }
+      });
+    })();
+    return () => {
+      if (unsubscribe) unsubscribe();
+      cancelled = true;
+    };
   }, []);
 
   return (

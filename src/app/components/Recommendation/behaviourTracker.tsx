@@ -1,18 +1,30 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
-import { auth, db } from "../../firebase/firebaseConfig";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { UserBehaviour } from "./types";
 
 const MAX_CLICKS   = 200;
 const MAX_SEARCHES = 50;
 const MAX_FILTERS  = 30;
 
-// ── Internal: get or init the behaviour doc ───────────────────
+let cachedAuth: any = null;
+let cachedDb: any = null;
 
+async function initFirebase() {
+  if (cachedAuth && cachedDb) return { auth: cachedAuth, db: cachedDb };
+  
+  const firebase = await import("../../firebase/firebaseConfig");
+  cachedAuth = await firebase.getFirebaseAuth();
+  cachedDb = firebase.getFirebaseDB();
+  
+  return { auth: cachedAuth, db: cachedDb };
+}
+
+// ── Internal: get or init the behaviour doc ───────────────────
 async function getBehaviourDoc(uid: string): Promise<UserBehaviour> {
+  const { db } = await initFirebase();
   try {
-    const ref  = doc(db, "users", uid, "behaviour", "log");
+    const { doc, getDoc } = await import("firebase/firestore");
+    const ref = doc(db, "users", uid, "behaviour", "log");
     const snap = await getDoc(ref);
     if (snap.exists()) return snap.data() as UserBehaviour;
     return { clickLog: [], searchHistory: [], findFilters: [] };
@@ -28,11 +40,11 @@ async function getBehaviourDoc(uid: string): Promise<UserBehaviour> {
 //
 //  Example:
 //    onClick={() => { trackClick(item.id, item.media_type); router.push(...) }}
-
 export async function trackClick(
   itemId: number,
   mediaType: "movie" | "tv"
 ): Promise<void> {
+  const { auth } = await initFirebase();
   const uid = auth.currentUser?.uid;
   if (!uid) return;
 
@@ -43,6 +55,8 @@ export async function trackClick(
       { id: itemId, media_type: mediaType },
     ].slice(-MAX_CLICKS);
 
+    const { db } = await initFirebase();
+    const { doc, setDoc } = await import("firebase/firestore");
     const ref = doc(db, "users", uid, "behaviour", "log");
     await setDoc(ref, { clickLog: updated, updatedAt: Date.now() }, { merge: true });
   } catch {
@@ -56,19 +70,21 @@ export async function trackClick(
 //
 //  Example (in your search component):
 //    onSubmit={() => { trackSearch(query); fetchResults(query); }}
-
 export async function trackSearch(query: string): Promise<void> {
+  const { auth } = await initFirebase();
   const uid = auth.currentUser?.uid;
   if (!uid || !query.trim()) return;
 
   try {
-    const q       = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase();
     const current = await getBehaviourDoc(uid);
     const updated = [
-      ...current.searchHistory.filter((s) => s !== q),
+      ...current.searchHistory.filter((s: string) => s !== q),
       q,
     ].slice(-MAX_SEARCHES);
 
+    const { db } = await initFirebase();
+    const { doc, setDoc } = await import("firebase/firestore");
     const ref = doc(db, "users", uid, "behaviour", "log");
     await setDoc(ref, { searchHistory: updated, updatedAt: Date.now() }, { merge: true });
   } catch {
@@ -86,24 +102,24 @@ export async function trackSearch(query: string): Promise<void> {
 //    handleSearch() { trackFindFilters({ ... }); router.push(...) }
 
 export interface FindFilterSnapshot {
-  mediaType:       "movie" | "tv";
-  genres:          number[];          // included genre IDs
-  excludeGenres:   number[];          // excluded genre IDs
-  keywords:        string[];          // include keywords
-  excludeKeywords: string[];          // blacklisted keywords
-  yearRange:       [number, number];
-  ratingRange:     [number, number];
-  sortBy:          string;
-  ts:              number;            // unix ms
+  mediaType: "movie" | "tv";
+  genres: number[];
+  excludeGenres: number[];
+  keywords: string[];
+  excludeKeywords: string[];
+  yearRange: [number, number];
+  ratingRange: [number, number];
+  sortBy: string;
+  ts: number;
 }
 
 export async function trackFindFilters(
   snapshot: Omit<FindFilterSnapshot, "ts">
 ): Promise<void> {
+  const { auth } = await initFirebase();
   const uid = auth.currentUser?.uid;
   if (!uid) return;
 
-  // Skip if nothing meaningful was actually filtered
   const isDefault =
     snapshot.genres.length === 0 &&
     snapshot.excludeGenres.length === 0 &&
@@ -124,6 +140,8 @@ export async function trackFindFilters(
       entry,
     ].slice(-MAX_FILTERS);
 
+    const { db } = await initFirebase();
+    const { doc, setDoc } = await import("firebase/firestore");
     const ref = doc(db, "users", uid, "behaviour", "log");
     await setDoc(ref, { findFilters: updated, updatedAt: Date.now() }, { merge: true });
   } catch {
@@ -134,7 +152,7 @@ export async function trackFindFilters(
 // ── Load behaviour for the recommendation hook ────────────────
 //
 //  Used internally by useRecommendations — you don't need to call this.
-
 export async function loadBehaviour(uid: string): Promise<UserBehaviour> {
   return getBehaviourDoc(uid);
 }
+

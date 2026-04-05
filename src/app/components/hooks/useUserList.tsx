@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db } from "../../firebase/firebaseConfig";
-import { doc, setDoc, deleteDoc, getDoc, serverTimestamp } from "firebase/firestore";
+
 import { useAuth } from "./useAuth";
 import { ListStatus } from "../../user/library/types";
 
@@ -22,18 +21,25 @@ export function useUserList(mediaMeta: MediaMeta) {
     if (authLoading) return;
     if (!user) { setCurrentStatus(null); return; }
 
-    const ref = doc(db, "users", user.uid, "lists", String(mediaMeta.mediaId));
-    getDoc(ref).then((snap) => {
+    (async () => {
+      const { doc, getDoc } = await import("firebase/firestore");
+      const firebaseConfig = await import("../../firebase/firebaseConfig");
+      const db = firebaseConfig.getFirebaseDB();
+      const ref = doc(db, "users", user!.uid, "lists", String(mediaMeta.mediaId));
+      const snap = await getDoc(ref);
       if (snap.exists()) setCurrentStatus(snap.data().status as ListStatus);
       else setCurrentStatus(null);
-    });
+    })();
   }, [user, authLoading, mediaMeta.mediaId]);
 
   const saveToList = async (status: ListStatus) => {
     if (!user) return;
     setLoading(true);
     try {
-      const ref = doc(db, "users", user.uid, "lists", String(mediaMeta.mediaId));
+      const { doc, deleteDoc, setDoc, serverTimestamp } = await import("firebase/firestore");
+      const firebaseConfig = await import("../../firebase/firebaseConfig");
+      const db = firebaseConfig.getFirebaseDB();
+      const ref = doc(db, "users", user!.uid, "lists", String(mediaMeta.mediaId));
       if (currentStatus === status) {
         await deleteDoc(ref);
         setCurrentStatus(null);

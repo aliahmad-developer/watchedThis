@@ -1,5 +1,5 @@
 "use client";
-import { auth } from "../../../firebase/firebaseConfig";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
 type Props = {
@@ -7,6 +7,7 @@ type Props = {
   setNewUsername: (value: string) => void;
   handleUsernameUpdate: () => Promise<void>;
   isUpdatingUsername: boolean;
+  user: any;
 };
 
 export default function UsernameUpdate({
@@ -14,10 +15,12 @@ export default function UsernameUpdate({
   setNewUsername,
   handleUsernameUpdate,
   isUpdatingUsername,
+  user,
 }: Props) {
-  // Always compare against live auth.currentUser, not the stale user prop
-  const savedUsername = auth.currentUser?.displayName || "";
+  // Always compare against live user prop (updated from parent useAuth)
+  const savedUsername = user?.displayName || "";
   const isUnchanged = newUsername === savedUsername || newUsername.trim() === "";
+
 
   const handleSave = async () => {
     try {
