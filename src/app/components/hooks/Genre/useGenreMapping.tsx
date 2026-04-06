@@ -1,4 +1,3 @@
-// hooks/useGenreMappings.ts
 import { useState, useEffect, useCallback } from "react";
 import { GENRE_IDS, GenreInfo } from "../../Genre/types";
 import slugify from "slugify";

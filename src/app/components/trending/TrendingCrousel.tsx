@@ -5,8 +5,8 @@ import {
   useResponsiveConfig,
   useCarousel,
   useCarouselDimensions,
-  useTrendingMedia,
 } from "./SubComps/hooks";
+import { useTrendingMedia } from "../hooks/trending/useTrendingMedia";
 import { TrendingCarouselSkeleton } from "./SubComps/Skeleton";
 import { CarouselItem } from "./SubComps/CarouselItem";
 import { NavigationButtons } from "./SubComps/NavigationButtons";

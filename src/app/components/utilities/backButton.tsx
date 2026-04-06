@@ -1,34 +1,36 @@
-"use client";
-import { useRouter, usePathname } from "next/navigation";
+"use client"
+import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-interface BackButtonProps { className?: string; }
+interface BackButtonProps { 
+  className?: string; 
+}
 
-const HIDDEN_ON = ["/", "/find", "/random", "/spinner"];
+const HIDDEN_ON = ['/', '/find', '/random', '/spinner'];
 
 export default function BackButton({ className }: BackButtonProps) {
   const router   = useRouter();
   const pathname = usePathname();
+  const [showButton, setShowButton] = useState(true);
 
-  if (HIDDEN_ON.includes(pathname)) return null;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hasValidHistory = window.history.length > 1;
+      setShowButton(hasValidHistory);
+    }
+  }, []);
+
+  if (HIDDEN_ON.includes(pathname) || !showButton) return null;
+
+  const handleBack = () => {
+    router.back();
+  };
 
   return (
     <button
-      onClick={() => router.back()}
+      onClick={handleBack}
       aria-label="Go back"
-      className={[
-        "flex items-center justify-center",
-        "w-11 h-11 sm:w-12 sm:h-12",
-        "rounded-full",
-        "bg-light-card dark:bg-dark-card",
-        "border border-light-border dark:border-dark-border",
-        "text-light-secondary-text dark:text-dark-secondary-text",
-        "hover:text-light-btn-hover-text dark:hover:text-dark-btn-hover-text",
-        "hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg",
-        "hover:scale-110 active:scale-95",
-        "shadow-sm hover:shadow-md",
-        "transition-all duration-200",
-        className ?? "",
-      ].join(" ")}
+      className={`flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text hover:text-light-btn-hover-text dark:hover:text-dark-btn-hover-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg hover:scale-110 active:scale-95 shadow-sm hover:shadow-md transition-all duration-200 ${className || ''}`}
     >
       <svg
         className="w-5 h-5 sm:w-6 sm:h-6"

@@ -1,5 +1,5 @@
 export interface MediaItem {
-  id: string;
+  id: number;
   poster_path?: string;
   title?: string;
   name?: string;

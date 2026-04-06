@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { MediaItem, GAP, MOBILE_GAP, ITEM_WIDTH_DESKTOP, ITEM_WIDTH_TABLET } from "./types";
+import { GAP, MOBILE_GAP, ITEM_WIDTH_DESKTOP, ITEM_WIDTH_TABLET } from "./types";
 
 export function useResponsiveConfig() {
   const [windowWidth, setWindowWidth] = useState(0);
@@ -109,30 +109,4 @@ export function useCarouselDimensions(containerRef: React.RefObject<HTMLDivEleme
   }, [updateDimensions, containerRef]);
 
   return dimensions;
-}
-
-export function useTrendingMedia() {
-  const [media, setMedia] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchTrendingMedia = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/trending");
-        if (!response.ok) throw new Error(`Failed to fetch trending media: ${response.status}`);
-        const data = await response.json();
-        setMedia(data.results || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-        console.error("Error fetching trending media:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTrendingMedia();
-  }, []);
-
-  return { media, loading, error };
 }
