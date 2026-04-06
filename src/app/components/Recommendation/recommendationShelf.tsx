@@ -147,7 +147,7 @@ function SkeletonCard() {
   );
 }
 
-// ── Shelf skeleton — rendered immediately on mount to hold layout space ───────
+// ── Shelf skeleton ,  rendered immediately on mount to hold layout space ───────
 
 function ShelfSkeleton() {
   return (
@@ -205,7 +205,7 @@ function GuestCTA() {
           className="text-light-accent dark:text-dark-accent ml-1"
           style={{ width: "1.5rem", height: "1.5rem" }}
         />
-        <h2>Recommended For You</h2>
+        <h2>Tailored For You</h2>
       </div>
 
       <div className="mx-5 mb-5 relative overflow-hidden rounded-2xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-card p-6 flex flex-col sm:flex-row items-center gap-5">
@@ -225,7 +225,7 @@ function GuestCTA() {
             Get personalised recommendations
           </h3>
           <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text leading-relaxed">
-            Create a free account and we'll learn your taste — suggesting movies
+            Create a free account and we'll learn your taste ,  suggesting movies
             and shows based on what you search, save, and watch.
           </p>
         </div>
@@ -255,8 +255,8 @@ interface RecommendationShelfProps {
 }
 
 export default function RecommendationShelf({
-  title = "Recommended For You",
-  limit = 20,
+  title = "Tailored For You",
+  limit = 12,
   excludeWatched = true,
   excludeIds = [],
   onCardClick,
@@ -295,14 +295,14 @@ export default function RecommendationShelf({
     scrollRef.current?.scrollBy({ left: dir * 480, behavior: "smooth" });
   };
 
-  // Auth not resolved yet — render skeleton immediately to hold layout space,
+  // Auth not resolved yet ,  render skeleton immediately to hold layout space,
   // preventing Trending from jumping up on mount
   if (isLoggedIn === null) return <ShelfSkeleton />;
 
-  // Guest — show CTA
+  // Guest ,  show CTA
   if (!isLoggedIn) return <GuestCTA />;
 
-  // Logged in but nothing to show — hide silently
+  // Logged in but nothing to show , hide silently
   if (!isLoading && (error || recommendations.length === 0)) return null;
 
   return (
