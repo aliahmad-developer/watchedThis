@@ -293,7 +293,7 @@ export default function Footer() {
               </h4>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text leading-relaxed">
                 All movies and series names, images, and content are copyrighted
-                content of their respective license holders. I do not own the
+                content of their respective license holders. We do not own the
                 rights to any of these media types.
               </p>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
