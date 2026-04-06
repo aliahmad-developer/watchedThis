@@ -1,8 +1,48 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect, useMemo, useCallback, FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  FormEvent,
+} from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+
+const RATE_LIMIT = { max: 3, windowMs: 60 * 60 * 1000 }; 
+const COOLDOWN_MS = 30_000;
+
+function getRateLimitStatus(): {
+  allowed: boolean;
+  remainingMs?: number;
+  timestamps?: number[];
+} {
+  const key = "feedback_submissions";
+  const now = Date.now();
+  const stored = localStorage.getItem(key);
+  const timestamps: number[] = stored ? JSON.parse(stored) : [];
+
+  const recent = timestamps.filter((t) => now - t < RATE_LIMIT.windowMs);
+
+  if (recent.length >= RATE_LIMIT.max) {
+    const oldest = Math.min(...recent);
+    return {
+      allowed: false,
+      remainingMs: RATE_LIMIT.windowMs - (now - oldest),
+    };
+  }
+
+  return { allowed: true, timestamps: recent };
+}
+
+function commitRateLimit(timestamps: number[]) {
+  const key = "feedback_submissions";
+  const now = Date.now();
+
+  timestamps.push(now);
+  localStorage.setItem(key, JSON.stringify(timestamps));
+}
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -23,6 +63,7 @@ export default function Footer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [is404, setIs404] = useState(false);
+  const [lastSubmitted, setLastSubmitted] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -50,24 +91,59 @@ export default function Footer() {
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+
       if (!name.trim()) {
         toast.error("Please enter your name before submitting.");
         setTouched({ name: true });
         return;
       }
+
       if (!message.trim()) {
         toast.error("Please enter a message before submitting.");
         return;
       }
+
+      const now = Date.now();
+
+      // Cooldown check
+      if (lastSubmitted && now - lastSubmitted < COOLDOWN_MS) {
+        const remaining = Math.ceil(
+          (COOLDOWN_MS - (now - lastSubmitted)) / 1000
+        );
+        toast.error(`Please wait ${remaining}s before sending again.`);
+        return;
+      }
+
+      // Rate limit check
+      const rate = getRateLimitStatus();
+      if (!rate.allowed) {
+        const mins = Math.ceil(rate.remainingMs! / 60000);
+        toast.error(
+          `You got a lot to say huh. Try again in ${mins} minute${
+            mins !== 1 ? "s" : ""
+          }.`
+        );
+        return;
+      }
+
       setIsSubmitting(true);
       const toastId = toast.loading("Sending your feedback...");
+
       try {
         const res = await axios.post("https://formspree.io/f/myznddbj", {
           name,
           email,
           message,
         });
+
         if (res.status === 200) {
+          // ✅ FIX: Safe TypeScript narrowing
+          if (rate.timestamps) {
+            commitRateLimit(rate.timestamps);
+          }
+
+          setLastSubmitted(now);
+
           toast.success("Thank you for your feedback!", { id: toastId });
           setName("");
           setEmail("");
@@ -87,7 +163,7 @@ export default function Footer() {
         setIsSubmitting(false);
       }
     },
-    [name, email, message],
+    [name, email, message, lastSubmitted]
   );
 
   if (is404) return null;
@@ -107,11 +183,7 @@ export default function Footer() {
   return (
     <footer className="cursor-default bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text m-4 border border-light-border dark:border-dark-border rounded-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-10">
-
-        {/* Main grid — proportional columns so form gets more room */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1.4fr_0.7fr_1.6fr] gap-6 lg:gap-10">
-
-          {/* Creator */}
           <div className="space-y-2.5">
             <h3 className="text-base font-bold text-light-header dark:text-dark-header">
               Creator
@@ -125,7 +197,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Support */}
           <div className="space-y-2.5">
             <h3 className="text-base font-bold text-light-header dark:text-dark-header">
               Support RandoMovie
@@ -142,7 +213,6 @@ export default function Footer() {
             </Link>
           </div>
 
-          {/* Navigation */}
           <div className="space-y-2.5">
             <h3 className="text-base font-bold text-light-header dark:text-dark-header">
               Navigation
@@ -161,7 +231,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Feedback */}
           <div className="space-y-2.5">
             <h3 className="text-base font-bold text-light-header dark:text-dark-header">
               Feedback
@@ -214,8 +283,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="mt-7 pt-5 border-t border-light-border dark:border-dark-border">
+       <div className="mt-7 pt-5 border-t border-light-border dark:border-dark-border">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
 
             {/* Legal blurb */}
@@ -226,8 +294,7 @@ export default function Footer() {
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text leading-relaxed">
                 All movies and series names, images, and content are copyrighted
                 content of their respective license holders. I do not own the
-                rights to any of these media types. All information is compiled
-                from TMDB.
+                rights to any of these media types.
               </p>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
                 Usage of this website agrees user to the{" "}

@@ -204,23 +204,6 @@ body::after {
   100% { --cx:90%; --cy:15%; --dx:30%; --dy:80%; opacity: 0.70; }
 }
 
-/* ── Optional: add a 3rd element for a shimmer layer ── */
-/* If you want this, add a <div id="wave-shimmer"> as a direct child of <body> */
-#wave-shimmer {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(
-    ellipse 42% 55% at var(--ex) var(--ey),
-    rgba(70, 129, 137, 0.13) 0%,
-    rgba(189, 212, 231, 0.04) 45%,
-    transparent 70%
-  );
-  animation: waveC 9s ease-in-out infinite;
-  mix-blend-mode: screen;
-}
-
 @keyframes waveC {
   0%   { --ex:50%; --ey:50%; opacity: 0.50; }
   33%  { --ex:75%; --ey:25%; opacity: 0.90; }
