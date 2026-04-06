@@ -9,7 +9,7 @@ export default function Home() {
     <>
       <div>
         <SpotLightServer />
-        <div id="wave-shimmer" className="lg:mx-5 sm:mx-3 md:mx-4 min-h-400  ">
+        <div className="lg:mx-5 sm:mx-3 md:mx-4 min-h-400  ">
           <DailyMedia />
           <RecommendationShelf />
           <Trending />
