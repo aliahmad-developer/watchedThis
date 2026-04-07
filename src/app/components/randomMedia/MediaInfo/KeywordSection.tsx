@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import type { AmbientTextColors } from "../detailsPage";
+import { useRouter } from "next/navigation";
 
 interface Keyword {
   id: number;
@@ -23,6 +23,7 @@ const getLimit = () => {
 export default function KeywordsSection({ keywords, textScheme = "light", mutedColor }: KeywordsSectionProps) {
   const list: Keyword[] = keywords ?? [];
   const [limit, setLimit] = useState(16);
+  const router = useRouter();
 
   useEffect(() => {
     const update = () => setLimit(getLimit());
@@ -36,10 +37,8 @@ export default function KeywordsSection({ keywords, textScheme = "light", mutedC
 
   if (!list.length) return null;
 
-  // When mutedColor is provided, use it; otherwise fall back to Tailwind
   const kwStyle = mutedColor ? { color: mutedColor } : undefined;
   const kwFallback = !mutedColor ? (textScheme === "light" ? "text-white/60" : "text-gray-500") : "";
-  // "+N more" slightly dimmer — reduce the alpha of the rgba string
   const remainingStyle = mutedColor
     ? { color: mutedColor.replace(/[\d.]+\)$/, "0.40)") }
     : undefined;
@@ -47,13 +46,17 @@ export default function KeywordsSection({ keywords, textScheme = "light", mutedC
     ? (textScheme === "light" ? "text-white/30" : "text-gray-400")
     : "";
 
+ const handleClick = (name: string) => {
+  router.push(`/search?keyword=${encodeURIComponent(name)}`);
+};
   return (
     <div className="col-span-2">
       <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {visible.map((kw) => (
           <span
             key={kw.id}
-            className={`text-[10px] sm:text-xs font-mono tracking-tight transition-colors duration-700 ${kwFallback}`}
+            onClick={() => handleClick(kw.name)}
+            className={`text-[10px] sm:text-xs font-mono tracking-tight transition-colors duration-700 cursor-pointer hover:opacity-100 opacity-80 ${kwFallback}`}
             style={kwStyle}
           >
             #{kw.name.toLowerCase().replace(/\s+/g, "-")}

@@ -35,30 +35,26 @@ function SearchSkeleton() {
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const query = searchParams.get("q") || "";
+  const query   = searchParams.get("q")       || "";
+  const keyword = searchParams.get("keyword") || "";
+  const activeTerm = query || keyword;
 
-  const [results, setResults] = useState<MediaResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [results, setResults]       = useState<MediaResult[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [page, setPage]             = useState(1);
+  const [hasMore, setHasMore]       = useState(true);
 
-  const hasMoreRef = useRef(true);
-  const loadingRef = useRef(false);
-  const loadingMoreRef = useRef(false);
-  const fetchId = useRef(0);
-  const observer = useRef<IntersectionObserver | null>(null);
+  const hasMoreRef      = useRef(true);
+  const loadingRef      = useRef(false);
+  const loadingMoreRef  = useRef(false);
+  const fetchId         = useRef(0);
+  const observer        = useRef<IntersectionObserver | null>(null);
 
-  useEffect(() => {
-    hasMoreRef.current = hasMore;
-  }, [hasMore]);
-  useEffect(() => {
-    loadingRef.current = loading;
-  }, [loading]);
-  useEffect(() => {
-    loadingMoreRef.current = loadingMore;
-  }, [loadingMore]);
+  useEffect(() => { hasMoreRef.current     = hasMore;     }, [hasMore]);
+  useEffect(() => { loadingRef.current     = loading;     }, [loading]);
+  useEffect(() => { loadingMoreRef.current = loadingMore; }, [loadingMore]);
 
   const lastItemRef = useCallback((node: HTMLDivElement | null) => {
     if (observer.current) observer.current.disconnect();
@@ -76,16 +72,18 @@ function SearchContent() {
     observer.current.observe(node);
   }, []);
 
+  // Reset on term change
   useEffect(() => {
     fetchId.current += 1;
     setPage(1);
     setResults([]);
     setHasMore(true);
     hasMoreRef.current = true;
-  }, [query]);
+  }, [activeTerm]);
 
+  // Fetch
   useEffect(() => {
-    if (!query) return;
+    if (!activeTerm) return;
     const id = fetchId.current;
 
     const fetchResults = async () => {
@@ -97,7 +95,11 @@ function SearchContent() {
           setLoadingMore(true);
           loadingMoreRef.current = true;
         }
-        const data = await smartSearch(query, page);
+
+        const data = keyword
+          ? await smartSearch("", page, keyword)
+          : await smartSearch(query, page);
+
         if (id !== fetchId.current) return;
         setResults((prev) =>
           page === 1 ? data.results : [...prev, ...data.results],
@@ -111,25 +113,24 @@ function SearchContent() {
         if (id !== fetchId.current) return;
         setLoading(false);
         setLoadingMore(false);
-        loadingRef.current = false;
-        loadingMoreRef.current = false;
+        loadingRef.current      = false;
+        loadingMoreRef.current  = false;
       }
     };
 
     const timer = setTimeout(fetchResults, 300);
     return () => clearTimeout(timer);
-  }, [query, page]);
+  }, [activeTerm, page]);
 
   useEffect(() => () => observer.current?.disconnect(), []);
 
-  if (!query) return <p className="text-center mt-8">No query provided.</p>;
-  if (error)
-    return <div className="text-red-500 text-center mt-8">{error}</div>;
+  if (!activeTerm) return <p className="text-center mt-8">No query provided.</p>;
+  if (error) return <div className="text-red-500 text-center mt-8">{error}</div>;
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-180">
       <h1 className="text-center text-2xl font-bold mb-6">
-        Search Results for "{query}"
+        {keyword ? `#${keyword}` : `Search Results for "${query}"`}
       </h1>
 
       {loading ? (
@@ -148,7 +149,6 @@ function SearchContent() {
               </div>
             );
           })}
-
           {loadingMore &&
             Array.from({ length: 5 }).map((_, i) => (
               <SkeletonCard key={`more-${i}`} />
@@ -157,7 +157,7 @@ function SearchContent() {
       ) : (
         <div className="flex items-center justify-center min-h-[50vh]">
           <p className="text-lg text-gray-500">
-            No results found for "{query}"
+            {keyword ? `No results found for #${keyword}` : `No results found for "${query}"`}
           </p>
         </div>
       )}

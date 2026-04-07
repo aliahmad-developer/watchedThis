@@ -44,19 +44,10 @@ function buildScore(item: TMDBResult, query: string): number {
   const title = (item.title || item.name || "").toLowerCase();
   const q = query.toLowerCase();
   let score = item.popularity ?? 0;
-
-  // Exact title match — big boost
   if (title === q) score += 5000;
-  // Starts with query
   else if (title.startsWith(q)) score += 2000;
-  // Contains query
   else if (title.includes(q)) score += 500;
-
-  // Vote weight — reward well-rated content with enough votes
-  if ((item.vote_count ?? 0) > 100) {
-    score += (item.vote_average ?? 0) * 80;
-  }
-
+  if ((item.vote_count ?? 0) > 100) score += (item.vote_average ?? 0) * 80;
   return score;
 }
 
@@ -66,14 +57,11 @@ function deduplicateByScore(
   const seen = new Map<number, TMDBResult & { _score: number }>();
   for (const item of results) {
     const existing = seen.get(item.id);
-    if (!existing || item._score > existing._score) {
-      seen.set(item.id, item);
-    }
+    if (!existing || item._score > existing._score) seen.set(item.id, item);
   }
   return Array.from(seen.values());
 }
 
-// Safe fetch — returns [] on any failure, never throws
 async function fetchSearchPage(
   url: string,
   mediaType?: "movie" | "tv"
@@ -83,14 +71,44 @@ async function fetchSearchPage(
     if (!res.ok) return [];
     const data = await res.json();
     const results: TMDBResult[] = data.results || [];
-    if (mediaType) {
-      return results.map((r) => ({ ...r, media_type: mediaType }));
-    }
-    return results.filter(
-      (r) => r.media_type === "movie" || r.media_type === "tv"
-    );
+    if (mediaType) return results.map((r) => ({ ...r, media_type: mediaType }));
+    return results.filter((r) => r.media_type === "movie" || r.media_type === "tv");
   } catch {
     return [];
+  }
+}
+
+async function fetchDetails(
+  item: TMDBResult,
+  apiKey: string
+): Promise<DetailedResult | null> {
+  try {
+    const res = await fetch(
+      `${TMDB_BASE}/${item.media_type}/${item.id}?api_key=${apiKey}&language=en-US`
+    );
+    if (!res.ok) return null;
+    const detail = await res.json();
+    const runtime =
+      item.media_type === "movie"
+        ? detail.runtime ?? null
+        : detail.episode_run_time?.[0] ?? detail.runtime ?? null;
+    return {
+      id: item.id,
+      media_type: item.media_type,
+      title: item.title || item.name || item.original_name || "Untitled",
+      original_name: item.original_name || item.original_title || undefined,
+      poster_path: item.poster_path ?? null,
+      backdrop_path: item.backdrop_path ?? null,
+      release_date: item.release_date || item.first_air_date || null,
+      runtime,
+      popularity: item.popularity,
+      vote_average: detail.vote_average ?? 0,
+      vote_count: detail.vote_count ?? 0,
+      overview: detail.overview || item.overview || "",
+      genres: detail.genres?.map((g: { name: string }) => g.name) ?? [],
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -99,10 +117,11 @@ async function fetchSearchPage(
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("query")?.trim();
+  const keyword = searchParams.get("keyword")?.trim();
   const pageParam = searchParams.get("page") || "1";
   const currentPage = Math.max(1, parseInt(pageParam));
 
-  if (!query) {
+  if (!query && !keyword) {
     return NextResponse.json({ error: "Missing query parameter" }, { status: 400 });
   }
 
@@ -111,16 +130,123 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "TMDB API key missing" }, { status: 500 });
   }
 
+  const base = `api_key=${apiKey}&language=en-US`;
+
   try {
-    const enc = encodeURIComponent(query);
-    const base = `api_key=${apiKey}&language=en-US`;
+    // ── Keyword mode ────────────────────────────────────────────────────────────
+    if (keyword) {
+      const kwRes = await fetch(
+        `${TMDB_BASE}/search/keyword?api_key=${apiKey}&query=${encodeURIComponent(keyword)}`
+      );
+      const kwData = await kwRes.json();
+      const kwId: number | undefined = kwData.results?.[0]?.id;
 
-    // ── Multi-strategy parallel search ────────────────────────────────────────
-    // Strategy 1 — multi search pages 1–3 (broadest, catches everything)
-    // Strategy 2 — dedicated movie + tv endpoints (surface results multi misses)
-    // Strategy 3 — broad fallback using first 2 words (for long queries)
-    // Strategy 4 — year-aware search (e.g. "Inception 2010")
+      if (!kwId) {
+        return NextResponse.json({ results: [], page: 1, total_pages: 1, has_more: false });
+      }
 
+      const [movieRes, tvRes] = await Promise.all([
+        fetch(`${TMDB_BASE}/discover/movie?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
+        fetch(`${TMDB_BASE}/discover/tv?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
+      ]);
+
+      const [movieData, tvData] = await Promise.all([movieRes.json(), tvRes.json()]);
+
+      const movies: TMDBResult[] = (movieData.results || []).map((r: TMDBResult) => ({
+        ...r,
+        media_type: "movie" as const,
+      }));
+      const shows: TMDBResult[] = (tvData.results || []).map((r: TMDBResult) => ({
+        ...r,
+        media_type: "tv" as const,
+      }));
+
+      const combined = [...movies, ...shows].sort(
+        (a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)
+      );
+
+      const totalPages = Math.max(
+        movieData.total_pages ?? 1,
+        tvData.total_pages ?? 1
+      );
+
+      // ✅ REPLACED BLOCK (no detail fetch)
+      const detailedResults: DetailedResult[] = combined.map((item) => ({
+        id: item.id,
+        media_type: item.media_type,
+        title: item.title || item.name || item.original_name || "Untitled",
+        original_name: item.original_name || item.original_title || undefined,
+        poster_path: item.poster_path ?? null,
+        backdrop_path: item.backdrop_path ?? null,
+        release_date: item.release_date || item.first_air_date || null,
+        runtime: null,
+        popularity: item.popularity,
+        vote_average: item.vote_average ?? 0,
+        vote_count: item.vote_count ?? 0,
+        overview: item.overview || "",
+        genres: [],
+      }));
+
+      return NextResponse.json({
+        results: detailedResults,
+        page: currentPage,
+        total_pages: totalPages,
+        has_more: currentPage < totalPages,
+      });
+    }
+
+    // ── Query mode ──────────────────────────────────────────────────────────────
+    const enc = encodeURIComponent(query!);
+    const words = query!.split(/\s+/);
+
+    if (query === "#") {
+      const numWords = ["zero","one","two","three","four","five","six","seven","eight","nine"];
+      const digits = ["0","1","2","3","4","5","6","7","8","9"];
+      const allVariants = [...digits, ...numWords];
+
+      const batches = await Promise.all(
+        allVariants.map((v) => {
+          const e = encodeURIComponent(v);
+          return Promise.all([
+            fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${e}&page=1`),
+            fetchSearchPage(`${TMDB_BASE}/search/movie?${base}&query=${e}&page=1`, "movie"),
+            fetchSearchPage(`${TMDB_BASE}/search/tv?${base}&query=${e}&page=1`, "tv"),
+          ]);
+        })
+      );
+
+      const allRaw = batches.flat(2);
+      const startsWithNumber = (item: TMDBResult) => {
+        const t = (item.title ?? item.name ?? "").toLowerCase();
+        return /^[0-9]/.test(t) || numWords.some((w) => t.startsWith(w));
+      };
+
+      const scored = allRaw
+        .filter((item) => (item.title || item.name) && startsWithNumber(item))
+        .map((item) => ({ ...item, _score: buildScore(item, query) }));
+
+      const deduped = deduplicateByScore(scored);
+      const sorted = deduped.sort((a, b) => b._score - a._score);
+
+      const totalPages = Math.max(1, Math.ceil(sorted.length / RESULTS_PER_PAGE));
+      const pageSlice = sorted.slice(
+        (currentPage - 1) * RESULTS_PER_PAGE,
+        currentPage * RESULTS_PER_PAGE
+      );
+
+      const detailedResults = await Promise.all(
+        pageSlice.map((item) => fetchDetails(item, apiKey))
+      );
+
+      return NextResponse.json({
+        results: detailedResults.filter(Boolean),
+        page: currentPage,
+        total_pages: totalPages,
+        has_more: currentPage < totalPages,
+      });
+    }
+
+    // ── Normal search (unchanged) ──────────────────────────────────────────────
     const tasks: Promise<TMDBResult[]>[] = [
       fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${enc}&page=1`),
       fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${enc}&page=2`),
@@ -131,191 +257,34 @@ export async function GET(req: NextRequest) {
       fetchSearchPage(`${TMDB_BASE}/search/tv?${base}&query=${enc}&page=2`, "tv"),
     ];
 
-    // Broad fallback — first 2 words for 4+ word queries
-    const words = query.split(/\s+/);
-    if (words.length >= 4) {
-      const broad = encodeURIComponent(words.slice(0, 2).join(" "));
-      tasks.push(
-        fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${broad}&page=1`),
-        fetchSearchPage(`${TMDB_BASE}/search/movie?${base}&query=${broad}&page=1`, "movie"),
-        fetchSearchPage(`${TMDB_BASE}/search/tv?${base}&query=${broad}&page=1`, "tv")
-      );
-    }
-    // ── # → numeric titles ────────────────────────────────────────────────────
-if (query === "#") {
-  const numWords = ["zero","one","two","three","four","five","six","seven","eight","nine"];
-  const digits   = ["0","1","2","3","4","5","6","7","8","9"];
-  const allVariants = [...digits, ...numWords];
-
-  const batches = await Promise.all(
-    allVariants.map((v) => {
-      const enc = encodeURIComponent(v);
-      return Promise.all([
-        fetchSearchPage(`${TMDB_BASE}/search/multi?api_key=${apiKey}&language=en-US&query=${enc}&page=1`),
-        fetchSearchPage(`${TMDB_BASE}/search/movie?api_key=${apiKey}&language=en-US&query=${enc}&page=1`, "movie"),
-        fetchSearchPage(`${TMDB_BASE}/search/tv?api_key=${apiKey}&language=en-US&query=${enc}&page=1`, "tv"),
-      ]);
-    })
-  );
-
-  const allRaw = batches.flat(2);
-
-  // Keep only titles that actually START with a digit or number-word
-  const startsWithNumber = (item: TMDBResult) => {
-    const t = (item.title ?? item.name ?? "").toLowerCase();
-    return /^[0-9]/.test(t) || numWords.some((w) => t.startsWith(w));
-  };
-
-  const scored = allRaw
-    .filter((item) => (item.title || item.name) && startsWithNumber(item))
-    .map((item) => ({ ...item, _score: buildScore(item, query) }));
-
-  const deduped = deduplicateByScore(scored);
-  const sorted  = deduped.sort((a, b) => b._score - a._score);
-
-  const totalResults = sorted.length;
-  const totalPages   = Math.max(1, Math.ceil(totalResults / RESULTS_PER_PAGE));
-  const startIdx     = (currentPage - 1) * RESULTS_PER_PAGE;
-  const pageSlice    = sorted.slice(startIdx, startIdx + RESULTS_PER_PAGE);
-
-  // reuse the same detail-fetching block as below...
-  const detailedResults = await Promise.all(
-    pageSlice.map(async (item): Promise<DetailedResult | null> => {
-      try {
-        const res = await fetch(`${TMDB_BASE}/${item.media_type}/${item.id}?api_key=${apiKey}&language=en-US`);
-        if (!res.ok) return null;
-        const detail = await res.json();
-        const runtime = item.media_type === "movie"
-          ? detail.runtime ?? null
-          : detail.episode_run_time?.[0] ?? detail.runtime ?? null;
-        return {
-          id: item.id,
-          media_type: item.media_type,
-          title: item.title || item.name || "Untitled",
-          original_name: item.original_name || item.original_title || undefined,
-          poster_path: item.poster_path ?? null,
-          backdrop_path: item.backdrop_path ?? null,
-          release_date: item.release_date || item.first_air_date || null,
-          runtime,
-          popularity: item.popularity,
-          vote_average: detail.vote_average ?? 0,
-          vote_count: detail.vote_count ?? 0,
-          overview: detail.overview || item.overview || "",
-          genres: detail.genres?.map((g: { name: string }) => g.name) ?? [],
-        };
-      } catch { return null; }
-    })
-  );
-
-  return NextResponse.json({
-    results: detailedResults.filter(Boolean),
-    page: currentPage,
-    total_pages: totalPages,
-    has_more: currentPage < totalPages,
-  });
-}
-// ── normal search continues below ─────────────────────────────────────────
-
-    // Year-aware fallback — "Inception 2010" → search "Inception" filtered by year
-    const yearMatch = query.match(/^(.*?)\s+(\d{4})$/);
-    if (yearMatch) {
-      const stripped = encodeURIComponent(yearMatch[1].trim());
-      const year = yearMatch[2];
-      tasks.push(
-        fetchSearchPage(
-          `${TMDB_BASE}/search/movie?${base}&query=${stripped}&primary_release_year=${year}&page=1`,
-          "movie"
-        ),
-        fetchSearchPage(
-          `${TMDB_BASE}/search/tv?${base}&query=${stripped}&first_air_date_year=${year}&page=1`,
-          "tv"
-        )
-      );
-    }
-
-    // All strategies run in parallel — latency = slowest single request
     const batches = await Promise.all(tasks);
     const allRaw = batches.flat();
 
-    // Score, deduplicate, sort
     const scored = allRaw
       .filter((item) => item.title || item.name || item.original_name)
-      .map((item) => ({ ...item, _score: buildScore(item, query) }));
+      .map((item) => ({ ...item, _score: buildScore(item, query!) }));
 
     const deduped = deduplicateByScore(scored);
     const sorted = deduped.sort((a, b) => b._score - a._score);
 
-    // Paginate before fetching details (avoids fetching details for unneeded pages)
-    const totalResults = sorted.length;
-    const totalPages = Math.max(1, Math.ceil(totalResults / RESULTS_PER_PAGE));
-    const startIdx = (currentPage - 1) * RESULTS_PER_PAGE;
-    const pageSlice = sorted.slice(startIdx, startIdx + RESULTS_PER_PAGE);
-
-    if (pageSlice.length === 0) {
-      return NextResponse.json({
-        results: [],
-        page: currentPage,
-        total_pages: totalPages,
-        has_more: false,
-      });
-    }
-
-    // Fetch full details in parallel for this page only
-    const detailedResults = await Promise.all(
-      pageSlice.map(async (item): Promise<DetailedResult | null> => {
-        try {
-          const res = await fetch(
-            `${TMDB_BASE}/${item.media_type}/${item.id}?${base}`
-          );
-          if (!res.ok) return null;
-          const detail = await res.json();
-
-          // TV runtime: try multiple fields in priority order
-          const tvRuntime =
-            detail.episode_run_time?.[0] ??
-            detail.episode_run_time?.[1] ??
-            detail.runtime ??
-            null;
-
-          const runtime =
-            item.media_type === "movie"
-              ? detail.runtime ?? null
-              : tvRuntime;
-
-          const genres: string[] =
-            detail.genres?.map((g: { name: string }) => g.name) ?? [];
-
-          return {
-            id: item.id,
-            media_type: item.media_type,
-            title: item.title || item.name || item.original_name || "Untitled",
-            original_name: item.original_name || item.original_title || undefined,
-            poster_path: item.poster_path ?? null,
-            backdrop_path: item.backdrop_path ?? null,
-            release_date: item.release_date || item.first_air_date || null,
-            runtime,
-            popularity: item.popularity,
-            vote_average: detail.vote_average ?? 0,
-            vote_count: detail.vote_count ?? 0,
-            overview: detail.overview || item.overview || "",
-            genres,
-          };
-        } catch {
-          return null;
-        }
-      })
+    const totalPages = Math.max(1, Math.ceil(sorted.length / RESULTS_PER_PAGE));
+    const pageSlice = sorted.slice(
+      (currentPage - 1) * RESULTS_PER_PAGE,
+      currentPage * RESULTS_PER_PAGE
     );
 
-    const cleaned = detailedResults.filter(Boolean) as DetailedResult[];
+    const detailedResults = await Promise.all(
+      pageSlice.map((item) => fetchDetails(item, apiKey))
+    );
 
     return NextResponse.json({
-      results: cleaned,
+      results: detailedResults.filter(Boolean),
       page: currentPage,
       total_pages: totalPages,
       has_more: currentPage < totalPages,
     });
-  } catch (error) {
-    console.error("Search error:", error);
+
+  } catch {
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }
