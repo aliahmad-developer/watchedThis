@@ -288,16 +288,26 @@ export default function Navbar() {
 
   // ── Sync --navbar-h CSS variable ──
   useEffect(() => {
-    const el = document.getElementById("main-navbar");
-    if (!el) return;
-    const update = () => {
+  const el = document.getElementById("main-navbar");
+  if (!el) return;
+
+  let frameId: number;
+
+  const update = () => {
+    frameId = requestAnimationFrame(() => {
       document.documentElement.style.setProperty("--navbar-h", `${el.offsetHeight}px`);
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+    });
+  };
+
+  update();
+  const ro = new ResizeObserver(update);
+  ro.observe(el);
+
+  return () => {
+    ro.disconnect();
+    cancelAnimationFrame(frameId);
+  };
+}, []);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 

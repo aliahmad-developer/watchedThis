@@ -12,7 +12,6 @@ import {
   faTruckMoving,
   faWaveSquare,
 } from "@fortawesome/free-solid-svg-icons";
-import ColorThief from "color-thief-browser";
 import Fuse from "fuse.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -151,12 +150,14 @@ function useAmbient(imageUrl: string | null, light: boolean) {
   const [ambient, setAmbient] = useState<AmbientColor | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const busy = useRef(false);
-  const extract = useCallback(() => {
+
+  const extract = useCallback(async () => {
     if (!imgRef.current || busy.current) return;
     const img = imgRef.current;
     if (img.naturalWidth === 0) return;
     busy.current = true;
     try {
+      const { default: ColorThief } = await import("color-thief-browser");
       const ct = new ColorThief();
       const [r, g, b] = ct.getColor(img);
       setAmbient(buildAmbient(r, g, b, light));
@@ -166,9 +167,11 @@ function useAmbient(imageUrl: string | null, light: boolean) {
       busy.current = false;
     }
   }, [light]);
+
   useEffect(() => {
     setAmbient(null);
   }, [imageUrl, light]);
+
   useEffect(() => {
     if (!imgRef.current) return;
     const img = imgRef.current;
@@ -177,6 +180,7 @@ function useAmbient(imageUrl: string | null, light: boolean) {
     else img.addEventListener("load", run);
     return () => img.removeEventListener("load", run);
   }, [extract, imageUrl]);
+
   return { imgRef, ambient };
 }
 
@@ -488,7 +492,7 @@ export default function EchoPage() {
     }
     setSugLoading(true);
     try {
-      const variants = generateVariants(q); // ← replaces the old manual spread
+      const variants = generateVariants(q);
 
       const allRes = await Promise.all(
         variants.map((v) =>
@@ -517,10 +521,10 @@ export default function EchoPage() {
       setSugLoading(false);
     }
   }, []);
+
   // ── Reset to trending when query is cleared ───────────────────────────────
   useEffect(() => {
     if (query !== "") return;
-    // Don't re-fetch if we're already on trending
     if (isTrending) return;
 
     setError(null);
@@ -621,6 +625,7 @@ export default function EchoPage() {
       setLoadingMore(false);
     }
   }, [loadingMore, hasMore, page, isTrending, selectedHit]);
+
   // ── Variant generator ─────────────────────────────────────────────────────
   function generateVariants(query: string): string[] {
     const q = query.trim();
@@ -628,11 +633,8 @@ export default function EchoPage() {
 
     const words = q.split(/\s+/);
 
-    // Word splits for multi-word queries ("breaking bad" → "breaking", "bad")
     words.filter((w) => w.length >= 3).forEach((w) => set.add(w));
 
-    // Adjacent-char transpositions for single words only
-    // "freiren" → "frieren", "freirne", "feriiren" … one of them hits
     if (words.length === 1) {
       for (let i = 0; i < q.length - 1; i++) {
         const chars = q.split("");
@@ -643,6 +645,7 @@ export default function EchoPage() {
 
     return [...set].filter((v) => v.length >= 2);
   }
+
   const handleClear = useCallback(() => {
     setQuery("");
     setRawHits([]);
@@ -703,7 +706,7 @@ export default function EchoPage() {
               onChange={(e) => {
                 justSelected.current = false;
                 setQuery(e.target.value);
-                if (e.target.value) setDropOpen(true); 
+                if (e.target.value) setDropOpen(true);
               }}
               onFocus={() => {
                 if (!justSelected.current) setDropOpen(true);

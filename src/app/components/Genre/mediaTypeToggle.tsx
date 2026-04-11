@@ -1,9 +1,4 @@
-// components/genre/GenreHeader.tsx
 "use client";
-
-import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-
 interface GenreHeaderProps {
   genreName: string;
   mediaType: "movie" | "tv";

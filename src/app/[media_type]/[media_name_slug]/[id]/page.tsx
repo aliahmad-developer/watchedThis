@@ -1,12 +1,12 @@
 import React from "react";
 import { notFound } from "next/navigation";
-import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 import Desc from "@/app/components/randomMedia/detailsPage";
 import DetailsClientShell from "./clientShell";
 import type { Metadata } from "next";
-
+import { redirect } from "next/navigation";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface PageParams {
@@ -15,23 +15,15 @@ interface PageParams {
   id: string;
 }
 
-// ─── Server-side fetch ───────────────────────────────────────────────────────
-
-const fetchMediaDetails = cache(
-  async (
-    // ← wrap with cache()
-    media_type: string,
-    media_name_slug: string,
-    id: string,
-  ) => {
+const fetchMediaDetails = unstable_cache(
+  async (media_type: string, media_name_slug: string, id: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const res = await fetch(
-      `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
-      { next: { revalidate: 3600 } },
-    );
+    const res = await fetch(`${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`);
     if (!res.ok) return null;
     return res.json();
   },
+  ["media-details"],
+  { revalidate: 3600 }
 );
 
 export async function generateMetadata({
@@ -52,14 +44,28 @@ export async function generateMetadata({
     : `Details about ${mediaTitle}`;
 
   return {
-    title: `${mediaTitle} | RandoMovie`,
+    title: mediaTitle,
     description,
     openGraph: {
       title: mediaTitle,
       description,
       images: data.poster_path
-        ? [`https://image.tmdb.org/t/p/original${data.poster_path}`]
-        : [],
+        ? [
+            {
+              url: `https://image.tmdb.org/t/p/w1280${data.poster_path}`,
+              width: 1280,
+              height: 1920,
+              alt: mediaTitle,
+            },
+          ]
+        : [
+            {
+              url: "/og-default.png",
+              width: 1200,
+              height: 630,
+              alt: "RandoMovie",
+            },
+          ],
       type: "website",
     },
     twitter: {
@@ -87,7 +93,9 @@ export default async function SpecificRandomMediaPage({
 
   // Canonical slug — if the URL slug is wrong the client shell will redirect
   const expectedSlug = createSlug(mediaTitle);
-
+  if (media_name_slug !== expectedSlug) {
+  redirect(`/random/${media_type}/${expectedSlug}/${id}`);
+}
   return (
     // DetailsClientShell handles scroll-to-top + slug redirect only
     <DetailsClientShell

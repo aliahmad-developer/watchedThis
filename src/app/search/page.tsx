@@ -118,7 +118,7 @@ function SearchContent() {
       }
     };
 
-    const timer = setTimeout(fetchResults, 300);
+    const timer = setTimeout(fetchResults, page === 1 && results.length === 0 ? 0 : 300);
     return () => clearTimeout(timer);
   }, [activeTerm, page]);
 

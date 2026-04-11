@@ -1,6 +1,3 @@
-// components/genre/types.ts
-
-// 🎭 TMDB genre ID map for movie and TV
 export const GENRE_IDS: Record<"movie" | "tv", Record<string, number>> = {
   movie: {
     Action: 28,
@@ -49,7 +46,6 @@ export const GENRE_IDS: Record<"movie" | "tv", Record<string, number>> = {
   },
 } as const;
 
-// 🧩 Minimal item used across genre/tmdb
 export interface MediaItem {
   id: number;
   title?: string;

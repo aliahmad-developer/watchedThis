@@ -74,7 +74,7 @@
 }
 
 html {
-  data-scroll-behavior: smooth;
+  scroll-behavior: smooth;
   scrollbar-gutter: stable;
 }
 

@@ -1,18 +1,59 @@
 import "./globals.css";
-import "@fortawesome/fontawesome-svg-core/styles.css";
 import "../lib/fontawesome";
 import ClientProviders from "./components/utilities/clientProvider/clientProvider";
 import BackButton from "./components/utilities/backButton";
 import Navbar from "./components/navbar/page";
 import Footer from "./components/footer/footer";
+import { Metadata } from "next";
 
-
-export const metadata = {
-  title: "RandoMovie.com",
+export const metadata: Metadata = {
+  metadataBase: new URL("https://www.randomovie.com"),
+  title: {
+    default: "RandoMovie",
+    template: "%s | RandoMovie",
+  },
   description: "Discover movies and TV shows randomly",
+  keywords: [
+    "movies",
+    "TV shows",
+    "random movie",
+    "film discovery",
+    "what to watch",
+    "movie recommendations",
+    "movie like",
+    "series like",
+  ],
+  openGraph: {
+    siteName: "RandoMovie",
+    type: "website",
+    locale: "en_US",
+    url: "https://www.randomovie.com",
+    title: "RandoMovie, Discover Movies Randomly",
+    description: "Discover movies and TV shows randomly",
+    images: [
+      {
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: "RandoMovie",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RandoMovie – Discover Movies Randomly",
+    description: "Discover movies and TV shows randomly",
+    images: ["/og-default.png"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/site.webmanifest",
 };
-
-export const viewport = { scrollRestoration: "manual" };
 
 export default function RootLayout({
   children,
@@ -22,25 +63,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://image.tmdb.org" />
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href="/apple-touch-icon.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="/favicon-32x32.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href="/favicon-16x16.png"
-        />
-        <link rel="manifest" href="/site.webmanifest" />
+        <link rel="preconnect" href="https://image.tmdb.org" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://image.tmdb.org" />
       </head>
 
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">

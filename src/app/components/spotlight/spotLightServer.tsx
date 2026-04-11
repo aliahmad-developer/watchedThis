@@ -13,13 +13,23 @@ export default async function PopularSpotlightSliderServer({
   try {
     const results = await getSpotlightData();
     const headersList = await headers();
-   const ua = headersList.get("user-agent") || "";
-  const isMobile = /mobile|android|iphone|ipad/i.test(ua);
+    const ua = headersList.get("user-agent") || "";
+    const isMobile = /mobile|android|iphone|ipad/i.test(ua);
+    const firstBackdrop = results[0]?.backdrop_path;
+
     return (
       <section
         aria-label="Popular Spotlight Slider"
         className={`spotlight-section ${className}`}
       >
+        {firstBackdrop && (
+          <link
+            rel="preload"
+            as="image"
+            href={`https://image.tmdb.org/t/p/w1280${firstBackdrop}`}
+            fetchPriority="high"
+          />
+        )}
         <PopularSpotlightSliderClient
           items={results}
           slideDuration={slideDuration}

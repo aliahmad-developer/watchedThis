@@ -15,7 +15,7 @@ interface MediaCardProps {
   };
   displayTitle?: string;
   hideMetaData?: boolean;
-  index?: number; // for stagger delay
+  index?: number;
 }
 
 export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 }: MediaCardProps) {
@@ -29,7 +29,6 @@ export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 
   const slug = createSlug(title);
   const href = `/${mediaType}/${slug}/${item.id}`;
 
-  // Cap stagger at 300ms so late cards don't feel sluggish
   const delay = `${Math.min(index * 40, 300)}ms`;
 
   return (
@@ -42,7 +41,7 @@ export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 
     >
       {/* Poster */}
       <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl">
-        <div className="absolute inset-0 transition-transform duration-300 ease-out group-hover:scale-[1.04] transform-gpu will-change-transform">
+        <div className="absolute inset-0 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
           <MediaPoster data={item} />
         </div>
         {/* Subtle shine on hover */}

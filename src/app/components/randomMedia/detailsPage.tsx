@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import ColorThief from "color-thief-browser";
 import KeywordsSection from "./MediaInfo/KeywordSection";
 import MediaPoster from "./mediaPoster";
 import MediaInfo from "./MediaInfo/mediaInfo";
@@ -17,12 +16,6 @@ interface DescProps {
   isLoading?: boolean;
 }
 
-/**
- * Ambient text color object passed to all children.
- * primary   — title-level text (bright tint of dominant color)
- * secondary — label / supporting text (slightly dimmer tint)
- * muted     — hints, keywords, "+more" counters (low-opacity tint)
- */
 export interface AmbientTextColors {
   primary: string;
   secondary: string;
@@ -198,16 +191,16 @@ const useAmbientColor = (
 ) => {
   const [ambient, setAmbient] = useState<AmbientColor | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const colorThiefRef = useRef<ColorThief | null>(null);
   const extractingRef = useRef(false);
 
   const extractColor = useCallback(
-    (img: HTMLImageElement) => {
+    async (img: HTMLImageElement) => {
       if (extractingRef.current || img.naturalWidth === 0) return;
       extractingRef.current = true;
       try {
-        if (!colorThiefRef.current) colorThiefRef.current = new ColorThief();
-        const [r, g, b] = colorThiefRef.current.getColor(img);
+        const { default: ColorThief } = await import("color-thief-browser");
+        const ct = new ColorThief();
+        const [r, g, b] = ct.getColor(img);
         setAmbient(buildAmbientColor(r, g, b, isLightMode));
       } catch {
         setAmbient(null);
@@ -279,7 +272,6 @@ function MediaActions({
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Button appearance adapts to the ambient backdrop
   const btnBg =
     textScheme === "light"
       ? `rgba(${rgbColor},0.55)`
@@ -298,7 +290,6 @@ function MediaActions({
       setCopied(true);
       copyTimer.current = setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback for browsers that block clipboard without interaction
       const el = document.createElement("textarea");
       el.value = title;
       el.style.cssText = "position:fixed;top:-9999px;left:-9999px";
@@ -312,10 +303,7 @@ function MediaActions({
   }, [title, copied]);
 
   const handleShare = useCallback(async () => {
-    const shareData = {
-      title,
-      url: window.location.href,
-    };
+    const shareData = { title, url: window.location.href };
     if (navigator.share && navigator.canShare?.(shareData)) {
       try {
         await navigator.share(shareData);
@@ -323,12 +311,16 @@ function MediaActions({
         // user dismissed — no-op
       }
     } else {
-      // Fallback: copy the page URL
       await navigator.clipboard.writeText(window.location.href).catch(() => {});
     }
   }, [title]);
 
-  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    [],
+  );
 
   const btnStyle: React.CSSProperties = {
     display: "flex",
@@ -358,7 +350,6 @@ function MediaActions({
         zIndex: 20,
       }}
     >
-      {/* Copy title */}
       <button
         onClick={handleCopy}
         title={copied ? "Copied!" : `Copy title: ${title}`}
@@ -375,12 +366,15 @@ function MediaActions({
             width: "0.875rem",
             height: "0.875rem",
             transition: "opacity 200ms ease",
-            color: copied ? (textScheme === "light" ? "rgba(134,239,172,0.95)" : "rgba(21,128,61,0.95)") : iconColor,
+            color: copied
+              ? textScheme === "light"
+                ? "rgba(134,239,172,0.95)"
+                : "rgba(21,128,61,0.95)"
+              : iconColor,
           }}
         />
       </button>
 
-      {/* Share */}
       <button
         onClick={handleShare}
         title="Share"
@@ -514,7 +508,7 @@ export default function Desc({
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
 
-          {/* Poster — fades up immediately */}
+          {/* Poster */}
           <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">
             {isLoading ? (
               <MediaPosterSkeleton />
@@ -530,7 +524,7 @@ export default function Desc({
             )}
           </div>
 
-          {/* Info — staggered 80ms after poster */}
+          {/* Info */}
           <div className="w-full lg:w-2/3 xl:w-3/4">
             {isLoading ? (
               <MediaInfoSkeleton />
@@ -548,11 +542,10 @@ export default function Desc({
               </div>
             )}
           </div>
-
         </div>
       </div>
 
-      {/* Keywords strip — staggered 150ms after poster */}
+      {/* Keywords strip */}
       {isLoading ? (
         <div className="relative z-10 px-4 sm:px-6 pb-6 animate-pulse">
           <div className="flex flex-wrap gap-2">
@@ -578,7 +571,7 @@ export default function Desc({
         </div>
       ) : null}
 
-      {/* Copy & Share FABs — bottom-right, hidden while loading */}
+      {/* Copy & Share FABs */}
       {!isLoading && (
         <MediaActions
           title={mediaTitle}

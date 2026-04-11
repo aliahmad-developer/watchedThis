@@ -102,7 +102,7 @@ export async function trackSearch(query: string): Promise<void> {
 //    handleSearch() { trackFindFilters({ ... }); router.push(...) }
 
 export interface FindFilterSnapshot {
-  mediaType: "movie" | "tv";
+  mediaType: "movie" | "tv" | "both";
   genres: number[];
   excludeGenres: number[];
   keywords: string[];

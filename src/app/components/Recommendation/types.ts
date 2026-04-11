@@ -17,7 +17,7 @@ export interface MediaItem {
   tags?: string[];
 }
 export interface FindFilterSnapshot {
-  mediaType: "movie" | "tv";
+  mediaType: "movie" | "tv" | "both";
   genres: number[];
   excludeGenres: number[];
   keywords: string[];

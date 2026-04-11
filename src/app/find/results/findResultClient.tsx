@@ -4,10 +4,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import ColorThief from "color-thief-browser";
 import { createSlug } from "../../components/utilities/createSlug";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faEarth, faSearch, faStar } from "@fortawesome/free-solid-svg-icons";
 
 interface MediaResult {
   id: number;
@@ -59,6 +58,7 @@ const TV_GENRES: Record<string, number> = {
 const ALL_GENRES = { ...MOVIE_GENRES, ...TV_GENRES };
 
 // ── Ambient color helpers ─────────────────────────────────────────────────────
+
 const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
 
 const calculateLuminance = (r: number, g: number, b: number) =>
@@ -66,8 +66,8 @@ const calculateLuminance = (r: number, g: number, b: number) =>
 
 interface AmbientColor {
   solid: string;
-  rgb: string;       // processed — used for gradients & card bg
-  rawRgb: string;    // raw dominant — used for text tinting
+  rgb: string; // processed — used for gradients & card bg
+  rawRgb: string; // raw dominant — used for text tinting
   luminance: number; // luminance of processed color — used for text flip
 }
 
@@ -103,13 +103,6 @@ const buildAmbientColor = (
   }
 };
 
-/**
- * Ambient text color — same logic as RandomMedia.
- *
- * Light mode + bright gradient (lum ≥ 0.45): dark tinted text
- * Light mode + dark gradient  (lum  < 0.45): light tinted text
- * Dark mode (always):                         light tinted text
- */
 const getAmbientTextColor = (
   isLightMode: boolean,
   rawRgb: string,
@@ -119,22 +112,20 @@ const getAmbientTextColor = (
   const useLightText = !isLightMode || processedLuminance < 0.45;
 
   if (!useLightText) {
-    // Light mode, bright gradient — dark tinted
     const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
     const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
     return {
-      primary:   `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
+      primary: `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
       secondary: `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`,
-      muted:     `rgba(${ds(r)},${ds(g)},${ds(b)},0.55)`,
+      muted: `rgba(${ds(r)},${ds(g)},${ds(b)},0.55)`,
     };
   } else {
-    // Dark gradient (any theme) — light pastel tinted
     const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
-    const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85),  255);
+    const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85), 255);
     return {
-      primary:   `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
+      primary: `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
       secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`,
-      muted:     `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)`,
+      muted: `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)`,
     };
   }
 };
@@ -169,12 +160,13 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
   const imgRef = useRef<HTMLImageElement>(null);
   const extractingRef = useRef(false);
 
-  const extract = useCallback(() => {
+  const extract = useCallback(async () => {
     if (!imgRef.current || extractingRef.current) return;
     const img = imgRef.current;
     if (img.naturalWidth === 0) return;
     extractingRef.current = true;
     try {
+      const { default: ColorThief } = await import("color-thief-browser");
       const ct = new ColorThief();
       const [r, g, b] = ct.getColor(img);
       setAmbient(buildAmbientColor(r, g, b, isLightMode));
@@ -203,6 +195,7 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
 
   return { imgRef, ambient };
 };
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FindResultsPage() {
@@ -256,28 +249,71 @@ export default function FindResultsPage() {
     router.push(`/find?${filterParams.toString()}`);
   };
 
-  const mediaType = searchParams.get("mediaType") || "movie";
-  const keyword = searchParams.get("keyword") || "";
-  const genreIds = searchParams.get("genres")?.split(",").map(Number) || [];
+  // Replace the param-reading block and header section:
+
+  const mediaTypes = (searchParams.get("mediaType") || "movie,tv").split(",");
+  const isBoth = mediaTypes.length === 2;
+  const isTV = mediaTypes.includes("tv") && !mediaTypes.includes("movie");
+  const isMovie = mediaTypes.includes("movie") && !mediaTypes.includes("tv");
+
+  const keywords = searchParams.get("keywords")?.split(",") ?? [];
+  const excludeKeywords = searchParams.get("excludeKeywords")?.split(",") ?? [];
+  const genreIds = searchParams.get("genres")?.split(",").map(Number) ?? [];
+  const excludeGenreIds =
+    searchParams.get("excludeGenres")?.split(",").map(Number) ?? [];
   const genreNames = genreIds
+    .map((id) => Object.entries(ALL_GENRES).find(([, v]) => v === id)?.[0])
+    .filter(Boolean);
+  const excludeGenreNames = excludeGenreIds
     .map((id) => Object.entries(ALL_GENRES).find(([, v]) => v === id)?.[0])
     .filter(Boolean);
   const minYear = searchParams.get("minYear");
   const maxYear = searchParams.get("maxYear");
   const minRating = searchParams.get("minRating");
   const maxRating = searchParams.get("maxRating");
+  const minRuntime = searchParams.get("minRuntime");
+  const maxRuntime = searchParams.get("maxRuntime");
+  const language = searchParams.get("language");
+  const minVotes = searchParams.get("minVotes");
+  const strict = searchParams.get("strict") === "true";
+  const tvStatus = searchParams.get("tvStatus")?.split(",") ?? [];
+  const networkIds = searchParams.get("networks")?.split(",").map(Number) ?? [];
+
+  const NETWORK_LABELS: Record<number, string> = {
+    213: "Netflix",
+    1024: "Amazon",
+    2552: "Apple TV+",
+    49: "HBO",
+    2739: "Disney+",
+    453: "Hulu",
+    174: "AMC",
+    19: "Fox",
+    6: "NBC",
+    2: "ABC",
+    16: "CBS",
+    56: "BBC",
+    4353: "Peacock",
+    1436: "Paramount+",
+  };
+  const TV_STATUS_LABELS: Record<string, string> = {
+    "0": "In Production",
+    "1": "Returning",
+    "2": "Planned",
+    "3": "Cancelled",
+    "4": "Ended",
+  };
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
         {/* Header */}
         <div className="text-center py-2">
-          <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold capitalize">
-            {mediaType === "tv" ? "TV Shows" : "Movies"}
-            {keyword && (
+          <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold">
+            {isBoth ? "Movies & TV Shows" : isTV ? "TV Shows" : "Movies"}
+            {keywords.length > 0 && (
               <span className="text-light-accent dark:text-dark-accent">
                 {" "}
-                — "{keyword}"
+                {keywords.join(", ")}
               </span>
             )}
           </h1>
@@ -289,24 +325,103 @@ export default function FindResultsPage() {
         </div>
 
         {/* Filter chips */}
-        {(genreNames.length > 0 || minYear || minRating) && (
+        {(genreNames.length > 0 ||
+          excludeGenreNames.length > 0 ||
+          excludeKeywords.length > 0 ||
+          minYear ||
+          minRating ||
+          minRuntime ||
+          language ||
+          minVotes ||
+          strict ||
+          tvStatus.length > 0 ||
+          networkIds.length > 0) && (
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {/* Include genres */}
             {genreNames.map((name) => (
               <span
                 key={name}
-                className="text-10px sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-accent/10 dark:bg-dark-accent/10 text-light-accent dark:text-dark-accent border border-light-accent/20 dark:border-dark-accent/20"
+                className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-accent/10 dark:bg-dark-accent/10 text-light-accent dark:text-dark-accent border border-light-accent/20 dark:border-dark-accent/20"
               >
                 {name}
               </span>
             ))}
+            {/* Exclude genres */}
+            {excludeGenreNames.map((name) => (
+              <span
+                key={name}
+                className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20"
+              >
+                ✕ {name}
+              </span>
+            ))}
+            {/* Exclude keywords */}
+            {excludeKeywords.map((kw) => (
+              <span
+                key={kw}
+                className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20"
+              >
+                ✕ {kw}
+              </span>
+            ))}
+            {/* Year */}
             {(minYear || maxYear) && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 {minYear} – {maxYear}
               </span>
             )}
+            {/* Rating */}
             {(minRating || maxRating) && (
+              <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
+               <FontAwesomeIcon icon={faStar}/>  {minRating} – {maxRating}
+              </span>
+            )}
+            {/* Runtime */}
+            {(minRuntime || maxRuntime) && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
-                ★ {minRating} – {maxRating}
+                {minRuntime ?? 0}m – {maxRuntime ?? 240}m
+              </span>
+            )}
+            {/* Language */}
+            {language && (
+              <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
+                <FontAwesomeIcon icon={faEarth}/> {language.toUpperCase()}
+              </span>
+            )}
+            {/* Min votes */}
+            {minVotes && (
+              <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
+                ≥{Number(minVotes).toLocaleString()} votes
+              </span>
+            )}
+            {/* Networks */}
+            {networkIds.map(
+              (id) =>
+                NETWORK_LABELS[id] && (
+                  <span
+                    key={id}
+                    className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text"
+                  >
+                    {NETWORK_LABELS[id]}
+                  </span>
+                ),
+            )}
+            {/* TV Status */}
+            {tvStatus.map(
+              (s) =>
+                TV_STATUS_LABELS[s] && (
+                  <span
+                    key={s}
+                    className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text"
+                  >
+                    {TV_STATUS_LABELS[s]}
+                  </span>
+                ),
+            )}
+            {/* Strict mode */}
+            {strict && (
+              <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                Strict
               </span>
             )}
           </div>
@@ -401,7 +516,11 @@ function ResultCard({ item }: { item: MediaResult }) {
   const rgbColor = ambient?.rgb ?? fallbackRgb;
   const rawRgb = ambient?.rawRgb ?? fallbackRgb;
   const processedLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
-  const textColor = getAmbientTextColor(isLightMode, rawRgb, processedLuminance);
+  const textColor = getAmbientTextColor(
+    isLightMode,
+    rawRgb,
+    processedLuminance,
+  );
 
   const fullTint = `rgba(${rgbColor}, 0.45)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;

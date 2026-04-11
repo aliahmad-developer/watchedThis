@@ -4,7 +4,7 @@ interface CacheEntry<T> {
 }
 
 interface CacheOptions {
-  ttl: number // ms
+  ttl: number 
 }
 
 class ServerCache {
@@ -34,8 +34,6 @@ class ServerCache {
     }
   }
 }
-
-// Module-level singleton — persists across requests in the same server process
 export const cache = new ServerCache()
 
 export const TTL = {

@@ -46,6 +46,7 @@ import {
   faUserPlus,
   faWandMagicSparkles,
   faXmark,
+  faEarth,
 } from '@fortawesome/free-solid-svg-icons'
 
 import {
