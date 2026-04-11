@@ -373,7 +373,7 @@ export default function FindResultsPage() {
             {/* Rating */}
             {(minRating || maxRating) && (
               <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
-               <FontAwesomeIcon icon={faStar}/>  {minRating} – {maxRating}
+                <FontAwesomeIcon icon={faStar} /> {minRating} – {maxRating}
               </span>
             )}
             {/* Runtime */}
@@ -385,7 +385,7 @@ export default function FindResultsPage() {
             {/* Language */}
             {language && (
               <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
-                <FontAwesomeIcon icon={faEarth}/> {language.toUpperCase()}
+                <FontAwesomeIcon icon={faEarth} /> {language.toUpperCase()}
               </span>
             )}
             {/* Min votes */}
@@ -616,11 +616,17 @@ function ResultCard({ item }: { item: MediaResult }) {
 
 function CardSkeleton() {
   return (
-    <div className="w-full rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-700 animate-pulse">
-      <div className="aspect-4/3 sm:aspect-16/6 lg:aspect-16/5" />
+    <div className="w-full rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse border border-light-border dark:border-dark-border">
+      <div className="aspect-4/3 sm:aspect-16/6 lg:aspect-16/5 w-full" />
+
       <div className="px-3 sm:px-4 py-2 sm:py-3 space-y-2">
-        <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/3" />
-        <div className="h-2.5 bg-gray-300 dark:bg-gray-600 rounded w-1/2" />
+        <div className="h-3 sm:h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-2/5" />
+
+        <div className="flex gap-2">
+          <div className="h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded w-16" />
+          <div className="h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded w-12" />
+          <div className="h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded w-20" />
+        </div>
       </div>
     </div>
   );
