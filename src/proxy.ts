@@ -28,7 +28,23 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 }
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Handle Firebase action URLs
+  const mode = searchParams.get("mode");
+  const oobCode = searchParams.get("oobCode");
+
+  if (oobCode && mode === "resetPassword") {
+    const url = new URL("/reset-password", request.url);
+    url.searchParams.set("oobCode", oobCode);
+    return NextResponse.redirect(url);
+  }
+
+  if (oobCode && mode === "verifyEmail") {
+    const url = new URL("/verify-email", request.url);
+    url.searchParams.set("oobCode", oobCode);
+    return NextResponse.redirect(url);
+  }
 
   const token =
     request.cookies.get("__session")?.value ||
@@ -48,5 +64,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*|api).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)",
+  ],
 };

@@ -2,23 +2,32 @@ import { getApps, initializeApp, cert, App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 let adminApp: App;
+console.log("[route] loaded");
+
+function getServiceAccount() {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  }
+
+  return {
+    projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+  };
+}
 
 try {
-  adminApp =
-    getApps().length > 0
-      ? getApps()[0]
-      : initializeApp({
-          credential: process.env.FIREBASE_SERVICE_ACCOUNT
-            ? cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
-            : cert({
-                projectId: process.env.FIREBASE_ADMIN_PROJECT_ID!,  
-                clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL!,
-                privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"), 
-              }),
-        });
+  if (!getApps().length) {
+    adminApp = initializeApp({
+      credential: cert(getServiceAccount()),
+    });
+  } else {
+    adminApp = getApps()[0];
+  }
 } catch (e) {
   console.error("[firebaseAdmin] init error:", e);
   throw e;
 }
 
-export const adminDb = getFirestore(adminApp!);
+export const adminDb = getFirestore(adminApp);
+export { adminApp };

@@ -294,20 +294,28 @@ export default function AuthPage() {
     [showMessage],
   );
 
-  const handleSendVerification = useCallback(async () => {
-    const currentUser = authRef.current?.currentUser;
-    if (!currentUser) return;
+ const handleSendVerification = useCallback(async () => {
+  const currentUser = authRef.current?.currentUser;
+  if (!currentUser?.email) return;
 
-    setIsSendingVerification(true);
-    try {
-      await currentUser.sendEmailVerification();
-      showMessage("Verification email sent! Check your inbox.");
-    } catch (err: any) {
-      showMessage(err.message || "Failed to send verification email", true);
-    } finally {
-      setIsSendingVerification(false);
-    }
-  }, [showMessage]);
+  setIsSendingVerification(true);
+  try {
+    const res = await fetch("/api/auth/sendVerification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: currentUser.email }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    showMessage("Verification email sent! Check your inbox.");
+  } catch (err: any) {
+    showMessage(err.message || "Failed to send verification email", true);
+  } finally {
+    setIsSendingVerification(false);
+  }
+}, [showMessage]);
 
   const profileCard = useMemo(() => {
     if (!user) return null;

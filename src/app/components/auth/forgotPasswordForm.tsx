@@ -14,25 +14,29 @@ export default function ForgotPasswordForm({ onBack, onSuccess }: ForgotPassword
   const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+  e.preventDefault();
+  setLoading(true);
+  setMessage("");
 
-    try {
-      const result = await forgotPassword(email);
-      if (result.success) {
-        setSent(true);
-        setMessage(result.message);
-        if (onSuccess) onSuccess();
-      } else {
-        setMessage(result.message);
-      }
-    } catch (error: any) {
-      setMessage(error.message || "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const res = await fetch("/api/auth/resetPassword", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || "Something went wrong.");
+
+    setSent(true);
+    if (onSuccess) onSuccess();
+  } catch (error: any) {
+    setMessage(error.message || "Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <form

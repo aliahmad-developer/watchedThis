@@ -5,7 +5,7 @@ import SignupForm from "./signUpForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClose, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { checkRedirectResult } from "./auth";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
@@ -24,7 +24,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [message, setMessage] = useState("");
   const [messageKey, setMessageKey] = useState(0);
   const [auth, setAuth] = useState<any>(null);
-  const [sendEmailVerification, setSendEmailVerification] = useState<((user: User) => Promise<void>) | null>(null);
+  const [sendEmailVerification, setSendEmailVerification] = useState<
+    ((user: User) => Promise<void>) | null
+  >(null);
 
   // Drag state
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -68,15 +70,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   }, []);
 
   const handleSendVerification = async () => {
-    if (!user || !auth) return;
-    
+    if (!user?.email) return;
+
     setIsSendingVerification(true);
     try {
-      await auth.currentUser?.sendEmailVerification();
-      showMessage("Verification email sent! Check your inbox (including spam).");
+      const res = await fetch("/api/auth/sendVerification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      showMessage(
+        "Verification email sent! Check your inbox (including spam).",
+      );
     } catch (err: any) {
-      showMessage("Failed to send verification email. Please try again.");
-      console.error("Verification error:", err);
+      showMessage(
+        err.message || "Failed to send verification email. Please try again.",
+      );
     } finally {
       setIsSendingVerification(false);
     }
@@ -112,11 +125,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   // Check redirect result
   useEffect(() => {
-    checkRedirectResult().then((result) => {
-      if (result.success && result.user) {
-        onClose();
-      }
-    }).catch(console.error);
+    checkRedirectResult()
+      .then((result) => {
+        if (result.success && result.user) {
+          onClose();
+        }
+      })
+      .catch(console.error);
   }, [onClose]);
 
   if (!isOpen || !show) return null;
@@ -160,8 +175,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   // Event handlers
-  const handleTouchStart = (e: React.TouchEvent) => onDragStart(e.touches[0].clientY);
-  const handleTouchMove = (e: React.TouchEvent) => onDragMove(e.touches[0].clientY);
+  const handleTouchStart = (e: React.TouchEvent) =>
+    onDragStart(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) =>
+    onDragMove(e.touches[0].clientY);
   const handleTouchEnd = () => onDragEnd();
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -186,9 +203,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={() => setMode(tab)}
               className={`
                 flex-1 py-2 text-sm font-medium transition-colors border-b-2 -mb-px bg-transparent rounded-none
-                ${mode === tab
-                  ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent shadow-sm"
-                  : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text hover:border-light-border/50 dark:hover:border-dark-border/50"
+                ${
+                  mode === tab
+                    ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent shadow-sm"
+                    : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text hover:border-light-border/50 dark:hover:border-dark-border/50"
                 }
               `}
             >
@@ -215,7 +233,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {isSendingVerification ? "Sending..." : "Resend Verification Email"}
           </button>
           {message && (
-            <p key={messageKey} className="text-xs text-light-accent dark:text-dark-accent">
+            <p
+              key={messageKey}
+              className="text-xs text-light-accent dark:text-dark-accent"
+            >
               {message}
             </p>
           )}
@@ -239,7 +260,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       {mode === "forgot" && (
         <ForgotPasswordForm
           onBack={() => setMode("login")}
-          onSuccess={() => showMessage("Password reset email sent! Check your inbox.")}
+          onSuccess={() =>
+            showMessage("Password reset email sent! Check your inbox.")
+          }
         />
       )}
     </div>
@@ -263,7 +286,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-light-card dark:bg-dark-card rounded-t-3xl shadow-2xl border border-light-border dark:border-dark-border overflow-hidden max-h-[90vh]"
         style={{
           transform: `translateY(${isDragging.current || isSnapping ? dragOffset : isOpen ? 0 : 100}%)`,
-          transition: isSnapping ? "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+          transition: isSnapping
+            ? "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
+            : "none",
         }}
       >
         {/* Drag handle */}
@@ -283,12 +308,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           className="absolute top-3 right-3 p-2 rounded-full bg-light-bg/80 dark:bg-dark-bg/80 backdrop-blur-sm hover:bg-light-card dark:hover:bg-dark-card transition-all z-10"
           aria-label="Close modal"
         >
-          <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-light-secondary-text dark:text-dark-secondary-text" />
+          <FontAwesomeIcon
+            icon={faXmark}
+            className="w-4 h-4 text-light-secondary-text dark:text-dark-secondary-text"
+          />
         </button>
 
-        <div className="p-4 pb-8 overflow-y-auto">
-          {innerContent}
-        </div>
+        <div className="p-4 pb-8 overflow-y-auto">{innerContent}</div>
       </div>
 
       {/* Desktop: Centered dialog */}
@@ -297,7 +323,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           className="w-full max-w-md bg-light-card dark:bg-dark-card rounded-2xl shadow-2xl border border-light-border dark:border-dark-border p-6 relative transition-all duration-300"
           style={{
             opacity: isOpen ? 1 : 0,
-            transform: isOpen ? "scale(1) translateY(0)" : "scale(0.95) translateY(-10px)",
+            transform: isOpen
+              ? "scale(1) translateY(0)"
+              : "scale(0.95) translateY(-10px)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -306,7 +334,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             className="absolute top-4 right-4 p-2 rounded-full bg-light-bg/80 dark:bg-dark-bg/80 backdrop-blur-sm hover:bg-light-card dark:hover:bg-dark-card transition-all z-10"
             aria-label="Close modal"
           >
-            <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-light-secondary-text dark:text-dark-secondary-text" />
+            <FontAwesomeIcon
+              icon={faXmark}
+              className="w-4 h-4 text-light-secondary-text dark:text-dark-secondary-text"
+            />
           </button>
           {innerContent}
         </div>
@@ -315,5 +346,4 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   );
 
   return createPortal(modal, document.body);
-}  
-
+}
