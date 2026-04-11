@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   title: "Find by Scene",
   description: "Identify a movie or TV show from a scene, screenshot, or camera capture.",
   openGraph: {
-    title: "Find by Scene | RandoMovie",
+    title: "Find by Scene | WatchedThis",
     description: "Identify a movie or TV show from a scene, screenshot, or camera capture.",
-    url: "https://www.randomovie.com/find",
+    url: "https://www.WatchedThis.com/find",
   },
 };
 

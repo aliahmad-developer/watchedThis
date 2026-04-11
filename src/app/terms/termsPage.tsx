@@ -34,13 +34,13 @@ export default function TermsPage() {
 
         {/* Intro prose */}
         <p className="text-light-body-text dark:text-dark-body-text leading-relaxed mb-12 text-base">
-          These are the terms for using RandoMovie. Nothing unexpected, nothing
+          These are the terms for using WatchedThis. Nothing unexpected, nothing
           buried in legal jargon; just the basics.
         </p>
 
         <div className="space-y-5">
           <Section icon={faUser} title="Who's behind this?">
-            RandoMovie is a personal project, not a company, not a VC-backed
+            WatchedThis is a personal project, not a company, not a VC-backed
             startup with a ping-pong table, and definitely not a subsidiary of
             some faceless corporation. It's just a developer who got tired of
             the "what should we watch?" conversation taking longer than the
@@ -58,7 +58,7 @@ export default function TermsPage() {
             <ExternalLink href="https://www.themoviedb.org">
               TMDB (The Movie Database)
             </ExternalLink>
-            . RandoMovie doesn't own any of it, claim any of it, or pretend to.
+            . WatchedThis doesn't own any of it, claim any of it, or pretend to.
             Everything belongs to TMDB and the respective copyright holders.
             We're just the middleman helping you finally commit to something.
           </Section>
@@ -72,10 +72,10 @@ export default function TermsPage() {
           </Section>
 
           <Section icon={faShield} title="Privacy">
-            RandoMovie doesn't collect more than it needs. Firebase and Google
+            WatchedThis doesn't collect more than it needs. Firebase and Google
             handle authentication on their end, so their respective privacy
-            policies apply there. Beyond that, what you do on RandoMovie stays
-            on RandoMovie, unless you tell your friends about it, which would
+            policies apply there. Beyond that, what you do on WatchedThis stays
+            on WatchedThis, unless you tell your friends about it, which would
             honestly be great.
           </Section>
 
@@ -87,7 +87,7 @@ export default function TermsPage() {
           </Section>
 
           <Section icon={faTriangleExclamation} title="Disclaimer">
-            RandoMovie is provided as-is. Things occasionally break. When they
+            WatchedThis is provided as-is. Things occasionally break. When they
             do, they get fixed. No guarantees are made about uptime, data
             accuracy, or the quality of what the algorithm suggests, though
             genuine effort goes into that last one.
@@ -106,7 +106,7 @@ export default function TermsPage() {
 
         {/* Footer note */}
         <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-xs mt-8 pb-4">
-          RandoMovie is ad-free *cough *cough for now.
+          WatchedThis is ad-free *cough *cough for now.
           <br /> You're a visitor, not a product. Now go watch something.
         </p>
       </div>

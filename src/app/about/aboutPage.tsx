@@ -29,7 +29,7 @@ export default function AboutPage() {
                 Creators
               </p>
               <h1 className="text-2xl xs:text-3xl sm:text-5xl font-bold leading-tight">
-                RandoMovie
+                WatchedThis
               </h1>
             </div>
 
@@ -65,7 +65,7 @@ export default function AboutPage() {
             <span className="inline text-light-accent dark:text-dark-accent font-semibold">Missy</span>{" "}
             and{" "}
             <span className="inline text-light-accent dark:text-dark-accent font-semibold">Tiba</span>
-            , the creators. Tired of endless Netflix scrolling, we built RandoMovie. This page
+            , the creators. Tired of endless Netflix scrolling, we built WatchedThis. This page
             shares our story, motivation, and vision.
           </p>
 
@@ -80,12 +80,12 @@ export default function AboutPage() {
             </Section>
 
             <Section icon={faFilm} title="2. Our story">
-              Movie nights always stuck on choosing. We created RandoMovie for random discovery.
+              Movie nights always stuck on choosing. We created WatchedThis for random discovery.
               No ads, no tracking, just fun. Built with coffee and passion.
             </Section>
 
             <Section icon={faHeart} title="3. Our philosophy">
-              No ads, no data selling, no endless scrolls. We made RandoMovie clean and simple.
+              No ads, no data selling, no endless scrolls. We made WatchedThis clean and simple.
               You're a guest, not a customer. Missy designs intuitive UIs; Tiba keeps data secure.
               Focus on movie fun.
             </Section>
@@ -117,7 +117,7 @@ export default function AboutPage() {
           {/* Divider */}
           <div className="border-t border-light-border dark:border-dark-border mt-10 pt-6">
             <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-xs">
-              Thanks for using RandoMovie. Made with <FontAwesomeIcon color="#D4AF37" icon={faHeart}/> by{" "}
+              Thanks for using WatchedThis. Made with <FontAwesomeIcon color="#D4AF37" icon={faHeart}/> by{" "}
               <span className="inline text-light-accent dark:text-dark-accent font-semibold">
                 Missy & Tiba
               </span>

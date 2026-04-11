@@ -35,7 +35,7 @@ export async function generateMetadata({
   const data = await fetchMediaDetails(media_type, media_name_slug, id);
 
   if (!data) {
-    return { title: "Media Not Found | RandoMovie" };
+    return { title: "Media Not Found | WatchedThis" };
   }
 
   const mediaTitle = data.title || data.name || "Media Details";
@@ -63,7 +63,7 @@ export async function generateMetadata({
               url: "/og-default.png",
               width: 1200,
               height: 630,
-              alt: "RandoMovie",
+              alt: "WatchedThis",
             },
           ],
       type: "website",

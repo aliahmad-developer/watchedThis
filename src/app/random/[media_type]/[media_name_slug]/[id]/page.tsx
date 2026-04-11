@@ -28,7 +28,7 @@ export async function generateMetadata({
 }) {
   const { media_type, media_name_slug, id } = await params;
   const data = await fetchMediaDetails(media_type, media_name_slug, id);
-  if (!data) return { title: "Media Not Found | RandoMovie" };
+  if (!data) return { title: "Media Not Found | WatchedThis" };
 
   const mediaTitle = data.title || data.name || "Media Details";
   const description = data.overview
@@ -36,7 +36,7 @@ export async function generateMetadata({
     : `Details about ${mediaTitle}`;
 
   return {
-    title: `${mediaTitle} | RandoMovie`,
+    title: `${mediaTitle} | WatchedThis`,
     description,
     openGraph: {
       title: mediaTitle,

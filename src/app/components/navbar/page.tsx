@@ -416,7 +416,7 @@ export default function Navbar() {
                 href="/"
                 className="shrink-0 text-base sm:text-lg font-bold text-dark-accent whitespace-nowrap"
               >
-                RandoMovie
+                WatchedThis
               </Link>
 
               <div className="flex-1" aria-hidden="true" />
@@ -434,7 +434,7 @@ export default function Navbar() {
               {/* Col 1 — Logo, left-aligned */}
               <div className="flex items-center">
                 <Link href="/" className="text-lg font-bold text-dark-accent whitespace-nowrap">
-                  RandoMovie
+                  WatchedThis
                 </Link>
               </div>
 
@@ -546,7 +546,7 @@ export default function Navbar() {
                 className="text-lg font-bold text-dark-accent"
                 onClick={() => setDrawerOpen(false)}
               >
-                RandoMovie
+                WatchedThis
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}

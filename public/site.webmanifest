@@ -1,6 +1,6 @@
 {
-  "name": "RandoMovie",
-  "short_name": "RandoMovie",
+  "name": "WatchedThis",
+  "short_name": "WatchedThis",
   "description": "Discover and spin for your next favorite movie or TV show",
   "start_url": "/",
   "display": "standalone",

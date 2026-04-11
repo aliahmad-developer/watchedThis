@@ -118,12 +118,12 @@ export default function Membership() {
             className="text-light-accent dark:text-dark-accent ml-1"
             style={{ width: "1.5rem", height: "1.5rem" }}
           />
-          <h2>Support RandoMovie</h2>
+          <h2>Support WatchedThis</h2>
         </div>
         <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm sm:text-base leading-relaxed max-w-md mx-auto md:mx-0">
           You're a visitor, not a customer. If you'd like to help keep{" "}
           <span className="font-semibold text-light-accent dark:text-dark-accent inline">
-            RandoMovie
+            WatchedThis
           </span>{" "}
           running and growing, consider supporting my work.
         </p>
@@ -133,7 +133,7 @@ export default function Membership() {
       <div className="flex-1 flex justify-center md:justify-end relative z-10">
         <Link
           ref={btnRef}
-          href="https://www.patreon.com/c/randomovieorg/membership"
+          href="https://www.patreon.com/c/WatchedThisorg/membership"
           target="_blank"
           rel="noopener noreferrer"
           className="

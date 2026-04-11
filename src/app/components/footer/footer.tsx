@@ -173,7 +173,7 @@ export default function Footer() {
       <footer className="cursor-default bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text m-4 border border-light-border dark:border-dark-border rounded-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-sm">
-            © {CURRENT_YEAR} RandoMovie. All rights reserved.
+            © {CURRENT_YEAR} WatchedThis. All rights reserved.
           </p>
         </div>
       </footer>
@@ -199,7 +199,7 @@ export default function Footer() {
 
           <div className="space-y-2.5">
             <h3 className="text-base font-bold text-light-header dark:text-dark-header">
-              Support RandoMovie
+              Support WatchedThis
             </h3>
             <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm leading-relaxed">
               This website is ad-free. You're a visitor, not a customer. If you
@@ -326,7 +326,7 @@ export default function Footer() {
               >
                 Creative Commons BY-NC-SA 4.0 License
               </Link>
-              <p>© {CURRENT_YEAR} RandoMovie. All rights reserved.</p>
+              <p>© {CURRENT_YEAR} WatchedThis. All rights reserved.</p>
             </div>
           </div>
         </div>

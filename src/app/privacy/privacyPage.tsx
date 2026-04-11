@@ -14,7 +14,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const LAST_UPDATED = "March, 2026";
-const CONTACT_EMAIL = "privacy@randomovie.app";
+const CONTACT_EMAIL = "privacy@WatchedThis.app";
 
 function scrollToSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
 
         {/* Intro prose */}
         <p className="text-light-body-text dark:text-dark-body-text leading-relaxed mb-12 text-base">
-          This explains what data RandoMovie collects, why it collects it, and
+          This explains what data WatchedThis collects, why it collects it, and
           what rights you have over it. Short version: we collect the minimum
           needed to make the app work and nothing else.
         </p>
@@ -48,7 +48,7 @@ export default function PrivacyPolicyPage() {
         <div className="space-y-5">
           <Section icon={faUser} title="1. Who we are">
             <p>
-              RandoMovie is a media discovery app that helps you find movies and
+              WatchedThis is a media discovery app that helps you find movies and
               TV shows. We are not affiliated with any streaming service or
               studio. If you have questions, email us at{" "}
               <ExternalLink href={`mailto:${CONTACT_EMAIL}`}>
@@ -68,7 +68,7 @@ export default function PrivacyPolicyPage() {
             <Subsection title="Usage data">
               We log the searches you run, the titles you click, and any items
               you add to your watchlist. This is tied to your account and is
-              used solely to personalise your recommendations within RandoMovie.
+              used solely to personalise your recommendations within WatchedThis.
             </Subsection>
             <Subsection title="Technical data">
               Our hosting provider (Vercel) may collect standard server logs
@@ -94,7 +94,7 @@ export default function PrivacyPolicyPage() {
 
           <Section icon={faCookie} title="4. Cookies and local storage">
             <p>
-              RandoMovie uses a Firebase session cookie, a first-party,
+              WatchedThis uses a Firebase session cookie, a first-party,
               HTTP-only cookie to keep you signed in, containing no PII beyond a
               session token, expiring on sign-out or after 30 days of
               inactivity. We also cache the daily media selection in
@@ -155,7 +155,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           <Section icon={faChild} title="8. Age Restrictions">
-            RandoMovie is not directed at children under 13. We do not knowingly
+            WatchedThis is not directed at children under 13. We do not knowingly
             collect data from anyone under 13. If you believe a child has
             created an account, contact us and we will delete it promptly.
           </Section>
@@ -163,7 +163,7 @@ export default function PrivacyPolicyPage() {
           <Section icon={faRotate} title="9. Changes to this policy">
             We may update this policy as the product evolves. If we make
             material changes we will notify you by email and update the date
-            above. Continued use of RandoMovie after a change constitutes
+            above. Continued use of WatchedThis after a change constitutes
             acceptance of the revised policy. If you'd like to{" "}
             <ScrollLink onClick={() => scrollToSection("membership")}>
               support the project

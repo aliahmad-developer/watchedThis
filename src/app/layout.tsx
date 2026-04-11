@@ -7,10 +7,10 @@ import Footer from "./components/footer/footer";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.randomovie.com"),
+  metadataBase: new URL("https://www.WatchedThis.com"),
   title: {
-    default: "RandoMovie",
-    template: "%s | RandoMovie",
+    default: "WatchedThis",
+    template: "%s | WatchedThis",
   },
   description: "Discover movies and TV shows randomly",
   keywords: [
@@ -24,24 +24,24 @@ export const metadata: Metadata = {
     "series like",
   ],
   openGraph: {
-    siteName: "RandoMovie",
+    siteName: "WatchedThis",
     type: "website",
     locale: "en_US",
-    url: "https://www.randomovie.com",
-    title: "RandoMovie, Discover Movies Randomly",
+    url: "https://www.WatchedThis.com",
+    title: "WatchedThis, Discover Movies Randomly",
     description: "Discover movies and TV shows randomly",
     images: [
       {
         url: "/og-default.png",
         width: 1200,
         height: 630,
-        alt: "RandoMovie",
+        alt: "WatchedThis",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RandoMovie – Discover Movies Randomly",
+    title: "WatchedThis – Discover Movies Randomly",
     description: "Discover movies and TV shows randomly",
     images: ["/og-default.png"],
   },
