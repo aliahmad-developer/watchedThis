@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     default: "WatchedThis",
     template: "%s | WatchedThis",
   },
+   alternates: {
+    canonical: '/',
+  },
   description: "Discover movies and TV shows randomly",
   keywords: [
     "movies",
