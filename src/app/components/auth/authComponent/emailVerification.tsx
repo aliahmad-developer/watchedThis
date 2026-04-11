@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { User } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faEnvelope, faClock } from "@fortawesome/free-solid-svg-icons";
+import toast from "react-hot-toast";
 
 type Props = {
   user: User;
@@ -20,9 +21,7 @@ export default function EmailVerification({
   isSendingVerification,
 }: Props) {
   const [cooldown, setCooldown] = useState(0);
-  const [localError, setLocalError] = useState("");
 
-  // Count down the cooldown timer
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
@@ -31,15 +30,17 @@ export default function EmailVerification({
 
   const handleClick = async () => {
     if (cooldown > 0 || isSendingVerification) return;
-    setLocalError("");
+
     try {
       await handleSendVerification();
+      toast.success("Verification email sent! Check your inbox.");
+      setCooldown(COOLDOWN_SECONDS);
     } catch (err: any) {
-      if (err?.code === "auth/too-many-requests") {
-        setLocalError("Too many attempts. Please wait before trying again.");
+      if (err?.message?.includes("TOO_MANY_ATTEMPTS")) {
+        toast.error("Too many attempts. Please wait before trying again.");
         setCooldown(COOLDOWN_SECONDS);
       } else {
-        setLocalError(err?.message || "Failed to send verification email.");
+        toast.error(err?.message || "Failed to send verification email.");
       }
     }
   };
@@ -74,10 +75,9 @@ export default function EmailVerification({
           onClick={handleClick}
           disabled={isDisabled}
           className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm transition-colors
-            ${
-              isDisabled
-                ? "opacity-50 cursor-not-allowed bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text"
-                : "bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg"
+            ${isDisabled
+              ? "opacity-50 cursor-not-allowed bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text"
+              : "bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg"
             }`}
         >
           {cooldown > 0 ? (
@@ -93,14 +93,9 @@ export default function EmailVerification({
         </button>
       </div>
 
-      {/* Info or error message */}
-      {localError ? (
-        <p className="text-xs mt-2 text-red-500 dark:text-red-400">{localError}</p>
-      ) : (
-        <p className="text-xs mt-2 text-light-secondary-text dark:text-dark-secondary-text">
-          Check your inbox for the verification email. It may be in spam.
-        </p>
-      )}
+      <p className="text-xs mt-2 text-light-secondary-text dark:text-dark-secondary-text">
+        Check your inbox for the verification email. It may be in spam.
+      </p>
     </div>
   );
 }

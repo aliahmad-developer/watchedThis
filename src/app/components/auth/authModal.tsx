@@ -9,6 +9,7 @@ import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { checkRedirectResult } from "./auth";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
+import toast from "react-hot-toast";
 
 type AuthModalProps = {
   isOpen: boolean;
@@ -21,14 +22,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageKey, setMessageKey] = useState(0);
+  const [cooldown, setCooldown] = useState(0);
   const [auth, setAuth] = useState<any>(null);
-  const [sendEmailVerification, setSendEmailVerification] = useState<
-    ((user: User) => Promise<void>) | null
-  >(null);
 
-  // Drag state
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
   const dragCurrentY = useRef(0);
@@ -36,7 +32,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [dragOffset, setDragOffset] = useState(0);
   const [isSnapping, setIsSnapping] = useState(false);
 
-  // Initialize Firebase auth
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
 
@@ -57,20 +52,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     };
 
     init();
-
-    return () => {
-      unsubscribe?.();
-    };
+    return () => { unsubscribe?.(); };
   }, []);
 
-  const showMessage = useCallback((text: string) => {
-    setMessage(text);
-    setMessageKey((prev) => prev + 1);
-    setTimeout(() => setMessage(""), 5000);
-  }, []);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   const handleSendVerification = async () => {
-    if (!user?.email) return;
+    if (!user?.email || cooldown > 0) return;
 
     setIsSendingVerification(true);
     try {
@@ -83,19 +75,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      showMessage(
-        "Verification email sent! Check your inbox (including spam).",
-      );
+      toast.success("Verification email sent! Check your inbox.");
+      setCooldown(60);
     } catch (err: any) {
-      showMessage(
-        err.message || "Failed to send verification email. Please try again.",
-      );
+      toast.error(err.message || "Failed to send verification email.");
+      setCooldown(60);
     } finally {
       setIsSendingVerification(false);
     }
   };
 
-  // Modal show/hide animation
   useEffect(() => {
     if (isOpen) {
       setShow(true);
@@ -106,37 +95,29 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   }, [isOpen]);
 
-  // Body scroll lock
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // Reset mode when opening
   useEffect(() => {
     if (isOpen) setMode("signup");
   }, [isOpen]);
 
-  // Check redirect result
   useEffect(() => {
     checkRedirectResult()
       .then((result) => {
-        if (result.success && result.user) {
-          onClose();
-        }
+        if (result.success && result.user) onClose();
       })
       .catch(console.error);
   }, [onClose]);
 
   if (!isOpen || !show) return null;
 
-  // Drag handlers
   const onDragStart = (clientY: number) => {
     isDragging.current = true;
     dragStartY.current = clientY;
@@ -148,7 +129,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     if (!isDragging.current) return;
     dragCurrentY.current = clientY;
     const delta = clientY - dragStartY.current;
-    const offset = delta > 0 ? delta : delta * 0.15; // Rubber band upward
+    const offset = delta > 0 ? delta : delta * 0.15;
     setDragOffset(offset);
   };
 
@@ -159,7 +140,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     setIsSnapping(true);
     if (delta > 120) {
-      // Dismiss
       const sheetHeight = sheetRef.current?.offsetHeight ?? 500;
       setDragOffset(sheetHeight + 40);
       setTimeout(() => {
@@ -168,17 +148,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setIsSnapping(false);
       }, 320);
     } else {
-      // Snap back
       setDragOffset(0);
       setTimeout(() => setIsSnapping(false), 320);
     }
   };
 
-  // Event handlers
-  const handleTouchStart = (e: React.TouchEvent) =>
-    onDragStart(e.touches[0].clientY);
-  const handleTouchMove = (e: React.TouchEvent) =>
-    onDragMove(e.touches[0].clientY);
+  const handleTouchStart = (e: React.TouchEvent) => onDragStart(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) => onDragMove(e.touches[0].clientY);
   const handleTouchEnd = () => onDragEnd();
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -203,10 +179,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={() => setMode(tab)}
               className={`
                 flex-1 py-2 text-sm font-medium transition-colors border-b-2 -mb-px bg-transparent rounded-none
-                ${
-                  mode === tab
-                    ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent shadow-sm"
-                    : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text hover:border-light-border/50 dark:hover:border-dark-border/50"
+                ${mode === tab
+                  ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent shadow-sm"
+                  : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text hover:border-light-border/50 dark:hover:border-dark-border/50"
                 }
               `}
             >
@@ -216,7 +191,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
       )}
 
-      {/* Verification notice */}
       {user && !isVerified && mode !== "forgot" && (
         <div className="flex flex-col gap-2 mb-4 p-3 rounded-lg bg-yellow-50/80 dark:bg-yellow-900/20 border border-yellow-200/50 dark:border-yellow-800/50">
           <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
@@ -227,23 +201,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </p>
           <button
             onClick={handleSendVerification}
-            disabled={isSendingVerification}
+            disabled={isSendingVerification || cooldown > 0}
             className="w-full h-8 px-3 rounded-md font-medium text-xs bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isSendingVerification ? "Sending..." : "Resend Verification Email"}
+            {isSendingVerification
+              ? "Sending..."
+              : cooldown > 0
+              ? `Wait ${cooldown}s`
+              : "Resend Verification Email"}
           </button>
-          {message && (
-            <p
-              key={messageKey}
-              className="text-xs text-light-accent dark:text-dark-accent"
-            >
-              {message}
-            </p>
-          )}
         </div>
       )}
 
-      {/* Forms */}
       {mode === "signup" && (
         <SignupForm
           onSuccess={onClose}
@@ -260,20 +229,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       {mode === "forgot" && (
         <ForgotPasswordForm
           onBack={() => setMode("login")}
-          onSuccess={() =>
-            showMessage("Password reset email sent! Check your inbox.")
-          }
+          onSuccess={() => toast.success("Password reset email sent! Check your inbox.")}
         />
       )}
     </div>
   );
 
-  // Backdrop opacity based on drag
   const backdropOpacity = Math.max(0, 1 - dragOffset / 300);
 
   const modal = (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300"
         style={{ opacity: backdropOpacity }}
@@ -291,7 +256,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             : "none",
         }}
       >
-        {/* Drag handle */}
         <div
           className="flex justify-center p-3 cursor-grab active:cursor-grabbing select-none"
           onTouchStart={handleTouchStart}
@@ -302,7 +266,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="w-8 h-1.5 bg-light-border/60 dark:bg-dark-border/60 rounded-full shadow-sm transition-all duration-200 hover:w-10" />
         </div>
 
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 p-2 rounded-full bg-light-bg/80 dark:bg-dark-bg/80 backdrop-blur-sm hover:bg-light-card dark:hover:bg-dark-card transition-all z-10"

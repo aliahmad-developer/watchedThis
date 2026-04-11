@@ -294,7 +294,7 @@ export default function AuthPage() {
     [showMessage],
   );
 
- const handleSendVerification = useCallback(async () => {
+const handleSendVerification = useCallback(async () => {
   const currentUser = authRef.current?.currentUser;
   if (!currentUser?.email) return;
 
@@ -308,14 +308,10 @@ export default function AuthPage() {
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-
-    showMessage("Verification email sent! Check your inbox.");
-  } catch (err: any) {
-    showMessage(err.message || "Failed to send verification email", true);
   } finally {
     setIsSendingVerification(false);
   }
-}, [showMessage]);
+}, []);
 
   const profileCard = useMemo(() => {
     if (!user) return null;
