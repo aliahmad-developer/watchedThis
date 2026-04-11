@@ -1,17 +1,12 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
-
-
-import { User } from "firebase/auth";
 import Image from "next/image";
 import toast from "react-hot-toast";
 
 const CLOUD_NAME    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!;
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!;
 
-
 type Props = { user: any; onUpdated?: (newPhotoURL: string) => void };
-
 
 /* ─── crop hook ──────────────────────────────────────────────────────────── */
 function useCrop(imgSrc: string | null) {
@@ -28,7 +23,6 @@ function useCrop(imgSrc: string | null) {
     img.onload = () => {
       imgRef.current = img;
       setOffset({ x: 0, y: 0 });
-      // Auto-fit: scale so the shorter side fills the circle (cover behaviour)
       const SIZE = canvasRef.current?.width ?? 260;
       const fitScale = Math.max(SIZE / img.naturalWidth, SIZE / img.naturalHeight);
       setScale(fitScale);
@@ -48,7 +42,6 @@ function useCrop(imgSrc: string | null) {
     const dx    = (SIZE - drawW) / 2 + offset.x;
     const dy    = (SIZE - drawH) / 2 + offset.y;
     ctx.drawImage(img, dx, dy, drawW, drawH);
-    // dim outside
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, 0, SIZE, SIZE);
     ctx.save();
@@ -57,7 +50,6 @@ function useCrop(imgSrc: string | null) {
     ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2 - 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    // border
     ctx.strokeStyle = "rgba(255,255,255,0.75)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -117,22 +109,26 @@ function CropModal({ imgSrc, onApply, onCancel }: {
   onApply: (blob: Blob) => void;
   onCancel: () => void;
 }) {
-  // Responsive canvas size: fill screen width on small devices, cap at 280
   const canvasSize = typeof window !== "undefined"
     ? Math.min(280, window.innerWidth - 48)
     : 260;
 
   const crop = useCrop(imgSrc);
 
-  // lock body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
 
   const handleApply = async () => {
-    try { onApply(await crop.getCroppedBlob()); }
-    catch { toast.error("Crop failed."); }
+    try {
+      const blob = await crop.getCroppedBlob();
+      console.log("Blob ready:", blob.size, blob.type);
+      onApply(blob);
+    } catch (err) {
+      console.error("Crop failed:", err);
+      toast.error("Crop failed.");
+    }
   };
 
   return (
@@ -141,13 +137,11 @@ function CropModal({ imgSrc, onApply, onCancel }: {
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="bg-light-card dark:bg-dark-card rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl overflow-hidden">
-        {/* handle */}
         <div className="flex justify-center pt-3 sm:hidden">
           <div className="w-10 h-1 rounded-full bg-light-border dark:bg-dark-border" />
         </div>
 
         <div className="p-5 flex flex-col items-center gap-4">
-          {/* header */}
           <div className="flex items-center justify-between w-full">
             <h3 className="text-sm font-semibold text-light-header dark:text-dark-header">Crop Photo</h3>
             <button onClick={onCancel} className="bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors">
@@ -161,7 +155,6 @@ function CropModal({ imgSrc, onApply, onCancel }: {
             Drag to reposition · scroll or pinch to zoom
           </p>
 
-          {/* canvas */}
           <canvas
             ref={crop.canvasRef}
             width={canvasSize}
@@ -180,7 +173,6 @@ function CropModal({ imgSrc, onApply, onCancel }: {
             }}
           />
 
-          {/* zoom slider */}
           <div className="flex items-center gap-2 w-full">
             <svg className="w-3 h-3 shrink-0 text-light-secondary-text dark:text-dark-secondary-text" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <circle cx="11" cy="11" r="6" strokeWidth="2"/><path d="M21 21l-3.5-3.5" strokeWidth="2" strokeLinecap="round"/>
@@ -196,7 +188,6 @@ function CropModal({ imgSrc, onApply, onCancel }: {
             </svg>
           </div>
 
-          {/* actions */}
           <div className="flex gap-2 w-full">
             <button onClick={onCancel}
               className="flex-1 py-2 rounded-lg text-xs border border-light-border dark:border-dark-border
@@ -225,10 +216,6 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
   const [progress, setProgress]   = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-
-
-
-
   const initials = (() => {
     const name  = user.displayName?.trim();
     const email = user.email?.split("@")[0] || "";
@@ -244,13 +231,15 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-
   const handleCropApply = async (blob: Blob) => {
-    setImgSrc(null);
     if (!user) { toast.error("Not logged in."); return; }
 
+    console.log("handleCropApply — blob:", blob.size, blob.type);
+    console.log("CLOUD_NAME:", CLOUD_NAME, "UPLOAD_PRESET:", UPLOAD_PRESET);
+
     setUploading(true);
-    setProgress(0);
+    setProgress(10);
+    setImgSrc(null); // close modal after we have the blob
 
     try {
       const formData = new FormData();
@@ -259,21 +248,27 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       formData.append("public_id", `profile_${user.uid}_${Date.now()}`);
       formData.append("folder", "profile_pictures");
 
-      const downloadURL = await new Promise<string>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`);
-        xhr.upload.onprogress = e => { if (e.lengthComputable) setProgress(Math.round(e.loaded / e.total * 100)); };
-      xhr.onerror = () => {
-  console.error("XHR network error", xhr.status, xhr.statusText, xhr.responseText);
-  reject(new Error("Network error"));
-};
-xhr.onload = () => {
-  console.log("XHR response", xhr.status, xhr.responseText);
-  xhr.status === 200
-    ? resolve(JSON.parse(xhr.responseText).secure_url)
-    : reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
-};
-      });
+      console.log("Sending to Cloudinary...");
+      setProgress(30);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        { method: "POST", body: formData }
+      );
+
+      console.log("Cloudinary response status:", res.status);
+      setProgress(80);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Cloudinary error response:", errText);
+        throw new Error(`Upload failed (${res.status}): ${errText}`);
+      }
+
+      const data = await res.json();
+      console.log("Cloudinary success:", data.secure_url);
+      const downloadURL = data.secure_url;
+      setProgress(100);
 
       const { updateProfile } = await import("firebase/auth");
       await updateProfile(user, { photoURL: downloadURL });
@@ -288,6 +283,7 @@ xhr.onload = () => {
       toast.success("Profile picture updated!");
       onUpdated?.(downloadURL);
     } catch (err: any) {
+      console.error("Upload error:", err);
       toast.error(err?.message || "Failed to upload photo.");
     } finally {
       setUploading(false);
@@ -295,12 +291,10 @@ xhr.onload = () => {
     }
   };
 
-
   const circumference = 2 * Math.PI * 46;
 
   return (
     <>
-      {/* crop modal — portal-style, rendered outside the card flow */}
       {imgSrc && (
         <CropModal
           imgSrc={imgSrc}
@@ -320,7 +314,6 @@ xhr.onload = () => {
               referrerPolicy="no-referrer" unoptimized
               className="rounded-full object-cover w-24 h-24 ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200" />
           ) : (
-
             <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold
               bg-light-accent/15 dark:bg-dark-accent/15 text-light-accent dark:text-dark-accent
               ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200">
