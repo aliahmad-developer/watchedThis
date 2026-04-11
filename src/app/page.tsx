@@ -6,12 +6,20 @@ import Strip from "./components/alphabetStrip/strip";
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Home',  
-  description: 'Randomly discover top movies and TV shows. Fresh picks daily.',
+  title: 'WatchedThis – Discover Your Next Favorite Movie',
+  description: 'Get personalized movie & TV show recommendations powered by AI. Discover films by scene, mood, or genre — tailored just for you.',
+  keywords: ['movie recommendations', 'personalized movies', 'scene detection', 'TV show discovery', 'AI movie picker', 'random movie'],
   openGraph: {
-    title: 'Home | RandoMovie',
-    description: 'Randomly discover top movies and TV shows. Fresh picks daily.',
-    url: 'https://www.randomovie.com',
+    title: 'WatchedThis – Personalized Movie & TV Recommendations',
+    description: 'AI-powered movie discovery. Get tailored picks, detect scenes, and never struggle to choose what to watch again.',
+    url: 'https://www.watchedthis.com',
+    siteName: 'WatchedThis',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'WatchedThis, Personalized Movie & TV Recommendations',
+    description: 'AI-powered movie discovery. Get tailored picks, detect scenes, and never struggle to choose what to watch again.',
   },
 }
 
