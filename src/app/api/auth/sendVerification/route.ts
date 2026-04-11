@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const verifyLink = await auth.generateEmailVerificationLink(email, {
-      url: `${baseUrl}/user/profile || ${baseUrl}`,
+      url: `${baseUrl}/user/profile`,
       handleCodeInApp: false,
     });
 
@@ -40,11 +40,13 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[send-verification]", error);
+   } catch (error: any) {
+    console.error("[send-verification] full error:", JSON.stringify(error, null, 2));
+    console.error("[send-verification] message:", error.message);
+    console.error("[send-verification] code:", error.code);
     return NextResponse.json(
-      { error: "Failed to send verification email" },
+      { error: error.message || "Failed to send verification email" },
       { status: 500 }
     );
   }
-}
+  }
