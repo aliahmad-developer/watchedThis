@@ -1,71 +1,65 @@
-"use client";
+import { Metadata } from "next";
+import GenrePageClient from "./genrePage"; // rename current file to this
 
-import { useParams } from "next/navigation";
-import { GenreHeader } from "../../components/Genre/mediaTypeToggle";
-import { GenreMediaGrid } from "../../components/Genre/GenreMediaGrid";
-import { useGenreMappings } from "../../components/hooks/Genre/useGenreMapping";
-import { useGenreData } from "../../components/hooks/Genre/useGenreData";
-import { useMediaType } from "../../components/hooks/Genre/useMediaType";
-import { useGenreNavigation } from "../../components/hooks/Genre/useGenreNavigation";
-import { MediaItem } from "../../components/Genre/types";
+const GENRE_NAMES: Record<string, string> = {
+  action: "Action",
+  comedy: "Comedy",
+  drama: "Drama",
+  horror: "Horror",
+  romance: "Romance",
+  thriller: "Thriller",
+  "sci-fi": "Science Fiction",
+  animation: "Animation",
+  documentary: "Documentary",
+  fantasy: "Fantasy",
+  crime: "Crime",
+  mystery: "Mystery",
+  adventure: "Adventure",
+  family: "Family",
+  history: "History",
+  music: "Music",
+  war: "War",
+  western: "Western",
+};
 
-export default function GenrePage() {
-  const params = useParams();
-  const genreSlug = params?.genreId as string;
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ genreId: string }>;
+}): Promise<Metadata> {
+  const { genreId } = await params;
 
-  const { mediaType, setMediaType } = useMediaType();
-  const { genreMappings, loading: mappingsLoading, createSlug } = useGenreMappings();
+  const genreName =
+    GENRE_NAMES[genreId.toLowerCase()] ||
+    genreId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-  const {
-    mediaItems,
-    loading: dataLoading,
-    error,
-    genreName,
-    fetchMore,
-    hasMore,
-    normalizeSlug,
-    findBestMatchingGenre,
-    isInitialLoad,
-  } = useGenreData({ genreSlug, mediaType, genreMappings, createSlug });
+  const description = `Browse the best ${genreName} movies and TV shows. Discover top-rated ${genreName.toLowerCase()} titles, hidden gems, and new releases on WatchedThis.`;
 
-  const { handleMediaTypeChange } = useGenreNavigation({
-    genreSlug,
-    mediaType,
-    setMediaType,
-    genreMappings,
-    normalizeSlug,
-    findBestMatchingGenre,
-    setGenreName: () => {},
-  });
+  return {
+    title: `${genreName} Movies & TV Shows | WatchedThis`,
+    description,
+    alternates: {
+      canonical: `https://watchedthis.com/genre/${genreId}`,
+    },
+    openGraph: {
+      title: `${genreName} Movies & TV Shows | WatchedThis`,
+      description,
+      url: `https://watchedthis.com/genre/${genreId}`,
+      siteName: "WatchedThis",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${genreName} Movies & TV Shows | WatchedThis`,
+      description,
+    },
+  };
+}
 
-  const processedMediaItems: MediaItem[] = mediaItems.map((item: MediaItem) => ({
-    ...item,
-    duration: mediaType === "movie"
-      ? item.runtime
-      : item.episode_run_time?.[0] || item.runtime,
-  }));
-
-  // Merge both loading states — GenreMediaGrid handles the skeleton internally
-  const isLoading =
-    (mappingsLoading && Object.keys(genreMappings).length === 0) ||
-    (dataLoading && isInitialLoad);
-
-  return (
-    <div className="container mx-auto px-4 py-8 text-center min-h-screen">
-      <GenreHeader
-        genreName={genreName}
-        mediaType={mediaType}
-        onMediaTypeChange={handleMediaTypeChange}
-      />
-      <GenreMediaGrid
-        mediaItems={processedMediaItems}
-        mediaType={mediaType}
-        loading={isLoading}
-        error={error}
-        genreName={genreName}
-        fetchMore={fetchMore}
-        hasMore={hasMore}
-      />
-    </div>
-  );
+export default function GenrePage({
+  params,
+}: {
+  params: Promise<{ genreId: string }>;
+}) {
+  return <GenrePageClient />;
 }
