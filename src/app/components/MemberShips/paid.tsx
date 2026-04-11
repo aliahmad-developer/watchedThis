@@ -133,7 +133,7 @@ export default function Membership() {
       <div className="flex-1 flex justify-center md:justify-end relative z-10">
         <Link
           ref={btnRef}
-          href="https://www.patreon.com/c/WatchedThisorg/membership"
+          href="https://www.patreon.com/c/WatchedThis/membership"
           target="_blank"
           rel="noopener noreferrer"
           className="
