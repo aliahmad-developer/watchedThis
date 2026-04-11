@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     siteName: 'WatchedThis',
     type: 'website',
   },
+  alternates: { canonical: '/spinner' },
   twitter: {
     card: 'summary_large_image',
     title: 'Spinner – Spin & Discover Your Next Movie | WatchedThis',

@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     siteName: 'WatchedThis',
     type: 'website',
   },
+  alternates: { canonical: '/find' },
   twitter: {
     card: 'summary_large_image',
     title: 'Find – Scene Detection & Advanced Filters | WatchedThis',

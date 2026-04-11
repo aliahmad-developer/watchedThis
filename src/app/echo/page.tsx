@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     "find series I watched",
     "movie finder",
   ],
+  alternates: { canonical: '/echo' },
   openGraph: {
     title: "Echo, Find Movies You've Already Watched | WatchedThis",
     description:

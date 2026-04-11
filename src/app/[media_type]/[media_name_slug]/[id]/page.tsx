@@ -1,12 +1,12 @@
 import React from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 import Desc from "@/app/components/randomMedia/detailsPage";
 import DetailsClientShell from "./clientShell";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface PageParams {
@@ -26,6 +26,62 @@ const fetchMediaDetails = unstable_cache(
   { revalidate: 3600 }
 );
 
+// ─── Structured Data ─────────────────────────────────────────────────────────
+
+function buildJsonLd(data: any, media_type: string) {
+  const mediaTitle = data.title || data.name || "Media Details";
+  const isMovie = media_type === "movie";
+
+  const base = {
+    "@context": "https://schema.org",
+    "@type": isMovie ? "Movie" : "TVSeries",
+    name: mediaTitle,
+    description: data.overview || "",
+    image: data.poster_path
+      ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
+      : undefined,
+    ...(data.release_date || data.first_air_date
+      ? { datePublished: data.release_date || data.first_air_date }
+      : {}),
+    ...(data.vote_average && data.vote_count
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: data.vote_average.toFixed(1),
+            bestRating: "10",
+            worstRating: "0",
+            ratingCount: data.vote_count,
+          },
+        }
+      : {}),
+    ...(data.genres?.length
+      ? { genre: data.genres.map((g: any) => g.name) }
+      : {}),
+    ...(data.credits?.cast?.length
+      ? {
+          actor: data.credits.cast.slice(0, 5).map((c: any) => ({
+            "@type": "Person",
+            name: c.name,
+          })),
+        }
+      : {}),
+    ...(data.credits?.crew?.length
+      ? (() => {
+          const director = data.credits.crew.find(
+            (c: any) => c.job === "Director"
+          );
+          return director
+            ? { director: { "@type": "Person", name: director.name } }
+            : {};
+        })()
+      : {}),
+  };
+
+  return base;
+}
+
+// ─── Metadata ────────────────────────────────────────────────────────────────
+
 export async function generateMetadata({
   params,
 }: {
@@ -39,15 +95,21 @@ export async function generateMetadata({
   }
 
   const mediaTitle = data.title || data.name || "Media Details";
+  const year = (data.release_date || data.first_air_date || "").substring(0, 4);
+  const typeLabel = media_type === "movie" ? "Movie" : "TV Series";
+
   const description = data.overview
-    ? `${data.overview.substring(0, 160)}...`
+    ? `${data.overview.substring(0, 155)}...`
     : `Details about ${mediaTitle}`;
 
   return {
-    title: mediaTitle,
+    title: `${mediaTitle} ${year ? `(${year})` : ""} | WatchedThis`,
     description,
+    alternates: {
+      canonical: `https://watchedthis.com/${media_type}/${media_name_slug}/${id}`,
+    },
     openGraph: {
-      title: mediaTitle,
+      title: `${mediaTitle} ${year ? `(${year})` : ""} — ${typeLabel} | WatchedThis`,
       description,
       images: data.poster_path
         ? [
@@ -55,22 +117,15 @@ export async function generateMetadata({
               url: `https://image.tmdb.org/t/p/w1280${data.poster_path}`,
               width: 1280,
               height: 1920,
-              alt: mediaTitle,
+              alt: `${mediaTitle} poster`,
             },
           ]
-        : [
-            {
-              url: "/og-default.png",
-              width: 1200,
-              height: 630,
-              alt: "WatchedThis",
-            },
-          ],
-      type: "website",
+        : [{ url: "/og-default.png", width: 1200, height: 630, alt: "WatchedThis" }],
+      type: "video.movie",
     },
     twitter: {
       card: "summary_large_image",
-      title: mediaTitle,
+      title: `${mediaTitle} ${year ? `(${year})` : ""} | WatchedThis`,
       description,
     },
   };
@@ -91,27 +146,33 @@ export default async function SpecificRandomMediaPage({
 
   const mediaTitle = data.title || data.name || "Media Details";
 
-  // Canonical slug — if the URL slug is wrong the client shell will redirect
   const expectedSlug = createSlug(mediaTitle);
   if (media_name_slug !== expectedSlug) {
-  redirect(`/random/${media_type}/${expectedSlug}/${id}`);
-}
+    redirect(`/random/${media_type}/${expectedSlug}/${id}`);
+  }
+
+  const jsonLd = buildJsonLd(data, media_type);
+
   return (
-    // DetailsClientShell handles scroll-to-top + slug redirect only
     <DetailsClientShell
       mediaType={media_type}
       currentSlug={media_name_slug}
       expectedSlug={expectedSlug}
       id={id}
     >
+      {/* ── JSON-LD Structured Data ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <div className="py-6 px-4 sm:px-6 lg:px-8 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-lg overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
 
-          {/* Data arrives with the HTML — no skeleton needed, no loading state */}
           <Desc
             data={data}
-            backdropUrl={data.backdrop_path ?? ""} // e.g. "/8x9iKH8kWA0zdkgNdpAew7OstYe.jpg"
+            backdropUrl={data.backdrop_path ?? ""}
             isLoading={false}
           />
         </div>

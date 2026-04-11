@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Random Pick",
   description: "Getting you a random movie or TV show to watch right now.",
   robots: { index: false }, 
+  alternates: { canonical: '/random' }
 };
 
 export default async function RandomPage() {
