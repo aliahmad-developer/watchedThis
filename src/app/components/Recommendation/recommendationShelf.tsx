@@ -198,7 +198,7 @@ function GuestCTA() {
   const [authOpen, setAuthOpen] = useState(false);
 
   return (
-    <section className="px-4">
+    <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
       <div className="flex items-center gap-2 mb-6 px-1">
         <FontAwesomeIcon
           icon={faWandMagicSparkles}
@@ -225,7 +225,7 @@ function GuestCTA() {
             Get personalised recommendations
           </h3>
           <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text leading-relaxed">
-            Create a free account and we'll learn your taste ,  suggesting movies
+            Create a free account and we'll learn your taste , suggesting movies
             and shows based on what you search, save, and watch.
           </p>
         </div>
@@ -306,7 +306,7 @@ export default function RecommendationShelf({
   if (!isLoading && (error || recommendations.length === 0)) return null;
 
   return (
-    <section className="my-4 lg:mx-5">
+    <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-2">
