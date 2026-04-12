@@ -22,17 +22,20 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id, slug } = await params;
 
-  // Wrap in try/catch so a fetch failure doesn't crash the entire page
   try {
     const data = await fetchPerson(id);
     if (!data?.details) return { title: "Person Not Found | WatchedThis" };
 
-    // Your API returns { details, credits, images } — so name/biography/profile_path
-    // are nested under data.details, not data directly
     const name = data.details.name || "Unknown Person";
     const description = data.details.biography
       ? `${data.details.biography.substring(0, 155)}...`
       : `Discover movies and TV shows featuring ${name} on WatchedThis.`;
+
+    const ogUrl = new URL("/og", "https://watchedthis.com");
+    ogUrl.searchParams.set("title", name);
+    ogUrl.searchParams.set("subtitle", description);
+    if (data.details.profile_path)
+      ogUrl.searchParams.set("poster", data.details.profile_path);
 
     return {
       title: `${name} | WatchedThis`,
@@ -43,29 +46,21 @@ export async function generateMetadata({
       openGraph: {
         title: `${name} | WatchedThis`,
         description,
-        images: data.details.profile_path
-          ? [
-              {
-                url: `https://image.tmdb.org/t/p/w500${data.details.profile_path}`,
-                width: 500,
-                height: 750,
-                alt: `${name} profile photo`,
-              },
-            ]
-          : [
-              {
-                url: "/og",
-                width: 1200,
-                height: 630,
-                alt: "WatchedThis",
-              },
-            ],
         type: "profile",
+        images: [
+          {
+            url: ogUrl.toString(),
+            width: 1200,
+            height: 630,
+            alt: `${name} — WatchedThis`,
+          },
+        ],
       },
       twitter: {
         card: "summary_large_image",
         title: `${name} | WatchedThis`,
         description,
+        images: [ogUrl.toString()],
       },
     };
   } catch {

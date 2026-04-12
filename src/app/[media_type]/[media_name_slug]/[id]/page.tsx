@@ -102,6 +102,11 @@ export async function generateMetadata({
     ? `${data.overview.substring(0, 155)}...`
     : `Details about ${mediaTitle}`;
 
+  const ogUrl = new URL("/og", "https://watchedthis.com");
+  ogUrl.searchParams.set("title", `${mediaTitle}${year ? ` (${year})` : ""}`);
+  ogUrl.searchParams.set("subtitle", description);
+  if (data.poster_path) ogUrl.searchParams.set("poster", data.poster_path);
+
   return {
     title: `${mediaTitle} ${year ? `(${year})` : ""} | WatchedThis`,
     description,
@@ -111,22 +116,14 @@ export async function generateMetadata({
     openGraph: {
       title: `${mediaTitle} ${year ? `(${year})` : ""} — ${typeLabel} | WatchedThis`,
       description,
-      images: data.poster_path
-        ? [
-            {
-              url: `https://image.tmdb.org/t/p/w1280${data.poster_path}`,
-              width: 1280,
-              height: 1920,
-              alt: `${mediaTitle} poster`,
-            },
-          ]
-        : [{ url: "/og", width: 1200, height: 630, alt: "WatchedThis" }],
       type: "video.movie",
+      images: [{ url: ogUrl.toString(), width: 1200, height: 630, alt: `${mediaTitle} — WatchedThis` }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${mediaTitle} ${year ? `(${year})` : ""} | WatchedThis`,
       description,
+      images: [ogUrl.toString()],
     },
   };
 }

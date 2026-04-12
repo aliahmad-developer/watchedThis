@@ -3,9 +3,12 @@ import ProductionPageClient from "./pageClient";
 
 const fetchCompany = async (id: string) => {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const res = await fetch(`${baseUrl}/api/company/${id}?mediaType=movie&page=1`, {
-    next: { revalidate: 3600 },
-  });
+  const res = await fetch(
+    `${baseUrl}/api/company/${id}?mediaType=movie&page=1`,
+    {
+      next: { revalidate: 3600 },
+    },
+  );
   if (!res.ok) return null;
   return res.json();
 };
@@ -26,6 +29,12 @@ export async function generateMetadata({
     : "";
   const description = `Explore all movies and TV shows by ${name}${country}. Browse their full catalog on WatchedThis.`;
 
+  const ogUrl = new URL("/og", "https://watchedthis.com");
+  ogUrl.searchParams.set("title", name);
+  ogUrl.searchParams.set("subtitle", description);
+  if (data.company.logo_path)
+    ogUrl.searchParams.set("logo", data.company.logo_path);
+
   return {
     title: `${name} | Production Company | WatchedThis`,
     description,
@@ -35,27 +44,25 @@ export async function generateMetadata({
     openGraph: {
       title: `${name} | WatchedThis`,
       description,
-      images: data.company.logo_path
-        ? [
-            {
-              url: `https://image.tmdb.org/t/p/w300${data.company.logo_path}`,
-              width: 300,
-              height: 300,
-              alt: `${name} logo`,
-            },
-          ]
-        : [{ url: "/og", width: 1200, height: 630, alt: "WatchedThis" }],
       type: "website",
+      images: [
+        {
+          url: ogUrl.toString(),
+          width: 1200,
+          height: 630,
+          alt: `${name} — WatchedThis`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: `${name} | Production Company | WatchedThis`,
       description,
+      images: [ogUrl.toString()],
     },
   };
 }
 
-// ✅ Next.js pages always receive `params`, not `id` directly
 export default async function ProductionPage({
   params,
 }: {
@@ -63,9 +70,11 @@ export default async function ProductionPage({
 }) {
   const { id } = await params;
   const data = await fetchCompany(id);
-  const name = data?.company?.name || 'Production Company';
-  return <>
-    <h1 className="sr-only">{name} | Production Company | WatchedThis</h1>
-    <ProductionPageClient id={id} />
-  </>;
+  const name = data?.company?.name || "Production Company";
+  return (
+    <>
+      <h1 className="sr-only">{name} | Production Company | WatchedThis</h1>
+      <ProductionPageClient id={id} />
+    </>
+  );
 }

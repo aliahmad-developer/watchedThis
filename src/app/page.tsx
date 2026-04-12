@@ -19,11 +19,8 @@ export const metadata: Metadata = {
     "film discovery platform",
     "movie picker",
     "best movies 2024",
-    "trending TV shows"
+    "trending TV shows",
   ],
-  // alternates: {
-    //   canonical: 'https://watchedthis.com/',
-    // },
   openGraph: {
     title: "WatchedThis - #1 Random Movie Finder & TV Recommender",
     description:
@@ -31,12 +28,14 @@ export const metadata: Metadata = {
     url: "https://watchedthis.com",
     siteName: "WatchedThis",
     type: "website",
-    images: [{
-      url: "/og",
-      width: 1200,
-      height: 630,
-      alt: "WatchedThis Random Movie Finder"
-    }]
+    images: [
+      {
+        url: "/og",
+        width: 1200,
+        height: 630,
+        alt: "WatchedThis — Find Your Next Favorite Watch",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -51,49 +50,57 @@ function HomepageSchema() {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: "WatchedThis - Movie & TV Discovery Homepage",
-    description: "AI-powered platform for discovering movies and TV shows through random selection, scene detection, and personalized recommendations.",
+    description:
+      "AI-powered platform for discovering movies and TV shows through random selection, scene detection, and personalized recommendations.",
     url: "https://watchedthis.com",
     publisher: {
       "@type": "Organization",
       name: "WatchedThis",
       logo: {
         "@type": "ImageObject",
-        url: "https://watchedthis.com/og"
-      }
+        url: "https://watchedthis.com/og",
+      },
     },
     mainEntity: {
       "@type": "ItemList",
       name: "Featured Movie & TV Content",
-      description: "Curated trending movies, TV shows, daily picks, and personalized recommendations.",
+      description:
+        "Curated trending movies, TV shows, daily picks, and personalized recommendations.",
       numberOfItems: 4,
       itemListElement: [
         {
           "@type": "ListItem",
           position: 1,
           name: "Spotlight Trending Movies & Shows",
-          url: "https://watchedthis.com/#spotlight"
+          url: "https://watchedthis.com/#spotlight",
         },
         {
           "@type": "ListItem",
           position: 2,
           name: "Daily Media Recommendations",
-          url: "https://watchedthis.com/#daily"
+          url: "https://watchedthis.com/#daily",
         },
         {
           "@type": "ListItem",
           position: 3,
           name: "Personalized Recommendations",
-          url: "https://watchedthis.com/#recommendations"
+          url: "https://watchedthis.com/#recommendations",
         },
         {
           "@type": "ListItem",
           position: 4,
           name: "Trending Now",
-          url: "https://watchedthis.com/#trending"
-        }
-      ]
+          url: "https://watchedthis.com/#trending",
+        },
+      ],
     },
-    keywords: ["random movies", "movie discovery", "TV recommendations", "scene detection", "what to watch"]
+    keywords: [
+      "random movies",
+      "movie discovery",
+      "TV recommendations",
+      "scene detection",
+      "what to watch",
+    ],
   };
 
   return (
@@ -108,7 +115,9 @@ function HomepageSchema() {
 export default function Home() {
   return (
     <>
-     <h1 className="sr-only">WatchedThis, Best Random Movie Finder &amp; TV Show Recommender</h1>
+      <h1 className="sr-only">
+        WatchedThis, Best Random Movie Finder &amp; TV Show Recommender
+      </h1>
       <SpotLightServer />
       <div className="lg:mx-5 sm:mx-3 md:mx-4 min-h-400  ">
         <DailyMedia />

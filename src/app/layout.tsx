@@ -73,7 +73,12 @@ const organizationSchema = {
   "@type": "Organization",
   name: "WatchedThis",
   url: "https://watchedthis.com",
-  logo: "https://watchedthis.com/og",
+  logo: {
+    "@type": "ImageObject",
+    url: "https://watchedthis.com/android-chrome-512x512.png", 
+    width: 512,
+    height: 512,
+  },
   description: "AI-powered movie and TV show discovery platform",
   knowsAbout: ["movies", "TV shows", "film discovery", "scene detection"],
 };
