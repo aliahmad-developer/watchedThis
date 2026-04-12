@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     template: "%s | WatchedThis - Movie & TV Discovery",
   },
   description:
-    "AI-powered movie and TV show discovery. Random picks, scene detection, personalized recommendations & what to watch next.",
+    "AI-powered movie and TV show discovery. Get random picks, scene detection, mood-based suggestions, and personalized recommendations for what to watch next.",
   keywords: [
     "random movie",
     "movie finder",
@@ -35,13 +35,13 @@ export const metadata: Metadata = {
     url: "https://watchedthis.com",
     title: "WatchedThis - Random Movie & TV Discovery Platform",
     description:
-      "Discover movies & TV randomly with AI. Scene detection, personalized recs, mood-based picks.",
+      "Discover movies and TV shows instantly with AI. Random picks, scene detection, mood-based filters, and personalized recommendations — all in one place.",
     images: [
       {
-        url: "/og-default.png",
+        url: "/og",
         width: 1200,
         height: 630,
-        alt: "WatchedThis - Random Movie Finder",
+        alt: "WatchedThis — Find Your Next Favorite Watch",
       },
     ],
   },
@@ -49,15 +49,15 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "WatchedThis – AI Movie & TV Discovery",
     description:
-      "Random movie picker with scene detection & personalized recommendations.",
-    images: ["/og-default.png"],
+      "Random movie picker with scene detection, mood-based filters, and personalized recommendations. Find your next watch in seconds.",
+    images: ["/og"],
   },
   robots: {
     index: true,
     follow: true,
   },
   icons: {
-    shortcut: "/favicon.ico", 
+    shortcut: "/favicon.ico",
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -73,7 +73,7 @@ const organizationSchema = {
   "@type": "Organization",
   name: "WatchedThis",
   url: "https://watchedthis.com",
-  logo: "https://watchedthis.com/og-default.png",
+  logo: "https://watchedthis.com/og",
   description: "AI-powered movie and TV show discovery platform",
   knowsAbout: ["movies", "TV shows", "film discovery", "scene detection"],
 };
@@ -110,8 +110,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','GTM-KD79MGZ4');`,
           }}
         />
-
-        {/* Server-rendered structured data — visible to Googlebot */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
