@@ -9,9 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default async function RandomPage() {
-  return <>
-    <h1 className="sr-only">Random Movie Pick | WatchedThis</h1>
-  </>;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
   const res = await fetch(`${baseUrl}/api/randomCall`, {
