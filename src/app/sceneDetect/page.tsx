@@ -52,7 +52,6 @@ const buildAmbientColor = (
   }
 };
 
-// Fixed: light mode = no .dark class (your setup never adds a .light class)
 const useThemeDetection = () => {
   const [isLightMode, setIsLightMode] = useState(false);
   const check = useCallback(() => {
@@ -80,11 +79,15 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
     null,
   );
   const imgRef = useRef<HTMLImageElement>(null);
+  // FIX: Use a ref for the timeout so we can clear it on unmount/retry
   const extractingRef = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const extract = useCallback(() => {
     if (!imgRef.current || extractingRef.current) return;
     const img = imgRef.current;
     if (img.naturalWidth === 0) return;
+
     extractingRef.current = true;
     try {
       const ct = new ColorThief();
@@ -93,23 +96,42 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
     } catch {
       setAmbient(null);
     } finally {
+      // FIX: Always reset the lock so future extractions aren't blocked
       extractingRef.current = false;
     }
   }, [isLightMode]);
+
   useEffect(() => {
     setAmbient(null);
+    extractingRef.current = false;
   }, [imageUrl, isLightMode]);
+
   useEffect(() => {
     if (!imgRef.current) return;
     const img = imgRef.current;
-    const handle = () => setTimeout(extract, 80);
-    if (img.complete) {
+
+    const handle = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(extract, 80);
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
       handle();
     } else {
       img.addEventListener("load", handle);
+      // FIX: Handle load errors — don't leave extractingRef stuck
+      img.addEventListener("error", () => {
+        extractingRef.current = false;
+        setAmbient(null);
+      });
     }
-    return () => img.removeEventListener("load", handle);
+
+    return () => {
+      img.removeEventListener("load", handle);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, [extract, imageUrl]);
+
   return { imgRef, ambient };
 };
 
@@ -137,7 +159,6 @@ function SceneResultCard({
 
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
-  // Updated fallbacks to match new palette tokens
   const fallbackRgb = isLightMode ? "238,240,242" : "3,25,38";
   const fallbackSolid = isLightMode ? "rgb(238,240,242)" : "rgb(3,25,38)";
   const solidColor = ambient?.solid ?? fallbackSolid;
@@ -296,41 +317,95 @@ function CardSkeleton() {
   );
 }
 
+// FIX: How long to wait before bailing to /find if no results (handles cold starts + mobile timeouts)
+const LOAD_TIMEOUT_MS = 12_000;
+
 export default function SceneDetectPage() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [ready, setReady] = useState(false);
+  // FIX: Track timed-out state to show a helpful message instead of infinite skeleton
+  const [timedOut, setTimedOut] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const router = useRouter();
 
   const loadResults = useCallback(() => {
     const raw = sessionStorage.getItem("sceneResults");
     if (!raw) {
-      router.replace("/find");
-      return;
+      // Don't redirect immediately — wait for timeout handler
+      return false;
     }
-    const parsed = JSON.parse(raw);
-    const seen = new Map();
-    for (const m of parsed) {
-      const key = m.id ?? m.title;
-      if (!seen.has(key) || seen.get(key).votes < m.votes) seen.set(key, m);
+    try {
+      const parsed = JSON.parse(raw);
+      const seen = new Map();
+      for (const m of parsed) {
+        const key = m.id ?? m.title;
+        if (!seen.has(key) || seen.get(key).votes < m.votes) seen.set(key, m);
+      }
+      const sorted = Array.from(seen.values()).sort((a, b) => b.votes - a.votes);
+      setMovies(sorted);
+      setReady(true);
+      return true;
+    } catch {
+      return false;
     }
-    const sorted = Array.from(seen.values()).sort((a, b) => b.votes - a.votes);
-    setMovies(sorted);
-    setReady(true);
-  }, [router]);
+  }, []);
 
   useEffect(() => {
-    loadResults();
-  }, [loadResults]);
+    const loaded = loadResults();
+
+    if (loaded) return;
+
+    // FIX: Give the backend time to respond before bailing — handles cold starts and slow mobile networks
+    const timer = setTimeout(() => {
+      const retried = loadResults();
+      if (!retried) {
+        setTimedOut(true);
+      }
+    }, LOAD_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  }, [loadResults, router]);
 
   const handleTryAgain = () => {
     sessionStorage.removeItem("sceneResults");
     setMovies([]);
     setReady(false);
+    setTimedOut(false);
     setModalOpen(true);
   };
 
   const totalVotes = movies.reduce((sum, m) => sum + m.votes, 0);
+
+  // FIX: Show a clear error state instead of infinite skeleton on timeout
+  if (timedOut) {
+    return (
+      <div className="min-h-screen bg-light-bg dark:bg-dark-bg flex flex-col items-center justify-center px-6 gap-4 text-center">
+        <p className="text-light-header dark:text-dark-header font-semibold text-base">
+          No results found
+        </p>
+        <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm max-w-xs">
+          The request may have timed out. Try capturing a clearer scene with
+          good lighting.
+        </p>
+        <button
+          onClick={handleTryAgain}
+          className="mt-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-light-btn-bg dark:bg-dark-btn-bg text-white"
+        >
+          Try again
+        </button>
+        <SceneCameraModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSuccess={() => {
+            setModalOpen(false);
+            setTimedOut(false);
+            loadResults();
+            document.scrollingElement?.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg">

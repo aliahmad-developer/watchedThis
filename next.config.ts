@@ -1,8 +1,22 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=*, microphone=()",
+          },
+        ],
+      },
+    ];
+  },
+
   images: {
-    formats: ['image/avif', 'image/webp'],    
+    formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 31,
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [64, 128, 256, 500],
@@ -12,6 +26,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
     ],
   },
+
   experimental: {
     optimizePackageImports: [
       'lucide-react',
@@ -22,9 +37,11 @@ const nextConfig: NextConfig = {
       '@heroicons/react',
     ],
   },
+
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+
   async redirects() {
     return [
       {

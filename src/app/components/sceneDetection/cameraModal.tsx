@@ -24,7 +24,9 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
   const isMounted = useRef(true);
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -36,7 +38,9 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
   useEffect(() => {
@@ -59,19 +63,82 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
   }, [stopCamera, onClose]);
 
   const startCamera = async () => {
+    console.log("mediaDevices:", navigator?.mediaDevices);
+    console.log("getUserMedia:", navigator?.mediaDevices?.getUserMedia);
+
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setError("Camera API not available — check HTTPS.");
+      return;
+    }
+
+    const streamPromise = navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+
     setError("");
+
     try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      if (!isMounted.current) { s.getTracks().forEach((t) => t.stop()); return; }
+      const s = await streamPromise;
+      if (!isMounted.current) {
+        s.getTracks().forEach((t) => t.stop());
+        return;
+      }
       setStream(s);
       setMode("live");
-    } catch {
-      setError("Camera access denied. Please allow camera permissions.");
+    } catch (err: unknown) {
+      // Log the EXACT error so we know what's really happening
+      console.error("getUserMedia error:", err);
+      console.error(
+        "error name:",
+        err instanceof Error ? err.name : typeof err,
+      );
+      console.error(
+        "error message:",
+        err instanceof Error ? err.message : String(err),
+      );
+
+      if (err instanceof Error) {
+        if (
+          err.name === "NotAllowedError" ||
+          err.name === "PermissionDeniedError"
+        ) {
+          setError("Camera permission denied. " + err.message);
+        } else if (
+          err.name === "NotFoundError" ||
+          err.name === "DevicesNotFoundError"
+        ) {
+          setError("No camera found on this device.");
+        } else if (
+          err.name === "NotReadableError" ||
+          err.name === "TrackStartError"
+        ) {
+          setError("Camera is in use by another app. Close it and try again.");
+        } else if (err.name === "OverconstrainedError") {
+          try {
+            const s = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false,
+            });
+            if (!isMounted.current) {
+              s.getTracks().forEach((t) => t.stop());
+              return;
+            }
+            setStream(s);
+            setMode("live");
+            return;
+          } catch (retryErr) {
+            console.error("Retry error:", retryErr);
+            setError("Could not start camera. Try uploading an image instead.");
+          }
+        } else {
+          setError(`Camera error: ${err.name} — ${err.message}`);
+        }
+      } else {
+        setError("Unknown camera error. Check console.");
+      }
     }
   };
-
   const captureAndSubmit = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     setCapturing(true);
@@ -82,7 +149,10 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
     canvas.getContext("2d")?.drawImage(video, 0, 0);
     canvas.toBlob(
       async (blob) => {
-        if (!blob) { setCapturing(false); return; }
+        if (!blob) {
+          setCapturing(false);
+          return;
+        }
         stopCamera();
         setMode("uploading");
         await submitImage(blob, "capture.jpg");
@@ -116,19 +186,22 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
       if (!contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.slice(0, 300));
-        throw new Error("Server returned an unexpected response. Please try again.");
+        throw new Error(
+          "Server returned an unexpected response. Please try again.",
+        );
       }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scene detection failed.");
-      if (!data.movies || data.movies.length === 0) throw new Error("No matching scenes found. Try a clearer image.");
+      if (!data.movies || data.movies.length === 0)
+        throw new Error("No matching scenes found. Try a clearer image.");
 
       sessionStorage.setItem("sceneResults", JSON.stringify(data.movies));
 
       if (!isMounted.current) return;
       onSuccess?.();
       onClose();
-      router.push("/sceneDetect"); 
+      router.push("/sceneDetect");
     } catch (err: any) {
       if (!isMounted.current) return;
       setError(err.message || "Something went wrong. Please try again.");
@@ -143,7 +216,9 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
     <>
       <div
         className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleClose();
+        }}
       >
         <div className="bg-light-card dark:bg-dark-card rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden">
           {/* Handle bar — mobile only */}
@@ -156,9 +231,22 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
             <div className="p-6 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-semibold">Identify a Scene</h2>
-                <button onClick={handleClose} className="bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <button
+                  onClick={handleClose}
+                  className="bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -173,11 +261,23 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
                   className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-accent hover:bg-light-accent/5 dark:hover:bg-dark-accent/5 transition-all duration-200 group bg-transparent"
                 >
                   <div className="w-12 h-12 rounded-full bg-light-bg dark:bg-dark-bg flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <svg className="w-6 h-6 text-light-accent dark:text-dark-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                    <svg
+                      className="w-6 h-6 text-light-accent dark:text-dark-accent"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
+                      />
                     </svg>
                   </div>
-                  <span className="text-xs font-medium text-light-body-text dark:text-dark-body-text">Live Camera</span>
+                  <span className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+                    Live Camera
+                  </span>
                 </button>
 
                 <button
@@ -185,15 +285,29 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
                   className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-accent hover:bg-light-accent/5 dark:hover:bg-dark-accent/5 transition-all duration-200 group bg-transparent"
                 >
                   <div className="w-12 h-12 rounded-full bg-light-bg dark:bg-dark-bg flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <svg className="w-6 h-6 text-light-accent dark:text-dark-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    <svg
+                      className="w-6 h-6 text-light-accent dark:text-dark-accent"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                      />
                     </svg>
                   </div>
-                  <span className="text-xs font-medium text-light-body-text dark:text-dark-body-text">Upload Image</span>
+                  <span className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+                    Upload Image
+                  </span>
                 </button>
               </div>
 
-              {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+              {error && (
+                <p className="text-xs text-red-500 text-center">{error}</p>
+              )}
             </div>
           )}
 
@@ -201,7 +315,13 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
           {mode === "live" && (
             <div className="flex flex-col">
               <div className="relative bg-black">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full max-h-72 object-cover" />
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full max-h-72 object-cover"
+                />
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute inset-6 border border-white/30 rounded-lg" />
                   <div className="absolute top-6 left-6 w-5 h-5 border-t-2 border-l-2 border-white rounded-tl-lg" />
@@ -211,7 +331,10 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
                 </div>
               </div>
               <div className="flex items-center justify-between p-4 gap-3">
-                <button onClick={handleClose} className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors">
+                <button
+                  onClick={handleClose}
+                  className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
+                >
                   Cancel
                 </button>
                 <button
@@ -219,10 +342,15 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
                   disabled={capturing}
                   className="w-14 h-14 rounded-full border-4 border-light-btn-bg dark:border-dark-btn-bg bg-white hover:scale-105 active:scale-95 disabled:opacity-50 transition-all duration-150 flex items-center justify-center"
                 >
-                  {capturing && <div className="w-5 h-5 rounded-full border-2 border-light-btn-bg dark:border-dark-btn-bg border-t-transparent animate-spin" />}
+                  {capturing && (
+                    <div className="w-5 h-5 rounded-full border-2 border-light-btn-bg dark:border-dark-btn-bg border-t-transparent animate-spin" />
+                  )}
                 </button>
                 <button
-                  onClick={() => { stopCamera(); setMode("chooser"); }}
+                  onClick={() => {
+                    stopCamera();
+                    setMode("chooser");
+                  }}
                   className="bg-transparent text-xs text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
                 >
                   Upload instead
@@ -243,7 +371,9 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
                   />
                 ))}
               </div>
-              <p className="text-sm font-medium text-light-header dark:text-dark-header">Analysing scene...</p>
+              <p className="text-sm font-medium text-light-header dark:text-dark-header">
+                Analysing scene...
+              </p>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text text-center">
                 First request may take ~30s if the model server is waking up
               </p>
@@ -254,13 +384,27 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
           {mode === "error" && (
             <div className="p-8 flex flex-col items-center gap-4 text-center">
               <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z" />
+                <svg
+                  className="w-6 h-6 text-red-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z"
+                  />
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-light-header dark:text-dark-body-text mb-1">Something went wrong</p>
-                <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">{error}</p>
+                <p className="text-sm font-medium text-light-header dark:text-dark-body-text mb-1">
+                  Something went wrong
+                </p>
+                <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
+                  {error}
+                </p>
               </div>
               <div className="flex gap-3 w-full mt-2">
                 <button
@@ -270,7 +414,10 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
                   Cancel
                 </button>
                 <button
-                  onClick={() => { setError(""); setMode("chooser"); }}
+                  onClick={() => {
+                    setError("");
+                    setMode("chooser");
+                  }}
                   className="flex-1 py-2 rounded-lg text-xs bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg transition-colors"
                 >
                   Try Again
@@ -286,7 +433,10 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = ""; }}
+        onChange={(e) => {
+          if (e.target.files?.[0]) handleFile(e.target.files[0]);
+          e.target.value = "";
+        }}
       />
       <canvas ref={canvasRef} className="hidden" />
     </>
