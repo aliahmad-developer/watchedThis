@@ -14,13 +14,18 @@ interface KeywordsSectionProps {
 }
 
 const getLimit = () => {
+  if (typeof window === "undefined") return 16;
   const w = window.innerWidth;
   if (w < 640) return 5;
   if (w < 1024) return 10;
   return 16;
 };
 
-export default function KeywordsSection({ keywords, textScheme = "light", mutedColor }: KeywordsSectionProps) {
+export default function KeywordsSection({
+  keywords,
+  textScheme = "light",
+  mutedColor,
+}: KeywordsSectionProps) {
   const list: Keyword[] = keywords ?? [];
   const [limit, setLimit] = useState(16);
   const router = useRouter();
@@ -32,42 +37,45 @@ export default function KeywordsSection({ keywords, textScheme = "light", mutedC
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  const visible = list.slice(0, limit);
-  const remaining = list.length - visible.length;
-
   if (!list.length) return null;
 
-  const kwStyle = mutedColor ? { color: mutedColor } : undefined;
-  const kwFallback = !mutedColor ? (textScheme === "light" ? "text-white/60" : "text-gray-500") : "";
-  const remainingStyle = mutedColor
-    ? { color: mutedColor.replace(/[\d.]+\)$/, "0.40)") }
-    : undefined;
-  const remainingFallback = !mutedColor
-    ? (textScheme === "light" ? "text-white/30" : "text-gray-400")
-    : "";
+  const visible = list.slice(0, limit);
+  const hidden = list.slice(limit);
 
- const handleClick = (name: string) => {
-  router.push(`/search?keyword=${encodeURIComponent(name)}`);
-};
+  const baseColor = mutedColor ?? (textScheme === "light" ? "rgba(255,255,255,0.75)" : "rgba(80,80,90,1)");
+  const hoverColor = textScheme === "light" ? "rgba(255,255,255,1)" : "rgba(30,30,35,1)";
+  const moreColor = mutedColor
+    ? mutedColor.replace(/[\d.]+\)$/, "0.4)")
+    : textScheme === "light"
+    ? "rgba(255,255,255,0.35)"
+    : "rgba(100,100,110,1)";
+
+  const handleClick = (name: string) => {
+    router.push(`/search?keyword=${encodeURIComponent(name)}`);
+  };
+
   return (
     <div className="col-span-2">
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
         {visible.map((kw) => (
           <span
             key={kw.id}
             onClick={() => handleClick(kw.name)}
-            className={`text-[10px] sm:text-xs font-mono tracking-tight transition-colors duration-700 cursor-pointer hover:opacity-100 opacity-80 ${kwFallback}`}
-            style={kwStyle}
+            className="text-[10px] sm:text-xs font-mono tracking-tight cursor-pointer transition-all duration-200"
+            style={{ color: baseColor }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = hoverColor)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = baseColor)}
           >
             #{kw.name.toLowerCase().replace(/\s+/g, "-")}
           </span>
         ))}
-        {remaining > 0 && (
+
+        {hidden.length > 0 && (
           <span
-            className={`text-[10px] sm:text-xs font-mono tracking-tight transition-colors duration-700 ${remainingFallback}`}
-            style={remainingStyle}
+            className="text-[10px] sm:text-xs font-mono tracking-tight"
+            style={{ color: moreColor }}
           >
-            +{remaining} more
+            +{hidden.length} more
           </span>
         )}
       </div>
