@@ -281,7 +281,7 @@ export default function dailyMedia() {
           className="text-light-accent dark:text-dark-accent ml-1"
           style={{ width: "1.5rem", height: "1.5rem" }}
         />
-        <h2>Random Media of the day</h2>
+        <div className="text-light-header dark:text-white font-semibold">Random Media of the day</div>
       </div>
 
       {/* Desktop (≥1024px) */}

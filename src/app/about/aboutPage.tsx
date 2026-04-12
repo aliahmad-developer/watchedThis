@@ -28,9 +28,9 @@ export default function AboutPage() {
               <p className="text-xs font-semibold tracking-widest uppercase text-light-accent dark:text-dark-accent mb-1">
                 Creators
               </p>
-              <h1 className="text-2xl xs:text-3xl sm:text-5xl font-bold leading-tight">
+<div className="text-2xl xs:text-3xl sm:text-5xl font-bold leading-tight">
                 WatchedThis
-              </h1>
+              </div>
             </div>
 
             {/* Right: stacked avatars */}

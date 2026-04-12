@@ -24,9 +24,9 @@ export default function TermsPage() {
           <p className="font text-xs font-semibold tracking-widest uppercase text-light-accent dark:text-dark-accent">
             The fine print
           </p>
-          <h1 className="text-4xl sm:text-5xl font-bold text-light-header dark:text-white mb-4 leading-tight">
+<div className="text-4xl sm:text-5xl font-bold text-light-header dark:text-white mb-4 leading-tight">
             Terms of Use
-          </h1>
+          </div>
           <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
             Last updated March 2026; yes, someone actually maintains this.
           </p>

@@ -29,9 +29,9 @@ export default function PrivacyPolicyPage() {
           <p className="text-xs font-semibold tracking-widest uppercase text-light-accent dark:text-dark-accent">
             Legal
           </p>
-          <h1 className="text-4xl sm:text-5xl font-bold text-light-header dark:text-white mb-4 leading-tight">
+<div className="text-4xl sm:text-5xl font-bold text-light-header dark:text-white mb-4 leading-tight">
             Privacy Policy
-          </h1>
+          </div>
           <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
             Last updated {LAST_UPDATED}; written by an actual human, not a
             lawyer bot.
@@ -200,9 +200,9 @@ function Section({
           icon={icon}
           className="w-4 h-4 text-light-accent dark:text-dark-accent transition-transform duration-300 group-hover:scale-110"
         />
-        <h2 className="text-base font-bold text-light-header dark:text-white">
+        <div className="text-base font-bold text-light-header dark:text-white">
           {title}
-        </h2>
+        </div>
       </div>
       <div className="text-light-body-text dark:text-dark-body-text text-sm leading-relaxed pl-7 space-y-3">
         {children}
