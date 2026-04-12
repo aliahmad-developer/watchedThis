@@ -1,7 +1,6 @@
 import "./globals.css";
 import "../lib/fontawesome";
 import ClientProviders from "./components/utilities/clientProvider/clientProvider";
-import ClientHead from "./components/seo/ClientHead";
 import BackButton from "./components/utilities/backButton";
 import Navbar from "./components/navbar/page";
 import Footer from "./components/footer/footer";
@@ -67,6 +66,29 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
+// Server-side structured data — Googlebot will always see this
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "WatchedThis",
+  url: "https://watchedthis.com",
+  logo: "https://watchedthis.com/og-default.png",
+  description: "AI-powered movie and TV show discovery platform",
+  knowsAbout: ["movies", "TV shows", "film discovery", "scene detection"],
+};
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "WatchedThis",
+  url: "https://watchedthis.com",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://watchedthis.com/search?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -75,6 +97,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Google Tag Manager — single analytics source */}
         <Script
           id="google-tag-manager"
           strategy="afterInteractive"
@@ -87,13 +110,26 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
 
+        {/* Server-rendered structured data — visible to Googlebot */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationSchema),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteSchema),
+          }}
+        />
+
         <link
           rel="preconnect"
           href="https://image.tmdb.org"
           crossOrigin="anonymous"
         />
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
-        <ClientHead />
       </head>
 
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">
@@ -106,7 +142,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             style={{ display: "none", visibility: "hidden" }}
           ></iframe>
         </noscript>
-        {/* End Google Tag Manager (noscript) */}
+
         <ClientProviders>
           <Suspense>
             <Navbar />
