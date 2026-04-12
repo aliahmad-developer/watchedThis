@@ -151,14 +151,29 @@ function SkeletonCard() {
 
 function ShelfSkeleton() {
   return (
-    <section className="my-4 lg:mx-5">
-      <div className="flex items-center gap-2 mb-4 px-1">
-        <div className="w-4 h-4 rounded bg-light-border dark:bg-dark-border animate-pulse" />
-        <div className="w-44 h-5 rounded bg-light-border dark:bg-dark-border animate-pulse" />
+    <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
+      {/* Header — mirrors real shelf header */}
+      <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-light-border dark:bg-dark-border animate-pulse" />
+          <div className="w-36 h-5 rounded bg-light-border dark:bg-dark-border animate-pulse" />
+        </div>
+        {/* Scroll buttons placeholder (desktop only) */}
+        <div className="hidden lg:flex gap-2">
+          <div className="w-8 h-8 rounded-full bg-light-border dark:bg-dark-border animate-pulse" />
+          <div className="w-8 h-8 rounded-full bg-light-border dark:bg-dark-border animate-pulse" />
+        </div>
       </div>
+
+      {/* Cards — mirrors ScoredCard widths */}
       <div className="flex gap-4 overflow-hidden pb-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <SkeletonCard key={i} />
+          <div key={i} className="shrink-0 w-32 sm:w-40 md:w-44 lg:w-48 animate-pulse">
+            <div className="aspect-2/3 rounded-xl bg-light-border dark:bg-dark-border" />
+            <div className="mt-2 h-3 rounded bg-light-border dark:bg-dark-border w-4/5 mx-auto" />
+            <div className="mt-1.5 h-2.5 rounded bg-light-border dark:bg-dark-border w-2/5 mx-auto" />
+            <div className="mt-2 w-3.5 h-3.5 rounded-full bg-light-border dark:bg-dark-border mx-auto" />
+          </div>
         ))}
       </div>
     </section>
