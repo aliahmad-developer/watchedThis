@@ -34,7 +34,7 @@ export default function AboutPage() {
             </div>
 
             {/* Right: stacked avatars */}
-            <div className="flex-shrink-0 flex flex-row-reverse items-center mt-1">
+            <div className="shrink-0 flex flex-row-reverse items-center mt-1">
               {/* Tiba — behind */}
               <div className="relative -mr-2 sm:-mr-4 z-0 group/tiba">
                 <div className="w-11 h-11 sm:w-20 sm:h-20 rounded-full bg-accent shadow-md ring-2 ring-light-card dark:ring-dark-card overflow-hidden transition-transform duration-300 group-hover/tiba:scale-105">
