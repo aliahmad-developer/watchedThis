@@ -76,7 +76,9 @@ const useThemeDetection = () => {
 };
 
 const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
-  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(null);
+  const [ambient, setAmbient] = useState<{ solid: string; rgb: string } | null>(
+    null,
+  );
   const imgRef = useRef<HTMLImageElement>(null);
   const extractingRef = useRef(false);
   const extract = useCallback(() => {
@@ -122,7 +124,9 @@ function SceneResultCard({
 }) {
   const isLightMode = useThemeDetection();
   const confidence = Math.round((movie.votes / totalVotes) * 100);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const badgeRef = useRef<HTMLSpanElement>(null);
 
   const imageUrl = movie.backdrop_path
@@ -134,14 +138,14 @@ function SceneResultCard({
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
   // Updated fallbacks to match new palette tokens
-  const fallbackRgb   = isLightMode ? "238,240,242" : "3,25,38";
+  const fallbackRgb = isLightMode ? "238,240,242" : "3,25,38";
   const fallbackSolid = isLightMode ? "rgb(238,240,242)" : "rgb(3,25,38)";
   const solidColor = ambient?.solid ?? fallbackSolid;
-  const rgbColor   = ambient?.rgb   ?? fallbackRgb;
+  const rgbColor = ambient?.rgb ?? fallbackRgb;
 
-  const fullTint   = `rgba(${rgbColor}, 0.45)`;
+  const fullTint = `rgba(${rgbColor}, 0.45)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
-  const layerTop    = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
+  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
   const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
 
   return (
@@ -172,10 +176,19 @@ function SceneResultCard({
           ) : (
             <div className="absolute inset-0 bg-dark-card" />
           )}
-          <div className="absolute inset-0 transition-all duration-700" style={{ backgroundColor: fullTint }} />
-          <div className="absolute inset-0 transition-all duration-700" style={{ background: layerBottom }} />
+          <div
+            className="absolute inset-0 transition-all duration-700"
+            style={{ backgroundColor: fullTint }}
+          />
+          <div
+            className="absolute inset-0 transition-all duration-700"
+            style={{ background: layerBottom }}
+          />
           <div className="absolute inset-0" style={{ background: layerTop }} />
-          <div className="absolute inset-0" style={{ background: layerCenter }} />
+          <div
+            className="absolute inset-0"
+            style={{ background: layerCenter }}
+          />
         </div>
 
         <div className="absolute inset-0 pointer-events-none">
@@ -284,9 +297,6 @@ function CardSkeleton() {
 }
 
 export default function SceneDetectPage() {
-  return <>
-    <h1 className="sr-only">Scene Detection Results | WatchedThis</h1>
-  </>;
   const [movies, setMovies] = useState<Movie[]>([]);
   const [ready, setReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -324,6 +334,7 @@ export default function SceneDetectPage() {
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
+      <h1 className="sr-only">Scene Detection Results | WatchedThis</h1>
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
         <div className="text-center flex items-center gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
@@ -333,7 +344,8 @@ export default function SceneDetectPage() {
             {ready && (
               <p className="text-[11px] sm:text-xs text-light-secondary-text dark:text-dark-secondary-text mt-0.5">
                 {movies.filter((m) => m.media_type !== "tv").length} Movies ·{" "}
-                {movies.filter((m) => m.media_type === "tv").length} TV shows matched
+                {movies.filter((m) => m.media_type === "tv").length} TV shows
+                matched
               </p>
             )}
           </div>
@@ -357,9 +369,24 @@ export default function SceneDetectPage() {
             onClick={handleTryAgain}
             className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2 bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text hover:bg-light-border dark:hover:bg-dark-border"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"
+              />
             </svg>
             Try another scene
           </button>
