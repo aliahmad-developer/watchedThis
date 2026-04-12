@@ -56,10 +56,15 @@ export async function generateMetadata({
   };
 }
 
-export default function GenrePage({
+export default async function GenrePage({
   params,
 }: {
   params: Promise<{ genreId: string }>;
 }) {
-  return <GenrePageClient />;
+  const { genreId } = await params;
+  const genreName = GENRE_NAMES[genreId.toLowerCase()] || genreId.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return <>
+    <h1 className="sr-only">{genreName} Movies & TV Shows | WatchedThis</h1>
+    <GenrePageClient />
+  </>;
 }

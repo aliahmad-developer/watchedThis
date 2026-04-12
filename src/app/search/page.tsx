@@ -24,5 +24,8 @@ export async function generateMetadata({
 }
 
 export default function SearchPage() {
-  return <SearchClientPage />;
+  return <>
+    <h1 className="sr-only">Search Movies & TV Shows | WatchedThis</h1>
+    <SearchClientPage />
+  </>;
 }

@@ -7,5 +7,8 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PrivacyPolicyPage />;
+  return <>
+    <h1 className="sr-only">Privacy Policy — WatchedThis</h1>
+    <PrivacyPolicyPage />
+  </>;
 }

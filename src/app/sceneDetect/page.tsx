@@ -284,6 +284,9 @@ function CardSkeleton() {
 }
 
 export default function SceneDetectPage() {
+  return <>
+    <h1 className="sr-only">Scene Detection Results | WatchedThis</h1>
+  </>;
   const [movies, setMovies] = useState<Movie[]>([]);
   const [ready, setReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);

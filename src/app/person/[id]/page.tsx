@@ -60,5 +60,10 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <PersonPageClient id={id} />;
+  const data = await fetchPerson(id);
+  const name = data?.name || 'Person';
+  return <>
+    <h1 className="sr-only">{name} | WatchedThis</h1>
+    <PersonPageClient id={id} />
+  </>;
 }

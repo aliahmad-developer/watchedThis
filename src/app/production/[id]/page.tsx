@@ -62,5 +62,10 @@ export default async function ProductionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ProductionPageClient id={id} />;
+  const data = await fetchCompany(id);
+  const name = data?.company?.name || 'Production Company';
+  return <>
+    <h1 className="sr-only">{name} | Production Company | WatchedThis</h1>
+    <ProductionPageClient id={id} />
+  </>;
 }

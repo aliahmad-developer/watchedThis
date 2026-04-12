@@ -26,9 +26,12 @@ export const dynamic = "force-dynamic";
 
 export default function Page() {
   return (
-    <Suspense fallback={null}>
-      <FindPageClient />
-      <SceneDetect />
-    </Suspense>
+    <>
+      <h1 className="sr-only">Find – Scene Detection &amp; Advanced Movie Filters | WatchedThis</h1>
+      <Suspense fallback={null}>
+        <FindPageClient />
+        <SceneDetect />
+      </Suspense>
+    </>
   );
 }

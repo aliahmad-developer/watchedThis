@@ -8,5 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <AboutPage />;
+  return <>
+    <h1 className="sr-only">Creators | WatchedThis</h1>
+    <AboutPage />
+  </>;
 }

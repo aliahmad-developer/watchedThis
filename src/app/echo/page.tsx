@@ -2,33 +2,43 @@ import { Metadata } from "next";
 import EchoClient from "./clientPage";
 
 export const metadata: Metadata = {
-  title: "Echo, Find Movies You've Already Watched | WatchedThis",
+  title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
   description:
-    "Can't remember the name of a movie or series you watched before? Echo helps you find it instantly. Search your memory, we'll find the match.",
+    "Describe a movie or show you loved and Echo finds similar ones instantly. Matches by plot, genre, keywords, and synopsis — just type something like 'movies like Sherlock Holmes'.",
   keywords: [
-    "find watched movies",
-    "movie I watched",
-    "cant remember movie name",
-    "find series I watched",
-    "movie finder",
+    "movies like",
+    "similar movies",
+    "find movies like this",
+    "shows similar to",
+    "movie recommendations by plot",
+    "find movies by synopsis",
+    "movies like sherlock holmes",
+    "similar tv shows",
   ],
   alternates: { canonical: '/echo' },
   openGraph: {
-    title: "Echo, Find Movies You've Already Watched | WatchedThis",
+    title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
     description:
-      "Can't remember the name of a movie or series you watched before? Echo helps you find it instantly.",
+      "Type any movie or show and Echo finds similar ones by matching plot, genre, keywords, and synopsis.",
     url: "https://watchedthis.com/echo",
     siteName: "WatchedThis",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Echo, Find Movies You've Already Watched | WatchedThis",
+    title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
     description:
-      "Can't remember the name of a movie or series? Echo finds it for you.",
+      "Type any movie or show and Echo finds similar ones by plot, genre, and synopsis.",
   },
 };
 
 export default function EchoPage() {
-  return <EchoClient />;
+  return (
+    <>
+      <h1 className="sr-only">
+        Echo – Find Movies and TV Shows Similar to What You Already Watched
+      </h1>
+      <EchoClient />
+    </>
+  );
 }

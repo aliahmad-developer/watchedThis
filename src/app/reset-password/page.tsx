@@ -143,8 +143,11 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense>
-      <ResetPasswordForm />
-    </Suspense>
+    <>
+      <h1 className="sr-only">Reset Password | WatchedThis</h1>
+      <Suspense>
+        <ResetPasswordForm />
+      </Suspense>
+    </>
   );
 }

@@ -19,4 +19,9 @@ export const metadata: Metadata = {
     description: 'Custom movie spinner with filters. Spin to find your next watch. 🎡',
   },
 }
-export default Spinner;
+export default function Page() {
+  return <>
+    <h1 className="sr-only">Spinner – Spin & Discover Your Next Movie | WatchedThis</h1>
+    <Spinner />
+  </>;
+}

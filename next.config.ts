@@ -1,14 +1,15 @@
-const nextConfig = {
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
   images: {
-    formats: ['image/webp'],                    // drop avif
-    minimumCacheTTL: 60 * 60 * 24 * 31,        // 31 days
+    formats: ['image/avif', 'image/webp'],    
+    minimumCacheTTL: 60 * 60 * 24 * 31,
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [64, 128, 256, 500],
-    qualities: [75,55],                            // simplify unless you use 55 explicitly
     remotePatterns: [
-      { protocol: "https", hostname: "image.tmdb.org", pathname: "/**" },
-      { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "res.cloudinary.com" },
+      { protocol: 'https', hostname: 'image.tmdb.org', pathname: '/**' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
     ],
   },
   experimental: {
@@ -24,6 +25,16 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.watchedthis.com' }],
+        destination: 'https://watchedthis.com/:path*',
+        permanent: true,
+      },
+    ]
+  },
 }
 
-module.exports = nextConfig
+export default nextConfig

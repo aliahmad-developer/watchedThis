@@ -7,5 +7,8 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <TermsPage />;
+  return <>
+    <h1 className="sr-only">Terms of Use | WatchedThis</h1>
+    <TermsPage />
+  </>;
 }
