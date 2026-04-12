@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WatchedThis - #1 Random Movie Finder & TV Recommender",
     description:
-      "An AI-powered discovery platform designed to elevate how you explore movies and TV shows, featuring intelligent scene detection, spinner-based discovery, and deeply personalized recommendations.",
+      "AI-driven discovery platform for movies and TV shows, featuring scene detection, interactive spinner exploration, and personalized recommendations.",
     url: "https://watchedthis.com",
     siteName: "WatchedThis",
     type: "website",
