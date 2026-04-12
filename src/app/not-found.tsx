@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState} from "react";
 
 const FILM_QUOTES = [
   "The reel has run out.",

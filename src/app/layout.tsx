@@ -1,52 +1,61 @@
 import "./globals.css";
 import "../lib/fontawesome";
 import ClientProviders from "./components/utilities/clientProvider/clientProvider";
+import ClientHead from "./components/seo/ClientHead";
 import BackButton from "./components/utilities/backButton";
 import Navbar from "./components/navbar/page";
 import Footer from "./components/footer/footer";
 import { Metadata } from "next";
+import { Suspense } from "react";
+import Script from "next/script";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.WatchedThis.com"),
+  metadataBase: new URL("https://watchedthis.com"),
   title: {
-    default: "WatchedThis",
-    template: "%s | WatchedThis",
+    default: "WatchedThis - Random Movie & TV Show Finder",
+    template: "%s | WatchedThis - Movie & TV Discovery",
   },
-   alternates: {
-    canonical: '/',
-  },
-  description: "Discover movies and TV shows randomly",
+  description:
+    "AI-powered movie and TV show discovery. Random picks, scene detection, personalized recommendations & what to watch next.",
   keywords: [
-    "movies",
-    "TV shows",
     "random movie",
-    "film discovery",
+    "movie finder",
     "what to watch",
-    "movie recommendations",
-    "movie like",
+    "TV show recommendations",
+    "movie discovery",
+    "scene detection",
+    "AI movies",
+    "film recommendations",
     "series like",
+    "movie picker",
   ],
   openGraph: {
     siteName: "WatchedThis",
     type: "website",
     locale: "en_US",
-    url: "https://www.WatchedThis.com",
-    title: "WatchedThis, Discover Movies Randomly",
-    description: "Discover movies and TV shows randomly",
+    url: "https://watchedthis.com",
+    title: "WatchedThis - Random Movie & TV Discovery Platform",
+    description:
+      "Discover movies & TV randomly with AI. Scene detection, personalized recs, mood-based picks.",
     images: [
       {
         url: "/og-default.png",
         width: 1200,
         height: 630,
-        alt: "WatchedThis",
+        alt: "WatchedThis - Random Movie Finder",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WatchedThis – Discover Movies Randomly",
-    description: "Discover movies and TV shows randomly",
+    title: "WatchedThis – AI Movie & TV Discovery",
+    description:
+      "Random movie picker with scene detection & personalized recommendations.",
     images: ["/og-default.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   icons: {
     icon: [
@@ -66,13 +75,38 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://image.tmdb.org" crossOrigin="anonymous" />
+       
+<Script
+  id="google-tag-manager"
+  strategy="afterInteractive"
+  dangerouslySetInnerHTML={{
+    __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KD79MGZ4');`
+  }}
+/>
+
+        <link
+          rel="preconnect"
+          href="https://image.tmdb.org"
+          crossOrigin="anonymous"
+        />
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
+        <ClientHead />
       </head>
 
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">
+        {/* Google Tag Manager (noscript) */}
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KD79MGZ4"
+        height="0" width="0" style={{ display: 'none', visibility: 'hidden' }}></iframe></noscript>
+        {/* End Google Tag Manager (noscript) */}
         <ClientProviders>
-          <Navbar />
+          <Suspense>
+            <Navbar />
+          </Suspense>
+
           <div className="relative">
             <div className="absolute top-2 left-3 z-40">
               <BackButton />
@@ -80,7 +114,6 @@ export default function RootLayout({
             {children}
           </div>
         </ClientProviders>
-
         <Footer />
       </body>
     </html>
