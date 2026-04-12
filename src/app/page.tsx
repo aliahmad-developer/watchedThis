@@ -21,9 +21,9 @@ export const metadata: Metadata = {
     "best movies 2024",
     "trending TV shows"
   ],
-  alternates: {
-    canonical: 'https://watchedthis.com/',
-  },
+  // alternates: {
+    //   canonical: 'https://watchedthis.com/',
+    // },
   openGraph: {
     title: "WatchedThis - #1 Random Movie Finder & TV Recommender",
     description:
