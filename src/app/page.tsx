@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     siteName: "WatchedThis",
     type: "website",
     images: [{
-      url: "/og-default.png",
+      url: "/og",
       width: 1200,
       height: 630,
       alt: "WatchedThis Random Movie Finder"
@@ -58,7 +58,7 @@ function HomepageSchema() {
       name: "WatchedThis",
       logo: {
         "@type": "ImageObject",
-        url: "https://watchedthis.com/og-default.png"
+        url: "https://watchedthis.com/og"
       }
     },
     mainEntity: {

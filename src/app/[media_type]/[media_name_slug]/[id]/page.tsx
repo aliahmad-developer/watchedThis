@@ -120,7 +120,7 @@ export async function generateMetadata({
               alt: `${mediaTitle} poster`,
             },
           ]
-        : [{ url: "/og-default.png", width: 1200, height: 630, alt: "WatchedThis" }],
+        : [{ url: "/og", width: 1200, height: 630, alt: "WatchedThis" }],
       type: "video.movie",
     },
     twitter: {

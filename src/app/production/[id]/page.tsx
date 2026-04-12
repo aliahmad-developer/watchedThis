@@ -44,7 +44,7 @@ export async function generateMetadata({
               alt: `${name} logo`,
             },
           ]
-        : [{ url: "/og-default.png", width: 1200, height: 630, alt: "WatchedThis" }],
+        : [{ url: "/og", width: 1200, height: 630, alt: "WatchedThis" }],
       type: "website",
     },
     twitter: {
