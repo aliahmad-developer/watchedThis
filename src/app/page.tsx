@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     "trending TV shows",
   ],
   openGraph: {
-    title: "WatchedThis - #1 Random Movie Finder & TV Recommender",
+    title: "WatchedThis - Movies tailored to your taste.",
     description:
       "AI-driven discovery platform for movies and TV shows, featuring scene detection, interactive spinner exploration, and personalized recommendations.",
     url: "https://watchedthis.com",
