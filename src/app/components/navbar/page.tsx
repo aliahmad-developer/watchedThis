@@ -15,6 +15,7 @@ import {
   useCallback,
 } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faShuffle,
@@ -88,7 +89,7 @@ function generateVariants(query: string): string[] {
 }
 
 async function fetchAllVariants(query: string): Promise<MediaResult[]> {
-  const variants = generateVariants(query); // ← was just word splits before
+  const variants = generateVariants(query);
 
   const allResults = await Promise.all(variants.map(fetchTMDB));
 
@@ -104,9 +105,6 @@ async function fetchAllVariants(query: string): Promise<MediaResult[]> {
   }
   return merged;
 }
-
-
-
 
 function useFocusTrap(
   containerRef: React.RefObject<HTMLElement | null>,
@@ -185,7 +183,6 @@ export default function Navbar() {
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
-
   useEffect(() => {
     setHasMounted(true);
     router.prefetch("/search");
@@ -194,7 +191,6 @@ export default function Navbar() {
     router.prefetch("/find");
     router.prefetch("/echo");
   }, [router]);
-
 
   useEffect(() => {
     const handleScroll = () => {
@@ -288,26 +284,26 @@ export default function Navbar() {
 
   // ── Sync --navbar-h CSS variable ──
   useEffect(() => {
-  const el = document.getElementById("main-navbar");
-  if (!el) return;
+    const el = document.getElementById("main-navbar");
+    if (!el) return;
 
-  let frameId: number;
+    let frameId: number;
 
-  const update = () => {
-    frameId = requestAnimationFrame(() => {
-      document.documentElement.style.setProperty("--navbar-h", `${el.offsetHeight}px`);
-    });
-  };
+    const update = () => {
+      frameId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty("--navbar-h", `${el.offsetHeight}px`);
+      });
+    };
 
-  update();
-  const ro = new ResizeObserver(update);
-  ro.observe(el);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
 
-  return () => {
-    ro.disconnect();
-    cancelAnimationFrame(frameId);
-  };
-}, []);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(frameId);
+    };
+  }, []);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -346,7 +342,6 @@ export default function Navbar() {
     inputRef.current?.focus();
   }, []);
 
-  // Preserved from original: API-driven random navigation with createSlug
   const handleRandomClick = useCallback(
     async (e: React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault();
@@ -389,13 +384,6 @@ export default function Navbar() {
           }`}
         >
           <nav className="w-full bg-light-nav dark:bg-dark-nav border-b border-light-border dark:border-dark-border shadow-sm">
-            {/*
-              Layout strategy:
-              - mobile/tablet (<lg): flex row — hamburger | logo | [spacer] | controls
-              - desktop (≥lg):       3-column grid — [logo] | [nav pills] | [controls]
-                Each column is `1fr`, so the center is always the exact middle of the
-                navbar regardless of asymmetric side widths.
-            */}
 
             {/* ── Mobile / Tablet row (hidden on lg+) ── */}
             <div className="flex lg:hidden items-center h-14 px-3 sm:px-4 gap-2">
@@ -412,11 +400,15 @@ export default function Navbar() {
                 <FontAwesomeIcon icon={faBars} className="h-4 w-4" />
               </button>
 
-              <Link
-                href="/"
-                className="shrink-0 text-base sm:text-lg font-bold text-dark-accent whitespace-nowrap"
-              >
-                WatchedThis
+              {/* Mobile logo — icon mark only, compact */}
+              <Link href="/" className="shrink-0 flex items-center">
+                <Image
+                  src="/watchedthis-favicon.svg"
+                  alt="WatchedThis"
+                  width={32}
+                  height={32}
+                  priority
+                />
               </Link>
 
               <div className="flex-1" aria-hidden="true" />
@@ -433,8 +425,14 @@ export default function Navbar() {
 
               {/* Col 1 — Logo, left-aligned */}
               <div className="flex items-center">
-                <Link href="/" className="text-lg font-bold text-dark-accent whitespace-nowrap">
-                  WatchedThis
+                <Link href="/" className="flex items-center">
+                  <Image
+                    src="/watchedthis-logo.svg"
+                    alt="WatchedThis"
+                    width={200}
+                    height={50}
+                    priority
+                  />
                 </Link>
               </div>
 
@@ -481,7 +479,7 @@ export default function Navbar() {
 
           </nav>
 
-          {/* ── Search overlay — absolutely positioned below navbar, never pushes content ── */}
+          {/* ── Search overlay ── */}
           {hasMounted && searchVisible && (
             <div className="absolute left-0 right-0 top-full z-40">
               <div className="bg-light-nav dark:bg-dark-nav border-b border-light-border dark:border-dark-border shadow-md px-3 sm:px-4 lg:px-6 py-2">
@@ -541,12 +539,19 @@ export default function Navbar() {
             }`}
           >
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-light-border dark:border-dark-border">
+              {/* Drawer logo — full lockup */}
               <Link
                 href="/"
-                className="text-lg font-bold text-dark-accent"
+                className="flex items-center"
                 onClick={() => setDrawerOpen(false)}
               >
-                WatchedThis
+                <Image
+                  src="/watchedthis-logo.svg"
+                  alt="WatchedThis"
+                  width={160}
+                  height={40}
+                  priority
+                />
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}
