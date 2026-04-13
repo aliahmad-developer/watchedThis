@@ -120,7 +120,7 @@ export default function AuthButton() {
           onClick={() => {
             if (!isAuthPage) setModalOpen(true);
           }}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
+          className={`px-2 rounded-lg text-sm font-medium transition-colors
             ${
               isAuthPage
                 ? "bg-light-accent dark:bg-dark-accent text-white dark:text-dark-card shadow-md cursor-default"

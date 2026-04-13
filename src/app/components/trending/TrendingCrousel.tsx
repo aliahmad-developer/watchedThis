@@ -171,7 +171,7 @@ export default function TrendingCarouselClient() {
         aria-label="Trending media carousel"
       >
         {/* Header */}
-        {/* Header */}
+        
         <div className="flex items-center justify-between gap-2 mb-6 px-1">
           {/* Left — title */}
           <div className="flex items-center gap-2">
