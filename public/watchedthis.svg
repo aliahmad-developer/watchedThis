@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 56">
+  <rect x="0" y="0" width="56" height="56" rx="10" fill="#2a7f8a"/>
+  <rect x="2.5" y="2.5" width="51" height="51" rx="8" fill="#0f1e30"/>
+  <rect x="6" y="9" width="44" height="38" rx="9" fill="#e8e0d0"/>
+  <rect x="11" y="14" width="34" height="28" rx="6" fill="#0f1e30"/>
+  <rect x="15" y="21" width="10" height="8" rx="2" fill="#3a9aa8"/>
+  <rect x="31" y="21" width="10" height="8" rx="2" fill="#3a9aa8"/>
+ 
+  <!-- "Watched" in white, always visible on #031926 nav in both modes -->
+  <text x="68" y="38"
+    font-family="'Inter','Helvetica Neue',Arial,sans-serif"
+    font-size="28" font-weight="700" letter-spacing="-0.5">
+    <tspan fill="#ffffff">Watched</tspan><tspan fill="#468189">This</tspan>
+  </text>
+</svg>
+ 

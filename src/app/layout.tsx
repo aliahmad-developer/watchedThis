@@ -67,7 +67,6 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
-// Server-side structured data — Googlebot will always see this
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -75,7 +74,7 @@ const organizationSchema = {
   url: "https://watchedthis.com",
   logo: {
     "@type": "ImageObject",
-    url: "https://watchedthis.com/android-chrome-512x512.png", 
+    url: "https://watchedthis.com/android-chrome-512x512.png",
     width: 512,
     height: 512,
   },

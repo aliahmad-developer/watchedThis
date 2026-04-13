@@ -63,8 +63,6 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
   }, [stopCamera, onClose]);
 
   const startCamera = async () => {
-    console.log("mediaDevices:", navigator?.mediaDevices);
-    console.log("getUserMedia:", navigator?.mediaDevices?.getUserMedia);
 
     if (!navigator?.mediaDevices?.getUserMedia) {
       setError("Camera API not available — check HTTPS.");

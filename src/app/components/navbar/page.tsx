@@ -46,7 +46,6 @@ const FUSE_OPTIONS = {
   ignoreLocation: true,
 };
 
-// Defined outside component — stable reference, never re-allocated on render
 const NAV_ITEMS = [
   { label: "Random", icon: faShuffle, href: "/random" },
   { label: "Spinner", icon: faSpinner, href: "/spinner" },
@@ -72,11 +71,8 @@ function generateVariants(query: string): string[] {
   const set = new Set<string>([q]);
   const words = q.split(/\s+/);
 
-  // Word splits for multi-word queries ("breaking bad" → "breaking", "bad")
   words.filter((w) => w.length >= 3).forEach((w) => set.add(w));
 
-  // Adjacent-char transpositions for single words only
-  // "freiren" → fires swap at every position, one of them is "frieren"
   if (words.length === 1) {
     for (let i = 0; i < q.length - 1; i++) {
       const chars = q.split("");
@@ -90,7 +86,6 @@ function generateVariants(query: string): string[] {
 
 async function fetchAllVariants(query: string): Promise<MediaResult[]> {
   const variants = generateVariants(query);
-
   const allResults = await Promise.all(variants.map(fetchTMDB));
 
   const seen = new Set<number>();
@@ -121,11 +116,20 @@ function useFocusTrap(
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
-      if (focusable.length === 0) { e.preventDefault(); return; }
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
     };
 
@@ -207,7 +211,8 @@ export default function Navbar() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
-      const isTyping = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      const isTyping =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 
       if (e.key === "Escape") {
         if (searchVisible) {
@@ -279,7 +284,9 @@ export default function Navbar() {
   // ── Body scroll lock when drawer open ──
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [drawerOpen]);
 
   // ── Sync --navbar-h CSS variable ──
@@ -291,7 +298,10 @@ export default function Navbar() {
 
     const update = () => {
       frameId = requestAnimationFrame(() => {
-        document.documentElement.style.setProperty("--navbar-h", `${el.offsetHeight}px`);
+        document.documentElement.style.setProperty(
+          "--navbar-h",
+          `${el.offsetHeight}px`,
+        );
       });
     };
 
@@ -384,7 +394,6 @@ export default function Navbar() {
           }`}
         >
           <nav className="w-full bg-light-nav dark:bg-dark-nav border-b border-light-border dark:border-dark-border shadow-sm">
-
             {/* ── Mobile / Tablet row (hidden on lg+) ── */}
             <div className="flex lg:hidden items-center h-14 px-3 sm:px-4 gap-2">
               <button
@@ -400,12 +409,11 @@ export default function Navbar() {
                 <FontAwesomeIcon icon={faBars} className="h-4 w-4" />
               </button>
 
-              {/* Mobile logo — icon mark only, compact */}
               <Link href="/" className="shrink-0 flex items-center">
                 <Image
-                  src="/watchedthis-favicon.svg"
+                  src="/watchedthis.svg"
                   alt="WatchedThis"
-                  width={32}
+                  width={130}
                   height={32}
                   priority
                 />
@@ -414,7 +422,11 @@ export default function Navbar() {
               <div className="flex-1" aria-hidden="true" />
 
               <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
-                <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
+                <SearchButton
+                  isActive={searchVisible}
+                  onClick={handleSearchToggle}
+                  size="sm"
+                />
                 <Toggle size="sm" />
                 <AuthButton />
               </div>
@@ -422,27 +434,28 @@ export default function Navbar() {
 
             {/* ── Desktop 3-column grid (hidden below lg) ── */}
             <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center h-14 px-6">
-
-              {/* Col 1 — Logo, left-aligned */}
+              {/* Col 1 — Logo */}
               <div className="flex items-center">
                 <Link href="/" className="flex items-center">
                   <Image
-                    src="/watchedthis-logo.svg"
+                    src="/watchedthis.svg"
                     alt="WatchedThis"
                     width={200}
-                    height={50}
+                    height={30}
                     priority
                   />
                 </Link>
               </div>
 
-              {/* Col 2 — Nav pills, dead-center */}
+              {/* Col 2 — Nav pills */}
               <div className="flex items-center gap-8 xl:gap-12 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg py-1.5 px-8 xl:px-12 shadow-sm">
                 {NAV_ITEMS.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={item.label === "Random" ? handleRandomClick : undefined}
+                    onClick={
+                      item.label === "Random" ? handleRandomClick : undefined
+                    }
                     className={`flex flex-col items-center justify-center text-sm font-medium transition-colors duration-200 ${
                       pathname === item.href
                         ? "text-light-accent dark:text-dark-accent"
@@ -455,10 +468,14 @@ export default function Navbar() {
                 ))}
               </div>
 
-              {/* Col 3 — Controls, right-aligned */}
+              {/* Col 3 — Controls */}
               <div className="flex items-center justify-end gap-2">
                 <div className="relative group">
-                  <SearchButton isActive={searchVisible} onClick={handleSearchToggle} size="sm" />
+                  <SearchButton
+                    isActive={searchVisible}
+                    onClick={handleSearchToggle}
+                    size="sm"
+                  />
                   {!searchVisible && (
                     <div
                       aria-hidden="true"
@@ -476,7 +493,6 @@ export default function Navbar() {
                 <AuthButton />
               </div>
             </div>
-
           </nav>
 
           {/* ── Search overlay ── */}
@@ -491,7 +507,9 @@ export default function Navbar() {
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                   className="w-full text-sm"
-                  inputRef={(el) => { inputRef.current = el; }}
+                  inputRef={(el) => {
+                    inputRef.current = el;
+                  }}
                   autoFocus
                 />
               </div>
@@ -518,54 +536,64 @@ export default function Navbar() {
       {/* ── Mobile / Tablet Drawer ── */}
       {hasMounted && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop — fades in/out */}
           <div
             onClick={() => setDrawerOpen(false)}
             aria-hidden="true"
-            className={`lg:hidden fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
-              drawerOpen ? "opacity-50 pointer-events-auto" : "opacity-0 pointer-events-none"
-            }`}
+            className="lg:hidden fixed inset-0 z-40 bg-black"
+            style={{
+              opacity: drawerOpen ? 0.45 : 0,
+              pointerEvents: drawerOpen ? "auto" : "none",
+              transition: "opacity 300ms ease",
+            }}
           />
 
-          {/* Drawer panel */}
+          {/* Drawer panel — slides in from left + fades in */}
           <div
             id="mobile-drawer"
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label="Navigation menu"
-            className={`lg:hidden fixed top-0 left-0 z-50 h-full w-72 sm:w-80 bg-light-nav dark:bg-dark-nav shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
-              drawerOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
+            className="lg:hidden fixed top-0 left-0 z-50 h-full w-60 sm:w-64 bg-light-nav dark:bg-dark-nav shadow-2xl flex flex-col"
+            style={{
+              transform: drawerOpen ? "translateX(0)" : "translateX(-12px)",
+              opacity: drawerOpen ? 1 : 0,
+              pointerEvents: drawerOpen ? "auto" : "none",
+              transition: drawerOpen
+                ? "transform 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 250ms ease"
+                : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease",
+            }}
           >
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-light-border dark:border-dark-border">
-              {/* Drawer logo — full lockup */}
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 py-3.5 border-b border-light-border dark:border-dark-border">
               <Link
                 href="/"
                 className="flex items-center"
                 onClick={() => setDrawerOpen(false)}
               >
                 <Image
-                  src="/watchedthis-logo.svg"
+                  src="/watchedthis.svg"
                   alt="WatchedThis"
-                  width={160}
-                  height={40}
+                  width={130}
+                  height={32}
                   priority
                 />
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="flex items-center justify-center w-8 h-8 rounded-md bg-transparent
+                className="flex items-center justify-center w-7 h-7 rounded-md bg-transparent
                            text-light-secondary-text dark:text-dark-secondary-text
                            hover:text-light-accent dark:hover:text-dark-accent
                            hover:bg-light-card dark:hover:bg-dark-card transition-colors"
                 aria-label="Close menu"
               >
-                <FontAwesomeIcon icon={faXmark} className="h-4 w-4" />
+                <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <nav className="flex flex-col gap-1 px-3 py-4 flex-1 overflow-y-auto">
+            {/* Nav links */}
+            <nav className="flex flex-col gap-0.5 px-2 py-3 flex-1 overflow-y-auto">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.href}
@@ -574,13 +602,16 @@ export default function Navbar() {
                     if (item.label === "Random") handleRandomClick(e);
                     setDrawerOpen(false);
                   }}
-                  className={`flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 border-b border-teal-500/30 last:border-b-0 ${
                     pathname === item.href
                       ? "bg-light-card dark:bg-dark-card text-light-accent dark:text-dark-accent"
                       : "text-light-secondary-text dark:text-dark-secondary-text hover:bg-light-card dark:hover:bg-dark-card hover:text-light-accent dark:hover:text-dark-accent"
                   }`}
                 >
-                  <FontAwesomeIcon icon={item.icon} className="h-4 w-4 shrink-0" />
+                  <FontAwesomeIcon
+                    icon={item.icon}
+                    className="h-4 w-4 shrink-0"
+                  />
                   {item.label}
                 </Link>
               ))}

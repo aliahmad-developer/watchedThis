@@ -2,8 +2,6 @@ import { getApps, initializeApp, cert, App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 let adminApp: App;
-console.log("[route] loaded");
-
 function getServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);

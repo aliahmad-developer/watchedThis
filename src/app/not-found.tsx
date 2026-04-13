@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 
 const FILM_QUOTES = [
   "The reel has run out.",
@@ -145,8 +145,8 @@ export default function NotFound() {
 function FilmStrip({ flip = false }: { flip?: boolean }) {
   const holes = Array.from({ length: 20 });
   const frames = Array.from({ length: 6 });
-const stripBg = "var(--strip-bg)";
-const holeBg = "var(--hole-bg)";
+  const stripBg = "var(--strip-bg)";
+  const holeBg = "var(--hole-bg)";
 
   return (
     <div
@@ -174,7 +174,11 @@ const holeBg = "var(--hole-bg)";
           <div
             key={i}
             className="flex-1 rounded-sm"
-            style={{ aspectRatio: "16/9", maxHeight: "36px", background: holeBg }}
+            style={{
+              aspectRatio: "16/9",
+              maxHeight: "36px",
+              background: holeBg,
+            }}
           />
         ))}
       </div>

@@ -123,10 +123,8 @@ function CropModal({ imgSrc, onApply, onCancel }: {
   const handleApply = async () => {
     try {
       const blob = await crop.getCroppedBlob();
-      console.log("Blob ready:", blob.size, blob.type);
       onApply(blob);
     } catch (err) {
-      console.error("Crop failed:", err);
       toast.error("Crop failed.");
     }
   };
@@ -233,10 +231,6 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
 
   const handleCropApply = async (blob: Blob) => {
     if (!user) { toast.error("Not logged in."); return; }
-
-    console.log("handleCropApply — blob:", blob.size, blob.type);
-    console.log("CLOUD_NAME:", CLOUD_NAME, "UPLOAD_PRESET:", UPLOAD_PRESET);
-
     setUploading(true);
     setProgress(10);
     setImgSrc(null); // close modal after we have the blob
@@ -248,15 +242,12 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       formData.append("public_id", `profile_${user.uid}_${Date.now()}`);
       formData.append("folder", "profile_pictures");
 
-      console.log("Sending to Cloudinary...");
       setProgress(30);
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData }
       );
-
-      console.log("Cloudinary response status:", res.status);
       setProgress(80);
 
       if (!res.ok) {
@@ -265,9 +256,7 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
         throw new Error(`Upload failed (${res.status}): ${errText}`);
       }
 
-      const data = await res.json();
-      console.log("Cloudinary success:", data.secure_url);
-      const downloadURL = data.secure_url;
+      const data = await res.json();      const downloadURL = data.secure_url;
       setProgress(100);
 
       const { updateProfile } = await import("firebase/auth");

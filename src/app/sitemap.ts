@@ -63,7 +63,6 @@ async function getPopularPersons() {
 }
 
 async function getPopularCompanies(): Promise<{ id: number; name: string }[]> {
-  // TMDB has no dedicated "all companies" endpoint — pull from popular movies
   const movies = await fetchAllPages<{
     id: number;
     production_companies?: { id: number; name: string }[];
@@ -179,7 +178,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // ── /person/[name-slug]/[id]  (matches your /api/person/[id] structure) ───
+  // ── /person/[name-slug]/[id] 
   const personRoutes: MetadataRoute.Sitemap = persons.map(({ id, name }) => ({
     url: `${SITE_URL}/person/${slugify(name ?? String(id))}/${id}`,
     lastModified: new Date(),
@@ -187,7 +186,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  // ── /production-company/[id]  (matches your /api/company/[id] structure) ──
+  // ── /production-company/[id]  
   const companyRoutes: MetadataRoute.Sitemap = companies.map(({ id }) => ({
     url: `${SITE_URL}/production-company/${id}`,
     lastModified: new Date(),
@@ -195,7 +194,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  // ── /genre/[id]  (matches your /api/genre/[id] structure) ─────────────────
   const genreRoutes: MetadataRoute.Sitemap = genres.map(
     ({ id, mediaType }) => ({
       url: `${SITE_URL}/genre/${id}?media_type=${mediaType}`,
