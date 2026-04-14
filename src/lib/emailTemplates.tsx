@@ -27,17 +27,53 @@ function shell(title: string, body: string): string {
           style="background:${BASE.lightCard};border-radius:12px;overflow:hidden;border:1px solid ${BASE.lightBorder};">
 
           <!-- Header -->
-          <tr>
-            <td style="background:${BASE.lightNav};padding:24px 40px;text-align:center;">
-              <img
-                src="https://watchedthis.com/watchedthis-logo-2x.png"
-                alt="WatchedThis"
-                width="200"
-                height="37"
-                style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;"
-              />
-            </td>
-          </tr>
+          
+<tr>
+  <td style="background:${BASE.lightNav};padding:24px 40px;text-align:center;">
+    <table cellpadding="0" cellspacing="0" style="display:inline-table;">
+      <!-- Header -->
+      <tr>
+        <td style="background:${BASE.lightNav};padding:24px 40px;text-align:center;">
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+            <tr>
+              <!-- Icon mark -->
+              <td style="vertical-align:middle;padding-right:10px;">
+                <div style="width:40px;height:40px;background:#2a7f8a;border-radius:7px;padding:2px;">
+                  <div style="background:#0f1e30;border-radius:5px;width:36px;height:36px;padding:4px 3px 0;">
+                    <div style="background:#e8e0d0;border-radius:4px;width:30px;height:22px;padding:4px 3px 0;">
+                      <div style="background:#0f1e30;border-radius:3px;width:24px;height:14px;padding:3px 2px;">
+                        <table cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="width:8px;height:6px;background:#3a9aa8;border-radius:1px;"></td>
+                            <td style="width:4px;"></td>
+                            <td style="width:8px;height:6px;background:#3a9aa8;border-radius:1px;"></td>
+                          </tr>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Wordmark -->
+              <td style="vertical-align:middle;">
+                <span style="font-family:'Segoe UI',Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#ffffff;">Watched</span><span style="font-family:'Segoe UI',Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#468189;">This</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+          </table>
+        </td>
+        <td style="vertical-align:middle;">
+          <span style="font-family:'Segoe UI',Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;">
+            <span style="color:#ffffff;">Watched</span><span style="color:#468189;">This</span>
+          </span>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
 
           <!-- Body -->
           <tr>
