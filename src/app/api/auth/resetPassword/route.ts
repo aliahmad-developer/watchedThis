@@ -30,6 +30,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("[reset-password]", error);
-    return NextResponse.json({ success: true }); // don't leak if email exists
+
+    if (error.code === "auth/user-not-found") {
+      return NextResponse.json(
+        { error: "No account found with this email address." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
   }
 }
