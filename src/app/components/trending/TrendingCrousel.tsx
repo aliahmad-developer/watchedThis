@@ -22,48 +22,8 @@ import {
 
 const SWIPE_THRESHOLD = 50;
 
-// ── Mobile nav button ─────────────────────────────────────────────────────────
-function MobileNavButton({
-  onClick,
-  disabled,
-  direction,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-  direction: "left" | "right";
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={direction === "left" ? "Previous" : "Next"}
-      className={`
-        relative w-11 h-11 rounded-full flex items-center justify-center
-        border transition-all duration-200 select-none
-        ${
-          disabled
-            ? "opacity-25 cursor-not-allowed border-light-border dark:border-dark-border bg-transparent"
-            : `cursor-pointer
-             border-light-border dark:border-dark-border
-             bg-light-card dark:bg-dark-card
-             text-light-secondary-text dark:text-dark-secondary-text
-             hover:border-color-accent hover:text-color-accent
-             hover:bg-light-bg dark:hover:bg-dark-bg
-             hover:scale-110 active:scale-95 shadow-sm hover:shadow-md`
-        }
-      `}
-    >
-      <FontAwesomeIcon
-        icon={direction === "left" ? faChevronLeft : faChevronRight}
-        className="w-3.5 h-3.5"
-      />
-    </button>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function TrendingCarouselClient() {
+  // containerRef now lives on the track's overflow div — exact usable width
   const containerRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -171,9 +131,7 @@ export default function TrendingCarouselClient() {
         aria-label="Trending media carousel"
       >
         {/* Header */}
-        
         <div className="flex items-center justify-between gap-2 mb-6 px-1">
-          {/* Left — title */}
           <div className="flex items-center gap-2">
             <FontAwesomeIcon
               icon={faHashtag}
@@ -183,7 +141,7 @@ export default function TrendingCarouselClient() {
             <h2>Trending</h2>
           </div>
 
-          {/* Right — mobile nav arrows (inline, no background) */}
+          {/* Mobile nav arrows */}
           {isMobile && isReady && (
             <div className="flex items-center gap-3">
               <button
@@ -191,8 +149,8 @@ export default function TrendingCarouselClient() {
                 disabled={!canGoLeft}
                 aria-label="Previous"
                 className="bg-transparent p-1 text-light-secondary-text dark:text-dark-secondary-text
-          hover:text-color-accent disabled:opacity-25 disabled:cursor-not-allowed
-          transition-colors duration-150"
+                  hover:text-color-accent disabled:opacity-25 disabled:cursor-not-allowed
+                  transition-colors duration-150"
               >
                 <FontAwesomeIcon icon={faChevronLeft} className="w-3.5 h-3.5" />
               </button>
@@ -201,21 +159,23 @@ export default function TrendingCarouselClient() {
                 disabled={!canGoRight}
                 aria-label="Next"
                 className="bg-transparent p-1 text-light-secondary-text dark:text-dark-secondary-text
-          hover:text-color-accent disabled:opacity-25 disabled:cursor-not-allowed
-          transition-colors duration-150"
+                  hover:text-color-accent disabled:opacity-25 disabled:cursor-not-allowed
+                  transition-colors duration-150"
               >
-                <FontAwesomeIcon
-                  icon={faChevronRight}
-                  className="w-3.5 h-3.5"
-                />
+                <FontAwesomeIcon icon={faChevronRight} className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
         </div>
 
-        <div className="flex w-full items-start" ref={containerRef}>
-          {/* Track */}
-          <div className="relative overflow-hidden flex-1">
+        {/* Carousel row */}
+        <div className="flex w-full items-start">
+          {/*
+            containerRef is HERE — on the flex-1 overflow div.
+            Flexbox already constrains its width to exclude the nav buttons,
+            so offsetWidth is the exact track width on every screen/orientation.
+          */}
+          <div className="relative overflow-hidden flex-1" ref={containerRef}>
             <div
               className="flex pb-6 pr-5"
               style={trackStyle}
@@ -237,7 +197,7 @@ export default function TrendingCarouselClient() {
             </div>
           </div>
 
-          {/* Desktop nav */}
+          {/* Desktop/tablet nav buttons */}
           {isReady && (isTablet || isDesktop) && (
             <NavigationButtons
               onLeft={scrollLeft}
@@ -248,7 +208,6 @@ export default function TrendingCarouselClient() {
             />
           )}
         </div>
-       
       </section>
     </>
   );

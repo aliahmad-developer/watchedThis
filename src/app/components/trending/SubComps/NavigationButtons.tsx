@@ -8,8 +8,14 @@ interface NavigationButtonsProps {
   itemHeight: number;
 }
 
-export function NavigationButtons({ onLeft, onRight, canGoLeft, canGoRight, itemHeight }: NavigationButtonsProps) {
-  const GAP = 16; // gap-4
+export function NavigationButtons({
+  onLeft,
+  onRight,
+  canGoLeft,
+  canGoRight,
+  itemHeight,
+}: NavigationButtonsProps) {
+  const GAP = 16;
   const buttonHeight = (itemHeight - GAP) / 2;
   const baseBtnClasses =
     "w-14 rounded-md shadow-lg flex items-center justify-center transition-all duration-200";

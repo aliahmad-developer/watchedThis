@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { GAP, MOBILE_GAP, ITEM_WIDTH_DESKTOP, ITEM_WIDTH_TABLET } from "./types";
+import { GAP, MOBILE_GAP, ITEM_WIDTH_DESKTOP } from "./types";
 
 export function useResponsiveConfig() {
   const [windowWidth, setWindowWidth] = useState(0);
@@ -56,35 +56,56 @@ export function useCarousel(mediaLength: number, visibleCount: number) {
   };
 }
 
-export function useCarouselDimensions(containerRef: React.RefObject<HTMLDivElement | null>) {
-  // Start at 0 so the parent can gate rendering until we have a real measurement
+export function useCarouselDimensions(
+  containerRef: React.RefObject<HTMLDivElement | null>
+) {
   const [dimensions, setDimensions] = useState({ visibleCount: 0, itemWidth: 0 });
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateDimensions = useCallback(() => {
     if (!containerRef.current) return;
+
+    // containerRef is placed directly on the track's overflow div,
+    // so offsetWidth is already the exact usable width — no arrow offset needed.
     const containerWidth = containerRef.current.offsetWidth;
-    if (containerWidth === 0) return;
+    if (containerWidth <= 0) return;
 
-    let calculatedItemWidth: number;
     let newCount: number;
+    let gap: number;
 
-    if (containerWidth < 768) {
+    if (containerWidth < 480) {
+      newCount = 2;
+      gap = MOBILE_GAP;
+    } else if (containerWidth < 768) {
       newCount = 3;
-      calculatedItemWidth = (containerWidth - MOBILE_GAP * 2) / 3;
+      gap = MOBILE_GAP;
     } else if (containerWidth < 1024) {
-      calculatedItemWidth = Math.min(ITEM_WIDTH_TABLET, containerWidth * 0.33);
-      newCount = Math.max(1, Math.floor((containerWidth + GAP) / (calculatedItemWidth + GAP)));
+      newCount = 3;
+      gap = GAP;
+    } else if (containerWidth < 1280) {
+      newCount = 4;
+      gap = GAP;
     } else {
-      calculatedItemWidth = Math.min(ITEM_WIDTH_DESKTOP, containerWidth * 0.4);
-      newCount = Math.max(1, Math.floor((containerWidth + GAP) / (calculatedItemWidth + GAP)));
+      const naturalCount = Math.floor(
+        (containerWidth + GAP) / (ITEM_WIDTH_DESKTOP + GAP)
+      );
+      newCount = Math.max(1, naturalCount);
+      gap = GAP;
+    }
+
+    // Solves: newCount * itemWidth + (newCount - 1) * gap = containerWidth
+    const calculatedItemWidth =
+      (containerWidth - (newCount - 1) * gap) / newCount;
+
+    if (calculatedItemWidth < 60) {
+      setDimensions({ visibleCount: 1, itemWidth: containerWidth });
+      return;
     }
 
     setDimensions({ visibleCount: newCount, itemWidth: calculatedItemWidth });
   }, [containerRef]);
 
   useEffect(() => {
-    // Call immediately on mount — this is the key fix
     updateDimensions();
 
     const handleResize = () => {
