@@ -12,7 +12,7 @@ type Props = {
   isSendingVerification: boolean;
 };
 
-const COOLDOWN_SECONDS = 60;
+const COOLDOWN_SECONDS = 30;
 
 export default function EmailVerification({
   user,

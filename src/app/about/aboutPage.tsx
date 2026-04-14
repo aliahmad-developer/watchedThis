@@ -38,7 +38,7 @@ export default function AboutPage() {
               {/* Tiba — behind */}
               <div className="relative -mr-2 sm:-mr-4 z-0 group/tiba">
                 <div className="w-11 h-11 sm:w-20 sm:h-20 rounded-full bg-accent shadow-md ring-2 ring-light-card dark:ring-dark-card overflow-hidden transition-transform duration-300 group-hover/tiba:scale-105">
-                  <img src="/tiba.png" alt="Tiba" className="w-full h-full object-cover" />
+                  <img src="/tiba.jpeg" alt="Tiba" className="w-full h-full object-cover" />
                 </div>
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 invisible group-hover/tiba:opacity-100 group-hover/tiba:visible transition-all duration-200 whitespace-nowrap z-20 pointer-events-none">
                   Tiba
