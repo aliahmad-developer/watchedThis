@@ -31,24 +31,25 @@ function shell(title: string, body: string): string {
 
           <!-- Header -->
           <tr>
-            <td style="background:${BASE.lightNav};padding:24px 40px;text-align:center;">
+            <td style="background:#031926;padding:24px 40px;text-align:center;">
               <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
+
                   <!-- Icon -->
                   <td style="vertical-align:middle;padding-right:12px;">
-                    <table cellpadding="0" cellspacing="0" style="width:44px;height:44px;background:#2a7f8a;border-radius:8px;">
+                    <table cellpadding="0" cellspacing="0" style="width:48px;height:48px;background:#2a7f8a;border-radius:9px;">
                       <tr><td style="padding:2px;">
-                        <table cellpadding="0" cellspacing="0" style="width:40px;height:40px;background:#0f1e30;border-radius:6px;">
-                          <tr><td style="padding:4px 3px 0 3px;">
-                            <table cellpadding="0" cellspacing="0" style="width:34px;height:26px;background:#e8e0d0;border-radius:5px;">
+                        <table cellpadding="0" cellspacing="0" style="width:44px;height:44px;background:#0f1e30;border-radius:7px;">
+                          <tr><td style="padding:3px 2px 0 2px;">
+                            <table cellpadding="0" cellspacing="0" style="width:40px;height:35px;background:#e8e0d0;border-radius:8px;">
                               <tr><td style="padding:4px 3px 0 3px;">
-                                <table cellpadding="0" cellspacing="0" style="width:28px;height:16px;background:#0f1e30;border-radius:4px;">
-                                  <tr><td style="padding:4px 3px;">
+                                <table cellpadding="0" cellspacing="0" style="width:34px;height:24px;background:#0f1e30;border-radius:5px;">
+                                  <tr><td style="padding:5px 4px;">
                                     <table cellpadding="0" cellspacing="0">
                                       <tr>
-                                        <td style="width:9px;height:7px;background:#3a9aa8;border-radius:2px;font-size:0;line-height:0;">&nbsp;</td>
-                                        <td style="width:5px;">&nbsp;</td>
-                                        <td style="width:9px;height:7px;background:#3a9aa8;border-radius:2px;font-size:0;line-height:0;">&nbsp;</td>
+                                        <td style="width:11px;height:8px;background:#3a9aa8;border-radius:2px;font-size:0;line-height:0;">&nbsp;</td>
+                                        <td style="width:6px;">&nbsp;</td>
+                                        <td style="width:11px;height:8px;background:#3a9aa8;border-radius:2px;font-size:0;line-height:0;">&nbsp;</td>
                                       </tr>
                                     </table>
                                   </td></tr>
@@ -63,8 +64,9 @@ function shell(title: string, body: string): string {
 
                   <!-- Wordmark -->
                   <td style="vertical-align:middle;">
-                    <span style="font-family:'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#ffffff;">Watched</span><span style="font-family:'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#468189;">This</span>
+                    <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#ffffff;">Watched</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#468189;">This</span>
                   </td>
+
                 </tr>
               </table>
             </td>
