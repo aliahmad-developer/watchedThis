@@ -28,10 +28,14 @@ function shell(title: string, body: string): string {
 
           <!-- Header -->
           <tr>
-            <td style="background:${BASE.lightNav};padding:28px 40px;text-align:center;">
-              <span style="color:${BASE.btnText};font-size:20px;font-weight:700;letter-spacing:-0.3px;">
-                WatchedThis
-              </span>
+            <td style="background:${BASE.lightNav};padding:24px 40px;text-align:center;">
+              <img
+                src="https://watchedthis.com/watchedthis-logo-2x.png"
+                alt="WatchedThis"
+                width="200"
+                height="37"
+                style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;"
+              />
             </td>
           </tr>
 
