@@ -119,7 +119,7 @@ export default function Home() {
         WatchedThis, Best Random Movie Finder &amp; TV Show Recommender
       </h1>
       <SpotLightServer />
-      <div className="lg:mx-5 sm:mx-3 md:mx-4 min-h-400  ">
+      <div className="mx-3 sm:mx-4 md:mx-5 lg:mx-7 xl:mx-10">
         <DailyMedia />
         <RecommendationShelf />
         <Trending />

@@ -29,12 +29,12 @@ export default function AlphabetStrip() {
     </button>
   );
 
-  return (
-    <div className="w-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl px-2 py-2">
+ return (
+    <div className="mb-5 w-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl px-3 py-2.5">
       <div className="flex flex-wrap gap-0.5 justify-center">
         {LETTERS.map((l) => <Chip key={l} label={l} />)}
       </div>
-      <div className="border-t border-light-border dark:border-dark-border my-1.5 mx-1" />
+      <div className="border-t border-light-border dark:border-dark-border my-2 mx-1" />
       <div className="flex flex-wrap gap-0.5 justify-center">
         {DIGITS.map((d) => <Chip key={d} label={d} />)}
         <Chip label="#" />

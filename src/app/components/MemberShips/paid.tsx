@@ -77,13 +77,12 @@ export default function Membership() {
 
   return (
     <section
-      id="membership"
       ref={cardRef}
       className="
     membership-card
     relative max-w-5xl mx-3 sm:mx-auto
     flex flex-col md:flex-row items-center justify-between
-    gap-4 md:gap-8 p-5 sm:p-6 cursor-default
+    gap-4 md:gap-8 p-5 cursor-default
     bg-light-card dark:bg-dark-card
     text-light-body-text dark:text-dark-body-text
     border border-light-border dark:border-dark-border
