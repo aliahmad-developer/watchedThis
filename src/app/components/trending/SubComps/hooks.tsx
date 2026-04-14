@@ -37,11 +37,11 @@ export function useCarousel(mediaLength: number, visibleCount: number) {
   }, [mediaLength, visibleCount]);
 
   const scrollLeft = useCallback(() => {
-    if (isReady) setIndex((prev) => Math.max(0, prev - 1));
+    if (isReady) setIndex((prev) => Math.max(0, prev - 2));
   }, [isReady]);
 
   const scrollRight = useCallback(() => {
-    if (isReady) setIndex((prev) => Math.min(maxIndexRef.current, prev + 1));
+    if (isReady) setIndex((prev) => Math.min(maxIndexRef.current, prev + 2));
   }, [isReady]);
 
   return {

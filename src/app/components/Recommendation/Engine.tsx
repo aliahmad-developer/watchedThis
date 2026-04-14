@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────
-//  recommendationEngine.ts
-//  Pure scoring logic — no React, no Firebase, no side-effects
-//
 //  Priority weights:
 //    1. Favourites & ratings  → 40 %
 //    2. Search history        → 25 %
