@@ -9,12 +9,34 @@ const SECURITY_HEADERS = {
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Content-Security-Policy":
     "default-src 'self' https: data:; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.firebaseapp.com https://www.googletagmanager.com https://www.google-analytics.com; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+    "https://apis.google.com " +
+    "https://*.firebaseapp.com " +
+    "https://www.googletagmanager.com " +
+    "https://www.google-analytics.com " +
+    "https://*.vercel.live; " + // ✅ Added
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' https: data: blob:; " +
     "font-src 'self' https: data:; " +
-    "connect-src 'self' https://*.googleapis.com https://*.firebase.com https://*.firebaseio.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://formspree.io https://api.cloudinary.com https://image.tmdb.org https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com; " +
-    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://vercel.live https://www.youtube.com; " + // ✅ No stray semicolon
+    "connect-src 'self' " +
+    "https://*.googleapis.com " +
+    "https://*.firebase.com " +
+    "https://*.firebaseio.com " +
+    "https://*.firebaseapp.com " +
+    "https://identitytoolkit.googleapis.com " +
+    "https://securetoken.googleapis.com " +
+    "https://formspree.io " +
+    "https://api.cloudinary.com " +
+    "https://image.tmdb.org " +
+    "https://www.googletagmanager.com " +
+    "https://www.google-analytics.com " +
+    "https://region1.google-analytics.com " +
+    "https://*.vercel.live; " +
+    "frame-src 'self' " +
+    "https://*.firebaseapp.com " +
+    "https://accounts.google.com " +
+    "https://vercel.live " +
+    "https://www.youtube.com; " +
     "object-src 'none';",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=*, microphone=(), geolocation=()",
