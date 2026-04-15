@@ -15,16 +15,20 @@ export default function ClientProviders({
   children: React.ReactNode;
 }) {
   useEffect(() => {
-    const handler = () => {
-      const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+    const mediaQuery = window.matchMedia("(orientation: landscape)");
+
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      const isLandscape = e.matches;
       document.body.classList.toggle("landscape", isLandscape);
       document.body.classList.toggle("portrait", !isLandscape);
     };
-    handler();
-    window.addEventListener("orientationchange", handler);
-    return () => window.removeEventListener("orientationchange", handler);
+
+    handler(mediaQuery);
+
+    mediaQuery.addEventListener("change", handler);
+
+    return () => mediaQuery.removeEventListener("change", handler);
   }, []);
-  
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: any;
