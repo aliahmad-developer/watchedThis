@@ -261,6 +261,7 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
 
       const { updateProfile } = await import("firebase/auth");
       await updateProfile(user, { photoURL: downloadURL });
+      await user.reload();
 
       const { doc, updateDoc } = await import("firebase/firestore");
       const firebaseConfig = await import("../../../firebase/firebaseConfig");
@@ -269,6 +270,7 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       catch (err) { console.warn("Firestore update non-critical:", err); }
 
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
+      window.dispatchEvent(new CustomEvent("user-photo-updated"));
       toast.success("Profile picture updated!");
       onUpdated?.(downloadURL);
     } catch (err: any) {

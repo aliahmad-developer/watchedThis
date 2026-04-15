@@ -68,12 +68,14 @@ export default function AuthButton() {
     );
 
     window.addEventListener("signup-username-ready", forceReload);
+    window.addEventListener("user-photo-updated", forceReload);
 
     return () => {
       unsubscribe();
       window.removeEventListener("signup-username-ready", forceReload);
+      window.removeEventListener("user-photo-updated", forceReload);
     };
-  }, [authInstance, firebaseAuth]); // ← fix here
+  }, [authInstance, firebaseAuth]);
 
   // Re-sync when profile changes externally
   useEffect(() => {

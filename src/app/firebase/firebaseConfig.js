@@ -15,12 +15,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_APP_ID,
 };
 
-// 🔑 Lazy app getter
 function getFirebaseApp() {
   return getApps().length ? getApp() : initializeApp(firebaseConfig);
 }
 
-// 🔑 Lazy auth
 export async function getFirebaseAuth() {
   const app = getFirebaseApp();
   const auth = getAuth(app);
