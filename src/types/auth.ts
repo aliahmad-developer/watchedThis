@@ -2,17 +2,11 @@ export interface AuthError {
   code?: string;
   message: string;
 }
+import { User } from 'firebase/auth';
 
-export interface FirebaseUser {
-  uid: string;
-  email?: string | null;
-  displayName?: string | null;
-  photoURL?: string | null;
-  emailVerified: boolean;
-  metadata: {
-    creationTime?: string;
-    lastSignInTime?: string;
-  };
-  reload: () => Promise<void>;
-  getIdToken: (forceRefresh?: boolean) => Promise<string>;
+export type FirebaseUser = User;
+
+export interface AuthError {
+  code?: string;
+  message: string;
 }

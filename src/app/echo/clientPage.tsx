@@ -12,6 +12,7 @@ import {
   faWaveSquare,
 } from "@fortawesome/free-solid-svg-icons";
 import Fuse from "fuse.js";
+import { trackSearch } from "../components/Recommendation/behaviourTracker";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -574,6 +575,7 @@ export default function EchoClient() {
 
   // ── Select title ──────────────────────────────────────────────────────────
   const selectTitle = useCallback(async (hit: SearchHit) => {
+    await trackSearch(hit.title);
     justSelected.current = true;
     setDropOpen(false);
     setRawHits([]);

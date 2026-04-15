@@ -15,6 +15,7 @@ import {
   faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
+import toast from "react-hot-toast";
 
 type SignupFormProps = {
   onSuccess?: (newUser: User, username: string) => void;
@@ -130,6 +131,7 @@ export default function SignupForm({
       );
 
       if (result.success && result.user && onSuccess) {
+        toast.success("Account created successfully! Welcome aboard!");
         setMessage(result.message);
         onSuccess(result.user, result.username);
         window.dispatchEvent(new CustomEvent("signup-username-ready"));

@@ -2,7 +2,7 @@ import "./globals.css";
 import "../lib/fontawesome";
 import ClientProviders from "./components/utilities/clientProvider/clientProvider";
 import BackButton from "./components/utilities/backButton";
-import Navbar from "./components/navbar/page";
+import Navbar from "./components/navbar/navBar";
 import Footer from "./components/footer/footer";
 import { Metadata } from "next";
 import { Suspense } from "react";

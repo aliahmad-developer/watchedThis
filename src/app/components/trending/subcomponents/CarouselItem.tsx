@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { memo, useMemo } from "react";
 import { MediaItem } from "./types";
+import { trackClick } from "@/app/components/Recommendation/behaviourTracker";
 
 interface CarouselItemProps {
   item: MediaItem;
@@ -68,6 +69,7 @@ export const CarouselItem = memo(function CarouselItem({
           className="relative lg:md:rounded-lg overflow-hidden shadow-xl block hover:scale-105 transition-transform duration-300 ease-out"
           style={{ width: `${posterWidth}px`, height: `${itemHeight}px` }}
           prefetch={isPriority}
+          onClick={() => trackClick(item.id, item.title ? "movie" : "tv")}
         >
           <div className="absolute top-0 left-0 z-10 md:hidden w-8 h-8 bg-black/70 flex items-center justify-center">
             <span className="text-light-accent dark:text-dark-accent font-bold text-sm">

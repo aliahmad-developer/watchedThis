@@ -8,6 +8,8 @@ import Link from "next/link";
 import ColorThief from "color-thief-browser";
 import { createSlug } from "../components/utilities/createSlug";
 import SceneCameraModal from "../components/sceneDetection/cameraModal";
+import { trackFindFilters } from "../components/Recommendation/behaviourTracker";
+import type { FindFilterSnapshot } from "../components/Recommendation/behaviourTracker";
 
 type Movie = {
   id?: number;
@@ -328,7 +330,7 @@ export default function SceneDetectPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const router = useRouter();
 
-  const loadResults = useCallback(() => {
+  const loadResults = useCallback(async () => {
     const raw = sessionStorage.getItem("sceneResults");
     if (!raw) {
       // Don't redirect immediately — wait for timeout handler
@@ -344,6 +346,21 @@ export default function SceneDetectPage() {
       const sorted = Array.from(seen.values()).sort((a, b) => b.votes - a.votes);
       setMovies(sorted);
       setReady(true);
+      // Track scene detection result usage
+      if (sorted.length > 0) {
+        const topKeywords = sorted.slice(0, 3).flatMap(m => m.keywords || []);
+        await trackFindFilters({
+          mediaType: "both",
+          genres: [],
+          excludeGenres: [],
+          keywords: topKeywords.slice(0, 10),
+          excludeKeywords: [],
+          yearRange: [1950, new Date().getFullYear()],
+          ratingRange: [0, 10],
+          sortBy: 'scene_votes',
+          ts: Date.now()
+        } as FindFilterSnapshot);
+      }
       return true;
     } catch {
       return false;
@@ -351,20 +368,18 @@ export default function SceneDetectPage() {
   }, []);
 
   useEffect(() => {
-    const loaded = loadResults();
-
-    if (loaded) return;
+    loadResults();
 
     // FIX: Give the backend time to respond before bailing — handles cold starts and slow mobile networks
-    const timer = setTimeout(() => {
-      const retried = loadResults();
+    const timer = setTimeout(async () => {
+      const retried = await loadResults();
       if (!retried) {
         setTimedOut(true);
       }
     }, LOAD_TIMEOUT_MS);
 
     return () => clearTimeout(timer);
-  }, [loadResults, router]);
+  }, [loadResults]);
 
   const handleTryAgain = () => {
     sessionStorage.removeItem("sceneResults");

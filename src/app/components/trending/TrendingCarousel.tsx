@@ -5,14 +5,14 @@ import {
   useResponsiveConfig,
   useCarousel,
   useCarouselDimensions,
-} from "./SubComps/hooks";
+} from "./subcomponents/hooks";
 import { useTrendingMedia } from "../hooks/trending/useTrendingMedia";
-import { TrendingCarouselSkeleton } from "./SubComps/Skeleton";
-import { CarouselItem } from "./SubComps/CarouselItem";
-import { NavigationButtons } from "./SubComps/NavigationButtons";
-import { ErrorState } from "./SubComps/ErrorState";
-import { EmptyState } from "./SubComps/EmptyState";
-import { MOBILE_GAP, GAP } from "./SubComps/types";
+import { TrendingCarouselSkeleton } from "./subcomponents/Skeleton";
+import { CarouselItem } from "./subcomponents/CarouselItem";
+import { NavigationButtons } from "./subcomponents/NavigationButtons";
+import { ErrorState } from "./subcomponents/ErrorState";
+import { EmptyState } from "./subcomponents/EmptyState";
+import { MOBILE_GAP, GAP } from "./subcomponents/types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faHashtag,

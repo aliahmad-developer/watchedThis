@@ -28,6 +28,7 @@ export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 
 
   const slug = createSlug(title);
   const href = `/${mediaType}/${slug}/${item.id}`;
+  const handleClick = () => trackClick(item.id, mediaType as "movie" | "tv");
 
   const delay = `${Math.min(index * 40, 300)}ms`;
 
@@ -35,7 +36,7 @@ export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 
     <Link
       href={href}
       draggable
-      onClick={() => trackClick(item.id, mediaType === "tv" ? "tv" : "movie")}
+      onClick={handleClick}
       className="p-2 group cursor-pointer rounded-xl hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-black/50 transition-shadow duration-300 block opacity-0 animate-[fadeUp_0.4s_ease_forwards]"
       style={{ animationDelay: delay }}
     >

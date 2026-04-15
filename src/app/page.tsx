@@ -1,5 +1,5 @@
 import SpotLightServer from "./components/spotlight/spotLightServer";
-import Trending from "./components/trending/TrendingCrousel";
+import Trending from "./components/trending/TrendingCarousel";
 import DailyMedia from "./components/dailyMedia/dailyMedia";
 import RecommendationShelf from "./components/Recommendation/recommendationShelf";
 import Strip from "./components/alphabetStrip/strip";

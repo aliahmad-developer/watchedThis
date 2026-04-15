@@ -3,8 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { createSlug } from "../utilities/createSlug";
-import { trackSearch } from "../../components/Recommendation/behaviourTracker";
-import AuthButton from "../../components/auth/navButton/authButton";
+import { trackSearch } from "../Recommendation/behaviourTracker";
+import AuthButton from "../auth/navButton/authButton";
 import {
   useState,
   useEffect,

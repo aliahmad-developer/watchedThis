@@ -11,6 +11,7 @@ import UsernameUpdate from "./authComponent/userNameUpdate";
 import PasswordUpdate from "./authComponent/passwordUpdate";
 import Message from "./authComponent/message";
 import type { AuthError, FirebaseUser } from "@/types/auth";
+import { User } from 'firebase/auth';
 
 // Module-level cache — persists across re-renders, cleared on logout
 const userInfoCache = new Map<
@@ -46,7 +47,7 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"signup" | "login" | "forgot">("signup");
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [displayPhotoURL, setDisplayPhotoURL] = useState<string | null>(null);
