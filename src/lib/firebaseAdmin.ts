@@ -23,7 +23,7 @@ try {
     adminApp = getApps()[0];
   }
 } catch (e) {
-  console.error("[firebaseAdmin] init error:", e);
+  console.error({ level: 'error', module: 'firebaseAdmin', message: (e as Error).message });
   throw e;
 }
 

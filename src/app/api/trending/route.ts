@@ -29,10 +29,10 @@ export async function GET() {
     cache.set(CACHE_KEY, result);
 
     return NextResponse.json(result, { headers: { "X-Cache": "MISS" } });
-  } catch (error) {
-    console.error("[/api/trending]", error);
+  } catch (error: unknown) {
+    console.error({ level: 'error', endpoint: '/api/trending', message: (error as Error).message });
     return NextResponse.json(
-      { message: "Error fetching trending media", error: String(error) },
+      { message: "Error fetching trending media" },
       { status: 500 }
     );
   }

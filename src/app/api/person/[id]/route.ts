@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { TMDBPersonCredit } from "@/types/tmdb";
 
 const API_KEY = process.env.TMDB_API_KEY;
 const BASE_URL = process.env.TMDB_BASE_URL || "https://api.themoviedb.org/3";
@@ -65,22 +66,22 @@ export async function GET(
     let filteredCredits = null;
 
     if (credits) {
-      const cast = credits.cast.sort(
-        (a: any, b: any) =>
+      const cast = (credits.cast as TMDBPersonCredit[]).sort(
+        (a, b) =>
           new Date(b.release_date || b.first_air_date || "9999").getTime() -
           new Date(a.release_date || a.first_air_date || "9999").getTime()
       );
-      const crew = credits.crew.filter(
-        (item: any) => item.job === "Director" || item.job === "Producer"
+      const crew = (credits.crew as TMDBPersonCredit[]).filter(
+        (item) => item.job === "Director" || item.job === "Producer"
       );
       // Fetch runtimes in parallel for cast + crew
       const allCredits = [...cast, ...crew];
       const runtimeData = await Promise.all(
-        allCredits.map((c: any) => fetchRuntime(c.id, c.media_type))
+        allCredits.map((c) => fetchRuntime(c.id, c.media_type))
       );
 
       // Merge runtime info back into cast/crew
-      const enrichedCast = cast.map((c: any, i: number) => ({
+      const enrichedCast = cast.map((c, i) => ({
         id: c.id,
         title: c.title || c.name,
         character: c.character,
@@ -91,7 +92,7 @@ export async function GET(
         ...runtimeData[i], // runtime or episode_run_time
       }));
 
-      const enrichedCrew = crew.map((c: any, i: number) => {
+      const enrichedCrew = crew.map((c, i) => {
         const offset = cast.length; // shift index
         return {
           id: c.id,
@@ -126,8 +127,8 @@ export async function GET(
       credits: filteredCredits,
       images: filteredImages,
     });
-  } catch (error) {
-    console.error("API Error:", error);
+  } catch (error: unknown) {
+    console.error({ level: 'error', endpoint: '/api/person/[id]', message: (error as Error).message });
     return NextResponse.json(
       { error: "Failed to fetch person data" },
       { status: 500 }

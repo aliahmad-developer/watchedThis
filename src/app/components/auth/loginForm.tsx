@@ -4,6 +4,7 @@ import { login, signInWithGoogle, signInWithApple } from "./auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
+import type { AuthError } from "@/types/auth";
 
 type LoginFormProps = {
   onSuccess?: () => void;
@@ -46,8 +47,9 @@ export default function LoginForm({
         if (result.noAccount) setNoAccount(true);
         if (onError) onError(result.message);
       }
-    } catch (error: any) {
-      const errorMessage = error.message || "Login failed. Please try again.";
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      const errorMessage = authError.message || "Login failed. Please try again.";
       setMessage(errorMessage);
       if (onError) onError(errorMessage);
     } finally {
@@ -72,8 +74,9 @@ export default function LoginForm({
         setMessage(msg);
         if (onError) onError(msg);
       }
-    } catch (error: any) {
-      const msg = error.message || "OAuth sign-in failed.";
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      const msg = authError.message || "OAuth sign-in failed.";
       setMessage(msg);
       if (onError) onError(msg);
     } finally {

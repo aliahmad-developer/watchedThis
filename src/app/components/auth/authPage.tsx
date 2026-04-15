@@ -10,6 +10,7 @@ import EmailVerification from "./authComponent/emailVerification";
 import UsernameUpdate from "./authComponent/userNameUpdate";
 import PasswordUpdate from "./authComponent/passwordUpdate";
 import Message from "./authComponent/message";
+import type { AuthError, FirebaseUser } from "@/types/auth";
 
 // Module-level cache — persists across re-renders, cleared on logout
 const userInfoCache = new Map<
@@ -45,7 +46,7 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"signup" | "login" | "forgot">("signup");
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [displayPhotoURL, setDisplayPhotoURL] = useState<string | null>(null);
@@ -161,7 +162,7 @@ export default function AuthPage() {
         authRef.current = authInstance;
         dbRef.current = dbInstance;
 
-        unsubscribe = authInstance.onAuthStateChanged((u: any) => {
+        unsubscribe = authInstance.onAuthStateChanged((u: FirebaseUser | null) => {
           setUser(u ?? null);
           if (u) {
             fetchUserInfo();
@@ -170,8 +171,9 @@ export default function AuthPage() {
             setIsLoading(false);
           }
         });
-      } catch (err) {
-        console.error("Firebase init failed:", err);
+      } catch (err: unknown) {
+        const authError = err as AuthError;
+        console.error({ level: 'error', component: 'authPage', message: authError.message });
         showMessage("Failed to initialize authentication", true);
       }
     };

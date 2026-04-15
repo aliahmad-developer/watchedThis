@@ -177,8 +177,8 @@ async function fetchOneRandom(seenIds: Set<number>) {
         };
       }
     }
-  } catch (err) {
-    console.error("Discover fetch failed:", err);
+  } catch (err: unknown) {
+    console.error({ level: 'error', endpoint: '/api/randomCall', stage: 'discover', message: (err as Error).message });
   }
 
   // ── 2. fallback: random ID ────────────────────────────────────────────────
@@ -217,8 +217,8 @@ async function fetchOneRandom(seenIds: Set<number>) {
           };
         }
       }
-    } catch (err) {
-      console.error(`Random ID attempt ${i + 1} failed:`, err);
+    } catch (err: unknown) {
+      console.error({ level: 'error', endpoint: '/api/randomCall', stage: `random-id-${i+1}`, message: (err as Error).message });
     }
   }
 
@@ -250,8 +250,8 @@ async function fetchOneRandom(seenIds: Set<number>) {
         };
       }
     }
-  } catch (err) {
-    console.error("Trending fallback failed:", err);
+  } catch (err: unknown) {
+    console.error({ level: 'error', endpoint: '/api/randomCall', stage: 'trending-fallback', message: (err as Error).message });
   }
 
   return null;
