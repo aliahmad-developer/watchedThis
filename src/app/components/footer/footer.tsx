@@ -1,16 +1,11 @@
 "use client";
 import Link from "next/link";
-import {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  FormEvent,
-} from "react";
+import InstallButton from "@/app/components/pwa/installButton";
+import { useState, useEffect, useMemo, useCallback, FormEvent } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const RATE_LIMIT = { max: 3, windowMs: 60 * 60 * 1000 }; 
+const RATE_LIMIT = { max: 3, windowMs: 60 * 60 * 1000 };
 const COOLDOWN_MS = 30_000;
 
 function getRateLimitStatus(): {
@@ -108,7 +103,7 @@ export default function Footer() {
       // Cooldown check
       if (lastSubmitted && now - lastSubmitted < COOLDOWN_MS) {
         const remaining = Math.ceil(
-          (COOLDOWN_MS - (now - lastSubmitted)) / 1000
+          (COOLDOWN_MS - (now - lastSubmitted)) / 1000,
         );
         toast.error(`Please wait ${remaining}s before sending again.`);
         return;
@@ -121,7 +116,7 @@ export default function Footer() {
         toast.error(
           `You got a lot to say huh. Try again in ${mins} minute${
             mins !== 1 ? "s" : ""
-          }.`
+          }.`,
         );
         return;
       }
@@ -163,7 +158,7 @@ export default function Footer() {
         setIsSubmitting(false);
       }
     },
-    [name, email, message, lastSubmitted]
+    [name, email, message, lastSubmitted],
   );
 
   if (is404) return null;
@@ -235,7 +230,11 @@ export default function Footer() {
             <h3 className="text-base font-bold text-light-header dark:text-dark-header">
               Feedback
             </h3>
-            <form id="feedback-form" onSubmit={handleSubmit} className="space-y-2">
+            <form
+              id="feedback-form"
+              onSubmit={handleSubmit}
+              className="space-y-2"
+            >
               <input
                 id="name"
                 type="text"
@@ -283,9 +282,8 @@ export default function Footer() {
           </div>
         </div>
 
-       <div className="mt-7 pt-5 border-t border-light-border dark:border-dark-border">
+        <div className="mt-7 pt-5 border-t border-light-border dark:border-dark-border">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-
             {/* Legal blurb */}
             <div className="space-y-1.5 max-w-md">
               <h4 className="font-medium text-sm text-light-header dark:text-dark-header">
@@ -315,18 +313,21 @@ export default function Footer() {
               </p>
             </div>
 
-            {/* Right side meta */}
-            <div className="flex flex-col sm:items-end gap-1 text-xs text-light-secondary-text dark:text-dark-secondary-text sm:text-right">
-              <p>{VERSION}</p>
-              <Link
-                href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-light-accent dark:hover:text-dark-accent transition-colors underline underline-offset-2"
-              >
-                Creative Commons BY-NC-SA 4.0 License
-              </Link>
-              <p>© {CURRENT_YEAR} WatchedThis. All rights reserved.</p>
+            {/* Right side meta + PWA */}
+            <div className="flex flex-col sm:items-end gap-3 text-xs text-light-secondary-text dark:text-dark-secondary-text sm:text-right">
+              <div className="gap-1">
+                <p>{VERSION}</p>
+                <Link
+                  href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-light-accent dark:hover:text-dark-accent transition-colors underline underline-offset-2"
+                >
+                  Creative Commons BY-NC-SA 4.0 License
+                </Link>
+                <p>© {CURRENT_YEAR} WatchedThis. All rights reserved.</p>
+              </div>
+              <InstallButton /> 
             </div>
           </div>
         </div>

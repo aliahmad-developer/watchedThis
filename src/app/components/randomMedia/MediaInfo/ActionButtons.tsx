@@ -2,7 +2,12 @@
 
 import { useRef, useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlay, faChevronDown, faCheck, faLock } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPlay,
+  faChevronDown,
+  faCheck,
+  faLock,
+} from "@fortawesome/free-solid-svg-icons";
 import { useUserList } from "../../hooks/useUserList";
 import { ListStatus } from "../../../user/library/types";
 import toast from "react-hot-toast";
@@ -16,9 +21,9 @@ interface ActionButtonsProps {
 }
 
 const LIST_OPTIONS: { label: string; value: ListStatus }[] = [
-  { label: "Favourite",     value: "favourite"     },
+  { label: "Favourite", value: "favourite" },
   { label: "Plan to Watch", value: "plan_to_watch" },
-  { label: "Completed",     value: "completed"     },
+  { label: "Completed", value: "completed" },
 ];
 
 export default function ActionButtons({
@@ -40,7 +45,10 @@ export default function ActionButtons({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -76,7 +84,11 @@ export default function ActionButtons({
         onClick={onPlayTrailer}
         className="px-4 py-2 text-sm lg:text-base rounded-full font-medium flex items-center gap-2 transition bg-light-btn-bg hover:bg-light-btn-hover-bg text-light-btn-text dark:bg-dark-btn-bg dark:hover:bg-dark-btn-hover-bg dark:text-dark-btn-text"
       >
-        <FontAwesomeIcon icon={faPlay} />
+        <FontAwesomeIcon
+          icon={faPlay}
+          fixedWidth
+          className="w-4 h-4 shrink-0"
+        />
         Play Trailer
       </button>
 
@@ -109,14 +121,18 @@ export default function ActionButtons({
                     onClick={() => handleSelect(option.value)}
                     className={`bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-header hover:dark:text-dark-header w-full text-left px-3 py-1.5 text-sm flex items-center justify-between gap-2 transition
                       hover:bg-light-border dark:hover:bg-dark-border
-                      ${isActive
-                        ? "text-light-accent dark:text-dark-accent font-semibold"
-                        : "text-light-text dark:text-dark-text"
+                      ${
+                        isActive
+                          ? "text-light-accent dark:text-dark-accent font-semibold"
+                          : "text-light-text dark:text-dark-text"
                       }`}
                   >
                     {option.label}
                     {isActive && (
-                      <FontAwesomeIcon icon={faCheck} className="h-3 w-3 shrink-0" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        className="h-3 w-3 shrink-0"
+                      />
                     )}
                   </button>
                 );
