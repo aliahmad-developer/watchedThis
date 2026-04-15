@@ -23,14 +23,6 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value: "public, max-age=604800, stale-while-revalidate=86400",
           },
-          {
-            key: "CDN-Cache-Control",
-            value: "public, max-age=604800",
-          },
-          {
-            key: "Vercel-CDN-Cache-Control",
-            value: "public, max-age=604800",
-          },
         ],
       },
     ];
@@ -48,7 +40,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
       { protocol: "https", hostname: "fyp-movie-4d46d.firebasestorage.app" },
     ],
-
   },
 
   experimental: {
