@@ -2,20 +2,29 @@
 import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "next-themes";
+import { useEffect } from "react";
 
 const Membership = dynamic(() => import("../../MemberShips/paid"), {
   ssr: false,
 });
 const PushUp = dynamic(() => import("../backToTop"), { ssr: false });
-import { useEffect } from "react";
-
 
 export default function ClientProviders({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Token refresh lives here — runs once for the whole app
+  useEffect(() => {
+    const handler = () => {
+      const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+      document.body.classList.toggle("landscape", isLandscape);
+      document.body.classList.toggle("portrait", !isLandscape);
+    };
+    handler();
+    window.addEventListener("orientationchange", handler);
+    return () => window.removeEventListener("orientationchange", handler);
+  }, []);
+  
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: any;
