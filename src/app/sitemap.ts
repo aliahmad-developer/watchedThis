@@ -2,7 +2,8 @@ import { MetadataRoute } from "next";
 const API_KEY = process.env.TMDB_API_KEY;
 const BASE_URL = process.env.TMDB_BASE_URL;
 const SITE_URL = "https://watchedthis.com";
-
+export const dynamic = 'force-dynamic'  // ← add this line at top
+export const revalidate = 0  
 // ─── TMDB helpers ──────────────────────────────────────────────────────────────
 
 function slugify(text: string): string {
