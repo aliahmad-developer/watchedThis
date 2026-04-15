@@ -25,7 +25,6 @@ import {
   faXmark,
   faGlobe,
   faClock,
-  faHashtag,
   faSliders,
 } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -54,7 +53,6 @@ interface Filters {
   networks: number[];
   runtimeRange: [number, number];
   language: string;
-  minVotes: string;
   sortBy: string;
   strictMode: boolean;
 }
@@ -180,7 +178,6 @@ const DEFAULT_FILTERS: Filters = {
   networks: [],
   runtimeRange: [MIN_RUNTIME, MAX_RUNTIME],
   language: "",
-  minVotes: "",
   sortBy: "popularity.desc",
   strictMode: false,
 };
@@ -222,7 +219,6 @@ function parseFiltersFromURL(params: URLSearchParams): Filters {
       Number(params.get("maxRuntime") || MAX_RUNTIME),
     ],
     language: params.get("language") || "",
-    minVotes: params.get("minVotes") || "",
     sortBy: params.get("sortBy") || "popularity.desc",
     strictMode: params.get("strict") === "true",
   };
@@ -244,7 +240,6 @@ function filtersToParams(f: Filters): URLSearchParams {
   if (f.keywords.length) p.set("keywords", f.keywords.join(","));
   if (f.strictMode) p.set("strict", "true");
   if (f.language) p.set("language", f.language);
-  if (f.minVotes) p.set("minVotes", f.minVotes);
   if (f.networks.length) p.set("networks", f.networks.join(","));
   if (f.runtimeRange[0] !== MIN_RUNTIME)
     p.set("minRuntime", String(f.runtimeRange[0]));
@@ -274,7 +269,6 @@ function countActiveFilters(f: Filters): number {
   if (f.runtimeRange[0] !== MIN_RUNTIME || f.runtimeRange[1] !== MAX_RUNTIME)
     n++;
   if (f.language) n++;
-  if (f.minVotes) n++;
   return n;
 }
 
@@ -436,7 +430,6 @@ function FindPageInner() {
     return urlFilters;
   });
 
-  // Re-sync whenever URL params change (manual URL edit, back/forward, results → find navigation)
   useEffect(() => {
     const hasUrlParams = searchParams.toString().length > 0;
     if (hasUrlParams) {
@@ -452,13 +445,13 @@ function FindPageInner() {
       setFilters(DEFAULT_FILTERS);
     }
   }, [searchParams]);
+
   const [kwInput, setKwInput] = useState("");
   const [kwIncludeInput, setKwIncludeInput] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Staggered mount animation
     const t = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(t);
   }, []);
@@ -487,7 +480,6 @@ function FindPageInner() {
   const isTvOnly =
     filters.mediaType.length === 1 && filters.mediaType[0] === "tv";
   const includesTv = filters.mediaType.includes("tv");
-  const includesMovie = filters.mediaType.includes("movie");
 
   const cycleGenre = useCallback((id: number) => {
     setFilters((prev) => {
@@ -607,10 +599,6 @@ function FindPageInner() {
 
   const hasExclusions =
     filters.excludeGenres.length > 0 || filters.excludeKeywords.length > 0;
-
-  /* ── Section animation helper ───────────────────────────────────────── */
-  const sectionClass = (delay = 0) =>
-    `transition-all duration-500 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`;
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
@@ -732,8 +720,7 @@ function FindPageInner() {
             <div>
               <SectionLabel icon={faSearch}>Keywords</SectionLabel>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2.5 -mt-1 leading-relaxed">
-                Include media matching these words in title, description, or
-                tags.
+                Include media matching these words in title, description, or tags.
               </p>
               <KeywordInput
                 placeholder="e.g. heist, space, vampire…"
@@ -859,55 +846,30 @@ function FindPageInner() {
             {/* ── Divider ── */}
             <div className="border-t border-light-border dark:border-dark-border -mx-4 sm:-mx-6" />
 
-            {/* ── Language + Min Votes ── */}
-            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-4">
-              <div>
-                <SectionLabel icon={faGlobe}>Language</SectionLabel>
-                <select
-                  value={filters.language}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      language: e.target.value,
-                    }))
-                  }
-                  className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border
-                    rounded-xl px-4 py-2.5 pr-10 text-sm appearance-none cursor-pointer
-                    bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23468189%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%2F%3E%3C%2Fsvg%3E')]
-                    bg-no-repeat bg-[position:right_0.85rem_center] bg-[length:18px_18px]
-                    focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
-                    transition-all duration-200 hover:border-light-accent/50 dark:hover:border-dark-accent/50"
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <SectionLabel icon={faHashtag}>Min. Vote Count</SectionLabel>
-                <input
-                  type="number"
-                  placeholder="e.g. 500"
-                  min={0}
-                  step={100}
-                  value={filters.minVotes}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      minVotes: e.target.value,
-                    }))
-                  }
-                  className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border
-                    rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2
-                    focus:ring-light-accent dark:focus:ring-dark-accent transition-all duration-200
-                    hover:border-light-accent/50 dark:hover:border-dark-accent/50"
-                />
-                <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mt-1.5 leading-relaxed">
-                  Filters out obscure titles with few ratings.
-                </p>
-              </div>
+            {/* ── Language (full width) ── */}
+            <div>
+              <SectionLabel icon={faGlobe}>Language</SectionLabel>
+              <select
+                value={filters.language}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    language: e.target.value,
+                  }))
+                }
+                className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border
+                  rounded-xl px-4 py-2.5 pr-10 text-sm appearance-none cursor-pointer
+                  bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23468189%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%2F%3E%3C%2Fsvg%3E')]
+                  bg-no-repeat bg-[position:right_0.85rem_center] bg-[length:18px_18px]
+                  focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
+                  transition-all duration-200 hover:border-light-accent/50 dark:hover:border-dark-accent/50"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* ── Networks / Platforms ── */}
@@ -1019,8 +981,7 @@ function FindPageInner() {
             <div>
               <SectionLabel icon={faBan}>Blacklist Keywords</SectionLabel>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2.5 -mt-1 leading-relaxed">
-                Exclude media containing these words in title, description, or
-                tags.
+                Exclude media containing these words in title, description, or tags.
               </p>
               <KeywordInput
                 placeholder="e.g. violence, war, zombies…"

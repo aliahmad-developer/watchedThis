@@ -1,18 +1,6 @@
 import { Metadata } from "next";
 import PersonPageClient from "./PersonPageClient";
-
-const fetchPerson = async (id: string) => {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com";
-    const res = await fetch(`${baseUrl}/api/person/${id}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-};
+import { fetchPerson } from "@/lib/fetchPerson";
 
 export async function generateMetadata({
   params,
