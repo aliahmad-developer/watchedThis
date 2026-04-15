@@ -3,8 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 
-const CLOUD_NAME    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!;
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!;
+
 
 type Props = { user: any; onUpdated?: (newPhotoURL: string) => void };
 
@@ -236,36 +235,28 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
     setImgSrc(null); // close modal after we have the blob
 
     try {
-      const formData = new FormData();
-      formData.append("file", blob, "profile.jpg");
-      formData.append("upload_preset", UPLOAD_PRESET);
-      formData.append("public_id", `profile_${user.uid}_${Date.now()}`);
-      formData.append("folder", "profile_pictures");
+      const { getStorage, ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
+      const configModule = await import("../../../firebase/firebaseConfig");
+      
+      const storage = configModule.getFirebaseStorage();
+      const fileName = `profile_${user.uid}_${Date.now()}.jpg`;
+      const storageRef = ref(storage, `profile_pictures/${fileName}`);
 
       setProgress(30);
 
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        { method: "POST", body: formData }
-      );
+      await uploadBytes(storageRef, blob);
       setProgress(80);
 
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error("Cloudinary error response:", errText);
-        throw new Error(`Upload failed (${res.status}): ${errText}`);
-      }
-
-      const data = await res.json();      const downloadURL = data.secure_url;
+      const downloadURL = await getDownloadURL(storageRef);
       setProgress(100);
 
       const { updateProfile } = await import("firebase/auth");
       await updateProfile(user, { photoURL: downloadURL });
       await user.reload();
 
-      const { doc, updateDoc } = await import("firebase/firestore");
-      const firebaseConfig = await import("../../../firebase/firebaseConfig");
-      const db = firebaseConfig.getFirebaseDB();
+      const { doc, updateDoc, getFirestore } = await import("firebase/firestore");
+      const firestoreConfig = await import("../../../firebase/firebaseConfig");
+      const db = firestoreConfig.getFirebaseDB();
       try { await updateDoc(doc(db, "users", user.uid), { photoURL: downloadURL }); }
       catch (err) { console.warn("Firestore update non-critical:", err); }
 

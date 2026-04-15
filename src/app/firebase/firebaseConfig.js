@@ -5,6 +5,7 @@ import {
   setPersistence 
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API,
@@ -15,10 +16,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_APP_ID,
 };
 
-function getFirebaseApp() {
+export function getFirebaseApp() {
   return getApps().length ? getApp() : initializeApp(firebaseConfig);
 }
-
 export async function getFirebaseAuth() {
   const app = getFirebaseApp();
   const auth = getAuth(app);
@@ -36,3 +36,10 @@ export function getFirebaseDB() {
   const app = getFirebaseApp();
   return getFirestore(app);
 }
+
+// 🔑 Lazy storage
+export function getFirebaseStorage() {
+  const app = getFirebaseApp();
+  return getStorage(app);
+}
+

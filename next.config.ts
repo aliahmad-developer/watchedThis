@@ -45,7 +45,10 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "res.cloudinary.com" },
+      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      { protocol: "https", hostname: "fyp-movie-4d46d.firebasestorage.app" },
     ],
+
   },
 
   experimental: {
