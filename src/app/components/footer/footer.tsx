@@ -132,7 +132,6 @@ export default function Footer() {
         });
 
         if (res.status === 200) {
-          // ✅ FIX: Safe TypeScript narrowing
           if (rate.timestamps) {
             commitRateLimit(rate.timestamps);
           }
