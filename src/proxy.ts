@@ -7,16 +7,27 @@ const SECURITY_HEADERS = {
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+
   "Content-Security-Policy":
     "default-src 'self' https: data:; " +
+
+    // Scripts
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
     "https://apis.google.com " +
     "https://*.firebaseapp.com " +
     "https://www.googletagmanager.com " +
-    "https://www.google-analytics.com; " + 
+    "https://www.google-analytics.com; " +
+
+    // Styles
     "style-src 'self' 'unsafe-inline'; " +
+
+    // Images
     "img-src 'self' https: data: blob:; " +
+
+    // Fonts
     "font-src 'self' https: data:; " +
+
+    // API / fetch / websocket
     "connect-src 'self' " +
     "https://*.googleapis.com " +
     "https://*.firebase.com " +
@@ -29,11 +40,15 @@ const SECURITY_HEADERS = {
     "https://image.tmdb.org " +
     "https://www.googletagmanager.com " +
     "https://www.google-analytics.com " +
-    "https://region1.google-analytics.com " +
+    "https://region1.google-analytics.com; " + // ✅ FIXED (semicolon added here)
+
+    // Iframes / embeds
     "frame-src 'self' " +
     "https://*.firebaseapp.com " +
     "https://accounts.google.com " +
     "https://www.youtube.com; " +
+
+    // Disallow dangerous stuff
     "object-src 'none';",
 
   "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -59,7 +74,7 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Handle Firebase action URLs
+  // Firebase action URLs
   const mode = searchParams.get("mode");
   const oobCode = searchParams.get("oobCode");
 
