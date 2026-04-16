@@ -390,28 +390,6 @@ function AnimatedPlus() {
   );
 }
 
-/* ─── Skeleton ──────────────────────────────────────────────────────────── */
-export function FindPageSkeleton() {
-  return (
-    <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
-      <div className="w-full max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-5">
-        <div className="flex items-center justify-between px-1">
-          <div className="h-7 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-          <div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-        </div>
-        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-4 sm:p-6 space-y-5">
-          {[...Array(7)].map((_, i) => (
-            <div
-              key={i}
-              style={{ opacity: 1 - i * 0.1 }}
-              className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Inner page ────────────────────────────────────────────────────────── */
 function FindPageInner() {
@@ -1098,8 +1076,6 @@ function FindPageInner() {
 
 export default function FindPage() {
   return (
-    <Suspense fallback={<FindPageSkeleton />}>
       <FindPageInner />
-    </Suspense>
   );
 }
