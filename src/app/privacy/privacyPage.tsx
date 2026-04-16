@@ -125,8 +125,8 @@ export default function PrivacyPolicyPage() {
             </Subsection>
             <Subsection title="Hosting">
               Hosting and edge infrastructure.{" "}
-              <ExternalLink href="https://vercel.com/legal/privacy-policy">
-                Vercel Privacy Policy
+              <ExternalLink href="https://developers.google.com/terms/">
+                Firebase Privacy Policy
               </ExternalLink>
             </Subsection>
           </Section>

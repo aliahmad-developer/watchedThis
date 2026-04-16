@@ -1,5 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMobileScreenButton } from "@fortawesome/free-solid-svg-icons";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -7,12 +10,14 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallButton() {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
+  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
       return;
@@ -20,12 +25,19 @@ export default function InstallButton() {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      deferredPromptRef.current = e as BeforeInstallPromptEvent;
+      setIsAvailable(true);
     };
-    const installedHandler = () => setIsInstalled(true);
+
+    const installedHandler = () => {
+      setIsInstalled(true);
+      deferredPromptRef.current = null;
+      setIsAvailable(false);
+    };
 
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", installedHandler);
+
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
@@ -33,34 +45,47 @@ export default function InstallButton() {
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
+    const promptEvent = deferredPromptRef.current;
+    if (!promptEvent) return;
+
     setIsInstalling(true);
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setIsInstalled(true);
-    setDeferredPrompt(null);
-    setIsInstalling(false);
+
+    try {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+
+      if (choice.outcome === "accepted") {
+        setIsInstalled(true);
+      }
+
+      deferredPromptRef.current = null;
+      setIsAvailable(false);
+    } finally {
+      setIsInstalling(false);
+    }
   };
 
-  // if (isInstalled || !deferredPrompt) return null;
+  if (isInstalled || !isAvailable) return null;
 
   return (
     <button
       onClick={handleInstall}
       disabled={isInstalling}
-      aria-label="Install WatchedThis as an app"
+      aria-label="Install WatchedThis app"
       className="
         group flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium
         border border-light-border dark:border-dark-border
-       
+        hover:shadow-sm transition-all duration-200
+        active:scale-[0.98]
+        disabled:opacity-60
       "
     >
       {isInstalling ? (
         <>
           <svg
             className="animate-spin shrink-0"
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -73,20 +98,10 @@ export default function InstallButton() {
         </>
       ) : (
         <>
-          <svg
-            className="shrink-0 group-hover:translate-y-0.5 transition-transform duration-200"
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 4v12m0 0-4-4m4 4 4-4" />
-            <path d="M4 20h16" />
-          </svg>
+          <FontAwesomeIcon
+            icon={faMobileScreenButton}
+            className="text-sm group-hover:-translate-y-px transition-transform duration-200"
+          />
           Install App
         </>
       )}
