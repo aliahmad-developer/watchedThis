@@ -71,10 +71,10 @@ export default function PrivacyPolicyPage() {
               used solely to personalise your recommendations within WatchedThis.
             </Subsection>
             <Subsection title="Technical data">
-              Our hosting provider (Vercel) may collect standard server logs
+              Our hosting provider (Firebase) may collect standard server logs
               including your IP address, browser type, and page requests,
               retained for up to 30 days for security and performance
-              monitoring. Vercel Analytics may collect anonymised, aggregated
+              monitoring. Firebase Analytics may collect anonymised, aggregated
               usage metrics — no individual tracking, no cross-site cookies.
             </Subsection>
             <Subsection title="What we do not collect">
