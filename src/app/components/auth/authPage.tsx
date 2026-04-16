@@ -246,7 +246,6 @@ export default function AuthPage() {
 
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
     } catch (err: any) {
-      showMessage(err.message || "Failed to update username", true);
     } finally {
       setIsUpdatingUsername(false);
     }
