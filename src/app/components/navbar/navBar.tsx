@@ -413,7 +413,7 @@ export default function Navbar() {
                 <Image
                   src="/watchedthis.svg"
                   alt="WatchedThis"
-                  width={130}
+                  width={140}
                   height={32}
                   priority
                 />

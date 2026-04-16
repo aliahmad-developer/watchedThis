@@ -138,7 +138,6 @@ function CyclingMessage({ finishing }: { finishing: boolean }) {
   const [visible, setVisible] = useState(true);
   const [showFinal, setShowFinal] = useState(false);
 
-  // When finishing triggers, fade out → swap to final → fade in
   useEffect(() => {
     if (!finishing) return;
     setVisible(false);
@@ -149,7 +148,6 @@ function CyclingMessage({ finishing }: { finishing: boolean }) {
     return () => clearTimeout(t);
   }, [finishing]);
 
-  // Normal cycling — stops once finishing kicks in
   useEffect(() => {
     if (finishing) return;
     const interval = setInterval(() => {
