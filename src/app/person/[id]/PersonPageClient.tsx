@@ -1,57 +1,11 @@
 "use client";
-
+import type { PersonData, Credit } from "./types";
 import Image from "next/image";
 import Link from "next/link";
 import { useMediaType } from "@/app/components/hooks/Genre/useMediaType";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import { useEffect, useState, useRef } from "react";
 import { GenreHeader } from "@/app/components/Genre/mediaTypeToggle";
-
-interface Credit {
-  id: number;
-  title: string;
-  character?: string;
-  job?: string;
-  poster_path: string | null;
-  media_type: string;
-  release_date: string | null;
-  vote_average?: number;
-  runtime?: number | null;
-  episode_run_time?: number[] | null;
-}
-
-interface PersonDetails {
-  id: number;
-  name: string;
-  biography: string;
-  birthday: string | null;
-  deathday: string | null;
-  place_of_birth: string | null;
-  profile_path: string | null;
-  known_for_department: string;
-  popularity: number;
-}
-
-interface PersonData {
-  details: PersonDetails;
-  credits: { cast: Credit[]; crew: Credit[] } | null;
-  images: {
-    profiles: Array<{ file_path: string; width: number; height: number }>;
-  } | null;
-}
-
-async function getPersonData(id?: string) {
-  if (!id) throw new Error("Invalid person ID");
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const res = await fetch(`${baseUrl}/api/person/${id}`);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || `Failed to fetch person data: ${res.status}`);
-  }
-  const data = await res.json();
-  if (!data.details) throw new Error(data.error || "Person not found");
-  return data;
-}
 
 const PersonPageSkeleton = () => (
   <div className="container mx-auto px-4 py-8 max-w-7xl min-h-screen bg-light-bg dark:bg-dark-bg space-y-12 animate-pulse">
@@ -63,7 +17,11 @@ const PersonPageSkeleton = () => (
         <div className="h-7 bg-light-border dark:bg-dark-border rounded w-32 mt-2" />
         <div className="space-y-2.5">
           {[100, 92, 96, 85, 90, 78, 88, 94, 80].map((w, i) => (
-            <div key={i} className="h-3.5 bg-light-border dark:bg-dark-border rounded" style={{ width: `${w}%` }} />
+            <div
+              key={i}
+              className="h-3.5 bg-light-border dark:bg-dark-border rounded"
+              style={{ width: `${w}%` }}
+            />
           ))}
         </div>
       </div>
@@ -73,7 +31,10 @@ const PersonPageSkeleton = () => (
       <div className="h-6 bg-light-border dark:bg-dark-border rounded w-20 mb-4" />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 bg-light-border dark:bg-dark-border rounded-lg" />
+          <div
+            key={i}
+            className="aspect-2/3 bg-light-border dark:bg-dark-border rounded-lg"
+          />
         ))}
       </div>
     </div>
@@ -81,7 +42,10 @@ const PersonPageSkeleton = () => (
       <div className="h-8 bg-light-border dark:bg-dark-border rounded w-24 mb-6" />
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
         {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 bg-light-border dark:bg-dark-border rounded-lg" />
+          <div
+            key={i}
+            className="aspect-2/3 bg-light-border dark:bg-dark-border rounded-lg"
+          />
         ))}
       </div>
     </div>
@@ -102,7 +66,6 @@ function CreditGrid({
   const hasMore = visibleCount < credits.length;
   const [loading, setLoading] = useState(false);
 
-  // Reset when credits list changes (e.g. mediaType toggle)
   useEffect(() => {
     setVisibleCount(10);
   }, [credits]);
@@ -118,7 +81,7 @@ function CreditGrid({
           }, 400);
         }
       },
-      { rootMargin: "100px" }
+      { rootMargin: "100px" },
     );
 
     if (loaderRef.current) observer.observe(loaderRef.current);
@@ -140,12 +103,13 @@ function CreditGrid({
               runtime: credit.runtime || undefined,
               episode_run_time: credit.episode_run_time || undefined,
             }}
-            displayTitle={displayTitleKey ? credit[displayTitleKey] || "" : undefined}
+            displayTitle={
+              displayTitleKey ? credit[displayTitleKey] || "" : undefined
+            }
           />
         ))}
       </div>
 
-      {/* Sentinel — always rendered so observer can detect it */}
       <div ref={loaderRef} className="w-full">
         {hasMore && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 w-full py-4">
@@ -163,48 +127,47 @@ function CreditGrid({
   );
 }
 
-export default function PersonPageClient({ id }: { id: string }) {
+export default function PersonPageClient({
+  id,
+  initialData,
+}: {
+  id: string;
+  initialData: PersonData | null;
+}) {
   const { mediaType, setMediaType } = useMediaType();
-  const [data, setData] = useState<PersonData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data] = useState<PersonData | null>(initialData);
+  const error = initialData === null ? "Person not found" : null;
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [id]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const personData = await getPersonData(id);
-        setData(personData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id]);
-
-  const filteredCast = data?.credits?.cast.filter((c) => c.media_type === mediaType) || [];
-  const filteredCrew = data?.credits?.crew.filter((c) => c.media_type === mediaType) || [];
+  const filteredCast =
+    data?.credits?.cast.filter((c) => c.media_type === mediaType) || [];
+  const filteredCrew =
+    data?.credits?.crew.filter((c) => c.media_type === mediaType) || [];
 
   if (error)
     return (
       <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4 text-light-header dark:text-white">Person Not Found</h1>
-          <p className="mb-4 text-light-secondary-text dark:text-dark-secondary-text">{error}</p>
-          <Link href="/" className="text-light-accent dark:text-dark-accent hover:underline">
+          <h1 className="text-2xl font-bold mb-4 text-light-header dark:text-white">
+            Person Not Found
+          </h1>
+          <p className="mb-4 text-light-secondary-text dark:text-dark-secondary-text">
+            {error}
+          </p>
+          <Link
+            href="/"
+            className="text-light-accent dark:text-dark-accent hover:underline"
+          >
             Return to Home
           </Link>
         </div>
       </div>
     );
 
-  if (loading || !data) return <PersonPageSkeleton />;
+  if (!data) return <PersonPageSkeleton />;
 
   const { details, images } = data;
   const bioText = details.biography || "No biography available.";
@@ -231,8 +194,12 @@ export default function PersonPageClient({ id }: { id: string }) {
           )}
         </div>
         <div className="grow flex flex-col min-h-0">
-          <h1 className="text-4xl font-bold text-light-accent dark:text-dark-accent mb-2 p-1">{details.name}</h1>
-          <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text mb-4">{details.known_for_department}</p>
+          <h1 className="text-4xl font-bold text-light-accent dark:text-dark-accent mb-2 p-1">
+            {details.name}
+          </h1>
+          <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text mb-4">
+            {details.known_for_department}
+          </p>
           <h2 className="mb-4">Biography</h2>
           <div className="overflow-y-auto max-h-72 md:max-h-80 pr-2 scrollbar-thin scrollbar-thumb-light-border dark:scrollbar-thumb-dark-border scrollbar-track-transparent">
             <p className="text-sm md:text-base leading-relaxed text-light-secondary-text dark:text-dark-secondary-text whitespace-pre-wrap">
@@ -246,20 +213,36 @@ export default function PersonPageClient({ id }: { id: string }) {
       {data.credits && (
         <div className="bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md">
           <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-            <GenreHeader genreName="Filmography" mediaType={mediaType} onMediaTypeChange={setMediaType} />
+            <GenreHeader
+              genreName="Filmography"
+              mediaType={mediaType}
+              onMediaTypeChange={setMediaType}
+            />
           </div>
 
           {filteredCast.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-xl font-medium text-light-header dark:text-gray-200 mb-4">Acting</h3>
-              <CreditGrid credits={filteredCast} keyPrefix="cast" displayTitleKey="character" />
+              <h3 className="text-xl font-medium text-light-header dark:text-gray-200 mb-4">
+                Acting
+              </h3>
+              <CreditGrid
+                credits={filteredCast}
+                keyPrefix="cast"
+                displayTitleKey="character"
+              />
             </div>
           )}
 
           {filteredCrew.length > 0 && (
             <div>
-              <h3 className="text-xl font-medium text-light-header dark:text-gray-200 mb-4">Production</h3>
-              <CreditGrid credits={filteredCrew} keyPrefix="crew" displayTitleKey="job" />
+              <h3 className="text-xl font-medium text-light-header dark:text-gray-200 mb-4">
+                Production
+              </h3>
+              <CreditGrid
+                credits={filteredCrew}
+                keyPrefix="crew"
+                displayTitleKey="job"
+              />
             </div>
           )}
         </div>
@@ -271,7 +254,10 @@ export default function PersonPageClient({ id }: { id: string }) {
           <h2 className="mb-6">Gallery</h2>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
             {images.profiles.map((image) => (
-              <div key={image.file_path} className="overflow-hidden rounded-lg shadow-md">
+              <div
+                key={image.file_path}
+                className="overflow-hidden rounded-lg shadow-md"
+              >
                 <Image
                   draggable={false}
                   src={`https://image.tmdb.org/t/p/w300${image.file_path}`}

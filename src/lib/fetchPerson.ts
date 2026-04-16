@@ -1,15 +1,9 @@
-export type PersonData = {
-  details: {
-    name: string;
-    biography?: string;
-    profile_path?: string;
-  };
-} | null;
+import type { PersonData } from "../app/person/[id]/types";
 
-export const fetchPerson = async (id: string): Promise<PersonData> => {
+export const fetchPerson = async (id: string): Promise<PersonData | null> => {
   try {
     const res = await fetch(
-      `https://api.themoviedb.org/3/person/${id}?append_to_response=combined_credits`,
+      `https://api.themoviedb.org/3/person/${id}?append_to_response=combined_credits,images`,
       {
         headers: {
           Authorization: `Bearer ${process.env.TMDB_ACCESS_TOKEN}`,
@@ -18,8 +12,30 @@ export const fetchPerson = async (id: string): Promise<PersonData> => {
       }
     );
     if (!res.ok) return null;
-    const details = await res.json();
-    return { details };
+    const data = await res.json();
+
+    return {
+      details: {
+        id: data.id,
+        name: data.name,
+        biography: data.biography,
+        birthday: data.birthday ?? null,
+        deathday: data.deathday ?? null,
+        place_of_birth: data.place_of_birth ?? null,
+        profile_path: data.profile_path ?? null,
+        known_for_department: data.known_for_department,
+        popularity: data.popularity,
+      },
+      credits: data.combined_credits
+        ? {
+            cast: data.combined_credits.cast ?? [],
+            crew: data.combined_credits.crew ?? [],
+          }
+        : null,
+      images: data.images
+        ? { profiles: data.images.profiles?.slice(0, 10) ?? [] }
+        : null,
+    };
   } catch {
     return null;
   }

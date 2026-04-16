@@ -67,7 +67,7 @@ export default async function Page({
   return (
     <>
       <h1 className="sr-only">{name} | WatchedThis</h1>
-      <PersonPageClient id={id} />
+      <PersonPageClient id={id} initialData={data} />
     </>
   );
 }
