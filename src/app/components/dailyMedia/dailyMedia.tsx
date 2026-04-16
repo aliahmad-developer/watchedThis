@@ -24,6 +24,10 @@ interface DailyMediaDoc {
   items: MediaItem[];
 }
 
+interface Props {
+  initialItems?: MediaItem[];
+}
+
 const LOCAL_CACHE_KEY = "dailyMediaCache_v2";
 const COLOR_SCHEME_MEDIA_QUERY = "(prefers-color-scheme: light)";
 
@@ -94,7 +98,6 @@ const buildAmbientColor = (
   }
 };
 
-// Fixed: light mode = no .dark class (your setup never adds a .light class)
 const useThemeDetection = () => {
   const [isLightMode, setIsLightMode] = useState(false);
   const check = useCallback(() => {
@@ -152,54 +155,23 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
   return { imgRef, ambient };
 };
 
-// ── Main component ────────────────────────────────────────────
+// ── Main component ───────────────────────────────────────────────────────────
 
-export default function dailyMedia() {
-  const [media, setMedia] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchOneRandom = useCallback(async (): Promise<MediaItem> => {
-    const res = await fetch("/api/randomCall");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data || data.error) throw new Error("Invalid data");
-    return data as MediaItem;
-  }, []);
-
-  const fetchNUnique = useCallback(
-    async (n: number, existing: MediaItem[] = []): Promise<MediaItem[]> => {
-      const seen = new Set(existing.map((x) => x.id));
-      const results: MediaItem[] = [];
-      const maxAttempts = n * 4;
-      let attempts = 0;
-      while (results.length < n && attempts < maxAttempts) {
-        attempts++;
-        try {
-          const item = await fetchOneRandom();
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
-            results.push(item);
-          }
-        } catch {}
-      }
-      if (results.length === 0) throw new Error("All fetches failed");
-      return results;
-    },
-    [fetchOneRandom],
-  );
+export default function DailyMedia({ initialItems = [] }: Props) {
+  const [media, setMedia]     = useState<MediaItem[]>(initialItems);
+  const [loading, setLoading] = useState(initialItems.length === 0);
+  const [error, setError]     = useState<string | null>(null);
 
   const loadDailyMedia = useCallback(async () => {
     setLoading(true);
     setError(null);
     const today = new Date().toDateString();
-    let cancelled = false;
     try {
       const cached = localStorage.getItem(LOCAL_CACHE_KEY);
       if (cached) {
         const parsed: DailyMediaDoc = JSON.parse(cached);
         if (parsed.date === today && parsed.items?.length > 0) {
-          if (!cancelled) setMedia(parsed.items);
+          setMedia(parsed.items);
           return;
         }
       }
@@ -207,30 +179,32 @@ export default function dailyMedia() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
-      const items: MediaItem[] = json.data;
-      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify({ date: today, items }));
-      if (!cancelled) setMedia(items);
+      localStorage.setItem(
+        LOCAL_CACHE_KEY,
+        JSON.stringify({ date: today, items: json.data }),
+      );
+      setMedia(json.data);
     } catch (err) {
       console.error("Error loading daily media:", err);
       const cached = localStorage.getItem(LOCAL_CACHE_KEY);
       if (cached) {
         const parsed: DailyMediaDoc = JSON.parse(cached);
         if (parsed.items?.length > 0) {
-          if (!cancelled) setMedia(parsed.items);
+          setMedia(parsed.items);
           return;
         }
       }
-      if (!cancelled) setError("Failed to load media. Please try again.");
+      // Only show error if we have no data at all (not even initialItems)
+      if (media.length === 0) setError("Failed to load media. Please try again.");
     } finally {
-      if (!cancelled) setLoading(false);
+      setLoading(false);
     }
-    return () => { cancelled = true; };
-  }, []);
+  }, [media.length]);
 
-  // suppress unused warning — fetchNUnique used externally
-  void fetchNUnique;
-
-  useEffect(() => { loadDailyMedia(); }, [loadDailyMedia]);
+  useEffect(() => {
+    // Only fetch client-side if server didn't provide data
+    if (initialItems.length === 0) loadDailyMedia();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -330,14 +304,13 @@ export default function dailyMedia() {
   );
 }
 
-// ── Cards ─────────────────────────────────────────────────────
+// ── Cards ────────────────────────────────────────────────────────────────────
 
 interface CardProps {
   item: MediaItem;
   index: number;
 }
 
-// Updated fallbacks: #eef0f2 = light-bg, #031926 = dark-bg
 const FALLBACK_LIGHT = { rgb: "238,240,242", solid: "rgb(238,240,242)", luminance: 0.88 };
 const FALLBACK_DARK  = { rgb: "3,25,38",     solid: "rgb(3,25,38)",     luminance: 0.02 };
 
@@ -348,9 +321,9 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
   const fb = isLightMode ? FALLBACK_LIGHT : FALLBACK_DARK;
-  const solidColor        = ambient?.solid     ?? fb.solid;
-  const rgbColor          = ambient?.rgb       ?? fb.rgb;
-  const rawRgb            = ambient?.rawRgb    ?? fb.rgb;
+  const solidColor         = ambient?.solid     ?? fb.solid;
+  const rgbColor           = ambient?.rgb       ?? fb.rgb;
+  const rawRgb             = ambient?.rawRgb    ?? fb.rgb;
   const processedLuminance = ambient?.luminance ?? fb.luminance;
   const textColor = getAmbientTextColor(isLightMode, rawRgb, processedLuminance);
 
@@ -415,9 +388,9 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
 
   const fb = isLightMode ? FALLBACK_LIGHT : FALLBACK_DARK;
-  const solidColor        = ambient?.solid     ?? fb.solid;
-  const rgbColor          = ambient?.rgb       ?? fb.rgb;
-  const rawRgb            = ambient?.rawRgb    ?? fb.rgb;
+  const solidColor         = ambient?.solid     ?? fb.solid;
+  const rgbColor           = ambient?.rgb       ?? fb.rgb;
+  const rawRgb             = ambient?.rawRgb    ?? fb.rgb;
   const processedLuminance = ambient?.luminance ?? fb.luminance;
   const textColor = getAmbientTextColor(isLightMode, rawRgb, processedLuminance);
 
@@ -467,7 +440,7 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
 });
 RightStackCard.displayName = "RightStackCard";
 
-// ── Utilities ─────────────────────────────────────────────────
+// ── Utilities ────────────────────────────────────────────────────────────────
 
 const getImageUrl = (path?: string | null, width = 1280): string =>
   path
@@ -480,7 +453,7 @@ const getDayLabel = (index: number): string => {
   return `${index} days ago`;
 };
 
-// ── Skeletons ─────────────────────────────────────────────────
+// ── Skeletons ────────────────────────────────────────────────────────────────
 
 const FeaturedCardSkeleton = () => (
   <div className="relative w-full h-64 md:h-80 lg:h-full rounded-xl overflow-hidden bg-light-card dark:bg-dark-card animate-pulse">

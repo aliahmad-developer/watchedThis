@@ -19,11 +19,15 @@ import {
   faChevronLeft,
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
+import { MediaItem } from "../Genre/types";
 
 const SWIPE_THRESHOLD = 50;
 
-export default function TrendingCarouselClient() {
-  // containerRef now lives on the track's overflow div — exact usable width
+interface Props {
+  initialItems?: MediaItem[];
+}
+
+export default function TrendingCarouselClient({ initialItems = [] }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -34,12 +38,12 @@ export default function TrendingCarouselClient() {
   const isHorizontal = useRef<boolean | null>(null);
 
   const { isMobile, isTablet, isDesktop, isClient } = useResponsiveConfig();
-  const { media, loading, error } = useTrendingMedia();
+  const { media, loading, error } = useTrendingMedia(initialItems);
   const { visibleCount, itemWidth } = useCarouselDimensions(containerRef);
   const { index, scrollLeft, scrollRight, canGoLeft, canGoRight, isReady } =
     useCarousel(media.length, visibleCount);
 
-  // ── Keyboard nav ──────────────────────────────────────────────────────────
+  // ── Keyboard nav ────────────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!carouselRef.current?.contains(document.activeElement)) return;
@@ -50,7 +54,7 @@ export default function TrendingCarouselClient() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [scrollLeft, scrollRight]);
 
-  // ── Touch handlers ────────────────────────────────────────────────────────
+  // ── Touch handlers ───────────────────────────────────────────────────────
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -86,7 +90,7 @@ export default function TrendingCarouselClient() {
     isHorizontal.current = null;
   }, [dragOffset, scrollLeft, scrollRight]);
 
-  // ── Derived layout ────────────────────────────────────────────────────────
+  // ── Derived layout ───────────────────────────────────────────────────────
   const { itemHeight, trackStyle } = useMemo(() => {
     const gap = isMobile ? MOBILE_GAP : GAP;
     const posterWidth = isMobile ? itemWidth : itemWidth - 44;
@@ -106,7 +110,7 @@ export default function TrendingCarouselClient() {
   const isReady2Render =
     !loading && isClient && itemWidth > 0 && media.length > 0;
 
-  // ── Early returns ─────────────────────────────────────────────────────────
+  // ── Early returns ────────────────────────────────────────────────────────
   if (error)
     return (
       <ErrorState error={error} onRetry={() => window.location.reload()} />
@@ -170,11 +174,6 @@ export default function TrendingCarouselClient() {
 
         {/* Carousel row */}
         <div className="flex w-full items-start">
-          {/*
-            containerRef is HERE — on the flex-1 overflow div.
-            Flexbox already constrains its width to exclude the nav buttons,
-            so offsetWidth is the exact track width on every screen/orientation.
-          */}
           <div className="relative overflow-hidden flex-1" ref={containerRef}>
             <div
               className="flex pb-6 pr-5"

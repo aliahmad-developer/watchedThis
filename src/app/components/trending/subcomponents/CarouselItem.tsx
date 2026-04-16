@@ -20,7 +20,7 @@ export const CarouselItem = memo(function CarouselItem({
   itemWidth,
   showSidebar,
 }: CarouselItemProps) {
-  const { href, mediaTitle, posterWidth, itemHeight } = useMemo(() => {
+  const { href, posterWidth, itemHeight } = useMemo(() => {
     const mediaType  = item.title ? "movie" : "tv";
     const mediaTitle = (item.title || item.name || "")
       .toLowerCase()

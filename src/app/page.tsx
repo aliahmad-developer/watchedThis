@@ -112,7 +112,26 @@ function HomepageSchema() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const [dailyRes, trendingRes] = await Promise.allSettled([
+    fetch("https://watchedthis.com/api/dailyMedia", {
+      next: { revalidate: 3600 },
+    }),
+    fetch("https://watchedthis.com/api/trending", {
+      next: { revalidate: 3600 },
+    }),
+  ]);
+
+  const dailyItems =
+    dailyRes.status === "fulfilled" && dailyRes.value.ok
+      ? ((await dailyRes.value.json()).data ?? [])
+      : [];
+
+  const trendingItems =
+    trendingRes.status === "fulfilled" && trendingRes.value.ok
+      ? ((await trendingRes.value.json()).results ?? [])
+      : [];
+
   return (
     <>
       <h1 className="sr-only">
@@ -120,9 +139,9 @@ export default function Home() {
       </h1>
       <SpotLightServer />
       <div className="mx-3 sm:mx-4 md:mx-5 lg:mx-7 xl:mx-10">
-        <DailyMedia />
+        <DailyMedia initialItems={dailyItems} />
         <RecommendationShelf />
-        <Trending />
+        <Trending initialItems={trendingItems} />
         <Strip />
       </div>
       <HomepageSchema />
