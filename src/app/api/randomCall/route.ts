@@ -80,8 +80,6 @@ const pickRandomGenre = (genres: number[]): number =>
   genres[Math.floor(Math.random() * genres.length)];
 
 // ─── sort order randomization ─────────────────────────────────────────────────
-
-// Rotating sort orders exposes different slices of the same year/genre bucket.
 const SORT_ORDERS = [
   "popularity.desc",
   "vote_average.desc",

@@ -3,16 +3,14 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 
-
-
 type Props = { user: any; onUpdated?: (newPhotoURL: string) => void };
 
 /* ─── crop hook ──────────────────────────────────────────────────────────── */
 function useCrop(imgSrc: string | null) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef    = useRef<HTMLImageElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [scale, setScale]   = useState(1);
+  const [scale, setScale] = useState(1);
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ mx: 0, my: 0, ox: 0, oy: 0 });
 
@@ -23,7 +21,10 @@ function useCrop(imgSrc: string | null) {
       imgRef.current = img;
       setOffset({ x: 0, y: 0 });
       const SIZE = canvasRef.current?.width ?? 260;
-      const fitScale = Math.max(SIZE / img.naturalWidth, SIZE / img.naturalHeight);
+      const fitScale = Math.max(
+        SIZE / img.naturalWidth,
+        SIZE / img.naturalHeight,
+      );
       setScale(fitScale);
     };
     img.src = imgSrc;
@@ -31,15 +32,15 @@ function useCrop(imgSrc: string | null) {
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    const img    = imgRef.current;
+    const img = imgRef.current;
     if (!canvas || !img) return;
     const SIZE = canvas.width;
-    const ctx  = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, SIZE, SIZE);
-    const drawW = img.naturalWidth  * scale;
+    const drawW = img.naturalWidth * scale;
     const drawH = img.naturalHeight * scale;
-    const dx    = (SIZE - drawW) / 2 + offset.x;
-    const dy    = (SIZE - drawH) / 2 + offset.y;
+    const dx = (SIZE - drawW) / 2 + offset.x;
+    const dy = (SIZE - drawH) / 2 + offset.y;
     ctx.drawImage(img, dx, dy, drawW, drawH);
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, 0, SIZE, SIZE);
@@ -56,67 +57,111 @@ function useCrop(imgSrc: string | null) {
     ctx.stroke();
   }, [offset, scale]);
 
-  useEffect(() => { draw(); }, [draw, imgSrc]);
+  useEffect(() => {
+    draw();
+  }, [draw, imgSrc]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     setDragging(true);
-    dragStart.current = { mx: e.clientX, my: e.clientY, ox: offset.x, oy: offset.y };
+    dragStart.current = {
+      mx: e.clientX,
+      my: e.clientY,
+      ox: offset.x,
+      oy: offset.y,
+    };
   };
-  const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragging) return;
-    setOffset({ x: dragStart.current.ox + e.clientX - dragStart.current.mx, y: dragStart.current.oy + e.clientY - dragStart.current.my });
-  }, [dragging]);
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!dragging) return;
+      setOffset({
+        x: dragStart.current.ox + e.clientX - dragStart.current.mx,
+        y: dragStart.current.oy + e.clientY - dragStart.current.my,
+      });
+    },
+    [dragging],
+  );
   const stopDrag = () => setDragging(false);
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     setDragging(true);
-    dragStart.current = { mx: t.clientX, my: t.clientY, ox: offset.x, oy: offset.y };
+    dragStart.current = {
+      mx: t.clientX,
+      my: t.clientY,
+      ox: offset.x,
+      oy: offset.y,
+    };
   };
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!dragging) return;
-    const t = e.touches[0];
-    setOffset({ x: dragStart.current.ox + t.clientX - dragStart.current.mx, y: dragStart.current.oy + t.clientY - dragStart.current.my });
-  }, [dragging]);
+  const onTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!dragging) return;
+      const t = e.touches[0];
+      setOffset({
+        x: dragStart.current.ox + t.clientX - dragStart.current.mx,
+        y: dragStart.current.oy + t.clientY - dragStart.current.my,
+      });
+    },
+    [dragging],
+  );
 
-  const getCroppedBlob = (): Promise<Blob> => new Promise((resolve, reject) => {
-    const canvas = canvasRef.current;
-    const img    = imgRef.current;
-    if (!canvas || !img) return reject(new Error("No canvas"));
-    const SIZE = canvas.width;
-    const ctx  = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2, 0, Math.PI * 2);
-    ctx.clip();
-    const drawW = img.naturalWidth  * scale;
-    const drawH = img.naturalHeight * scale;
-    const dx    = (SIZE - drawW) / 2 + offset.x;
-    const dy    = (SIZE - drawH) / 2 + offset.y;
-    ctx.drawImage(img, dx, dy, drawW, drawH);
-    ctx.restore();
-    canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/jpeg", 0.92);
-  });
+  const getCroppedBlob = (): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const canvas = canvasRef.current;
+      const img = imgRef.current;
+      if (!canvas || !img) return reject(new Error("No canvas"));
+      const SIZE = canvas.width;
+      const ctx = canvas.getContext("2d")!;
+      ctx.clearRect(0, 0, SIZE, SIZE);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2, 0, Math.PI * 2);
+      ctx.clip();
+      const drawW = img.naturalWidth * scale;
+      const drawH = img.naturalHeight * scale;
+      const dx = (SIZE - drawW) / 2 + offset.x;
+      const dy = (SIZE - drawH) / 2 + offset.y;
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      ctx.restore();
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+        "image/jpeg",
+        0.92,
+      );
+    });
 
-  return { canvasRef, scale, setScale, onMouseDown, onMouseMove, stopDrag, onTouchStart, onTouchMove, getCroppedBlob };
+  return {
+    canvasRef,
+    scale,
+    setScale,
+    onMouseDown,
+    onMouseMove,
+    stopDrag,
+    onTouchStart,
+    onTouchMove,
+    getCroppedBlob,
+  };
 }
 
 /* ─── crop modal ─────────────────────────────────────────────────────────── */
-function CropModal({ imgSrc, onApply, onCancel }: {
+function CropModal({
+  imgSrc,
+  onApply,
+  onCancel,
+}: {
   imgSrc: string;
   onApply: (blob: Blob) => void;
   onCancel: () => void;
 }) {
-  const canvasSize = typeof window !== "undefined"
-    ? Math.min(280, window.innerWidth - 48)
-    : 260;
+  const canvasSize =
+    typeof window !== "undefined" ? Math.min(280, window.innerWidth - 48) : 260;
 
   const crop = useCrop(imgSrc);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   const handleApply = async () => {
@@ -130,8 +175,10 @@ function CropModal({ imgSrc, onApply, onCancel }: {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
     >
       <div className="bg-light-card dark:bg-dark-card rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl overflow-hidden">
         <div className="flex justify-center pt-3 sm:hidden">
@@ -140,10 +187,25 @@ function CropModal({ imgSrc, onApply, onCancel }: {
 
         <div className="p-5 flex flex-col items-center gap-4">
           <div className="flex items-center justify-between w-full">
-            <h3 className="text-sm font-semibold text-light-header dark:text-dark-header">Crop Photo</h3>
-            <button onClick={onCancel} className="bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <h3 className="text-sm font-semibold text-light-header dark:text-dark-header">
+              Crop Photo
+            </h3>
+            <button
+              onClick={onCancel}
+              className="bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -166,37 +228,58 @@ function CropModal({ imgSrc, onApply, onCancel }: {
             onTouchEnd={crop.stopDrag}
             onWheel={(e) => {
               e.preventDefault();
-              crop.setScale(s => Math.min(4, Math.max(0.5, s - e.deltaY * 0.001)));
+              crop.setScale((s) =>
+                Math.min(4, Math.max(0.5, s - e.deltaY * 0.001)),
+              );
             }}
           />
 
           <div className="flex items-center gap-2 w-full">
-            <svg className="w-3 h-3 shrink-0 text-light-secondary-text dark:text-dark-secondary-text" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="11" cy="11" r="6" strokeWidth="2"/><path d="M21 21l-3.5-3.5" strokeWidth="2" strokeLinecap="round"/>
+            <svg
+              className="w-3 h-3 shrink-0 text-light-secondary-text dark:text-dark-secondary-text"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <circle cx="11" cy="11" r="6" strokeWidth="2" />
+              <path d="M21 21l-3.5-3.5" strokeWidth="2" strokeLinecap="round" />
             </svg>
             <input
-              type="range" min={0.5} max={4} step={0.01}
+              type="range"
+              min={0.5}
+              max={4}
+              step={0.01}
               value={crop.scale}
-              onChange={e => crop.setScale(parseFloat(e.target.value))}
+              onChange={(e) => crop.setScale(parseFloat(e.target.value))}
               className="flex-1 accent-light-accent dark:accent-dark-accent h-1 cursor-pointer"
             />
-            <svg className="w-4 h-4 shrink-0 text-light-secondary-text dark:text-dark-secondary-text" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="11" cy="11" r="6" strokeWidth="2"/><path d="M21 21l-3.5-3.5" strokeWidth="2" strokeLinecap="round"/>
+            <svg
+              className="w-4 h-4 shrink-0 text-light-secondary-text dark:text-dark-secondary-text"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <circle cx="11" cy="11" r="6" strokeWidth="2" />
+              <path d="M21 21l-3.5-3.5" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
 
           <div className="flex gap-2 w-full">
-            <button onClick={onCancel}
+            <button
+              onClick={onCancel}
               className="flex-1 py-2 rounded-lg text-xs border border-light-border dark:border-dark-border
                 text-light-secondary-text dark:text-dark-secondary-text bg-transparent
-                hover:text-light-body-text dark:hover:text-dark-body-text transition-colors">
+                hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
+            >
               Cancel
             </button>
-            <button onClick={handleApply}
+            <button
+              onClick={handleApply}
               className="flex-1 py-2 rounded-lg text-xs font-medium
                 bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text
                 dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text
-                transition-colors">
+                transition-colors"
+            >
               Apply
             </button>
           </div>
@@ -208,13 +291,13 @@ function CropModal({ imgSrc, onApply, onCancel }: {
 
 /* ─── main component ─────────────────────────────────────────────────────── */
 export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
-  const [imgSrc, setImgSrc]       = useState<string | null>(null);
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress]   = useState(0);
+  const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const initials = (() => {
-    const name  = user.displayName?.trim();
+    const name = user.displayName?.trim();
     const email = user.email?.split("@")[0] || "";
     return (name ? name.charAt(0) : email.charAt(0)).toUpperCase();
   })();
@@ -222,24 +305,34 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast.error("Please select an image file."); return; }
-    if (f.size > 5 * 1024 * 1024)    { toast.error("Image must be under 5MB."); return; }
+    if (!f.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+    if (f.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
+      return;
+    }
     setImgSrc(URL.createObjectURL(f));
     if (inputRef.current) inputRef.current.value = "";
   };
 
   const handleCropApply = async (blob: Blob) => {
-    if (!user) { toast.error("Not logged in."); return; }
+    if (!user) {
+      toast.error("Not logged in.");
+      return;
+    }
     setUploading(true);
     setProgress(10);
     setImgSrc(null); // close modal after we have the blob
 
     try {
-      const { getStorage, ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
+      const { getStorage, ref, uploadBytes, getDownloadURL } =
+        await import("firebase/storage");
       const configModule = await import("../../../firebase/firebaseConfig");
-      
+
       const storage = configModule.getFirebaseStorage();
-      const fileName = `profile_${user.uid}_${Date.now()}.jpg`;
+      const fileName = `profile_${user.uid}.jpg`;
       const storageRef = ref(storage, `profile_pictures/${fileName}`);
 
       setProgress(30);
@@ -248,17 +341,22 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       setProgress(80);
 
       const downloadURL = await getDownloadURL(storageRef);
+      const urlWithBust = `${downloadURL}&v=${Date.now()}`;
       setProgress(100);
 
       const { updateProfile } = await import("firebase/auth");
-      await updateProfile(user, { photoURL: downloadURL });
+      await updateProfile(user, { photoURL: urlWithBust });
       await user.reload();
 
-      const { doc, updateDoc, getFirestore } = await import("firebase/firestore");
+      const { doc, updateDoc, getFirestore } =
+        await import("firebase/firestore");
       const firestoreConfig = await import("../../../firebase/firebaseConfig");
       const db = firestoreConfig.getFirebaseDB();
-      try { await updateDoc(doc(db, "users", user.uid), { photoURL: downloadURL }); }
-      catch (err) { console.warn("Firestore update non-critical:", err); }
+      try {
+        await updateDoc(doc(db, "users", user.uid), { photoURL: downloadURL });
+      } catch (err) {
+        console.warn("Firestore update non-critical:", err);
+      }
 
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
       window.dispatchEvent(new CustomEvent("user-photo-updated"));
@@ -292,36 +390,75 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
           title="Click to change profile picture"
         >
           {user.photoURL ? (
-            <Image src={user.photoURL} alt="Profile" width={96} height={96}
-              referrerPolicy="no-referrer" unoptimized
-              className="rounded-full object-cover w-24 h-24 ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200" />
+            <Image
+              src={user.photoURL}
+              alt="Profile"
+              width={96}
+              height={96}
+              referrerPolicy="no-referrer"
+              unoptimized
+              className="rounded-full object-cover w-24 h-24 ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
+            />
           ) : (
-            <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold
               bg-light-accent/15 dark:bg-dark-accent/15 text-light-accent dark:text-dark-accent
-              ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200">
+              ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
+            >
               {initials}
             </div>
           )}
 
           {!uploading && (
             <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"
+                />
               </svg>
             </div>
           )}
 
           {uploading && (
-            <svg className="absolute inset-0 w-24 h-24 -rotate-90" viewBox="0 0 96 96">
-              <circle cx="48" cy="48" r="46" fill="none" strokeWidth="3"
-                className="text-light-accent/20 dark:text-dark-accent/20" stroke="currentColor" />
-              <circle cx="48" cy="48" r="46" fill="none" strokeWidth="3"
+            <svg
+              className="absolute inset-0 w-24 h-24 -rotate-90"
+              viewBox="0 0 96 96"
+            >
+              <circle
+                cx="48"
+                cy="48"
+                r="46"
+                fill="none"
+                strokeWidth="3"
+                className="text-light-accent/20 dark:text-dark-accent/20"
+                stroke="currentColor"
+              />
+              <circle
+                cx="48"
+                cy="48"
+                r="46"
+                fill="none"
+                strokeWidth="3"
                 className="text-light-accent dark:text-dark-accent transition-all duration-150"
-                stroke="currentColor" strokeDasharray={circumference}
-                strokeDashoffset={circumference * (1 - progress / 100)} strokeLinecap="round" />
+                stroke="currentColor"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference * (1 - progress / 100)}
+                strokeLinecap="round"
+              />
             </svg>
           )}
         </div>
@@ -330,7 +467,13 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
           {uploading ? `Uploading… ${progress}%` : ""}
         </p>
 
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
       </div>
     </>
   );
