@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
+if (!TMDB_API_KEY) {
+  throw new Error("API_KEY is missing in environment variables");
+}
+
 interface MediaItem {
   id: number;
   title?: string;
@@ -11,7 +15,6 @@ interface MediaItem {
   vote_average?: number;
   release_date?: string;
   first_air_date?: string;
-  total_pages?: number;
 }
 
 interface DiscoverResponse {
@@ -19,280 +22,323 @@ interface DiscoverResponse {
   total_pages?: number;
 }
 
-// ─── era selection ────────────────────────────────────────────────────────────
-
-/**
- * Weighted era picker — older decades get a fair share rather than being
- * starved by the volume of recent content on TMDB.
- *
- * Each era also gets a vote_count threshold tuned to its era: older films
- * have fewer votes by nature so a flat >=100 filter kills most of them.
- */
 interface Era {
   min: number;
   max: number;
   weight: number;
   minVotes: number;
-  // TMDB discover uses different date params for movie vs tv
   dateParam: "primary_release_year" | "first_air_date_year";
 }
 
+// ─────────────────────────────────────────────
+// NORMALIZER (FIXED POSITION)
+// ─────────────────────────────────────────────
+function normalize(item: any, media_type: string) {
+  if (!item?.id) return null;
+
+  const title = item.title || item.name;
+  if (!title) return null;
+
+  return {
+    media_type,
+    id: item.id,
+    title,
+    overview: item.overview,
+    poster_path: item.poster_path,
+    vote_average: item.vote_average,
+    release_date: item.release_date || item.first_air_date,
+  };
+}
+
+// ─────────────────────────────────────────────
+// CACHE
+// ─────────────────────────────────────────────
+interface CacheEntry {
+  data: any[];
+  timestamp: number;
+}
+
+const CACHE_TTL = 5 * 60 * 1000;
+const MAX_CACHE_SIZE = 50;
+const cache = new Map<string, CacheEntry>();
+
+function getCacheKey(count: number, entropy?: string) {
+  const t = entropy || Date.now().toString(36);
+  return `random_${count}_${t}`;
+}
+
+function getCached(key: string) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.data;
+}
+
+function setCached(key: string, data: any[]) {
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey) cache.delete(firstKey);
+  }
+
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+// ─────────────────────────────────────────────
+// ERAS
+// ─────────────────────────────────────────────
 const MOVIE_ERAS: Era[] = [
-  { min: 2020, max: new Date().getFullYear(), weight: 15, minVotes: 80,  dateParam: "primary_release_year" },
-  { min: 2010, max: 2019,                    weight: 20, minVotes: 100, dateParam: "primary_release_year" },
-  { min: 2000, max: 2009,                    weight: 18, minVotes: 80,  dateParam: "primary_release_year" },
-  { min: 1990, max: 1999,                    weight: 15, minVotes: 60,  dateParam: "primary_release_year" },
-  { min: 1980, max: 1989,                    weight: 12, minVotes: 40,  dateParam: "primary_release_year" },
-  { min: 1960, max: 1979,                    weight: 10, minVotes: 25,  dateParam: "primary_release_year" },
-  { min: 1920, max: 1959,                    weight: 10, minVotes: 10,  dateParam: "primary_release_year" },
+  { min: 2020, max: new Date().getFullYear(), weight: 15, minVotes: 80, dateParam: "primary_release_year" },
+  { min: 2010, max: 2019, weight: 20, minVotes: 100, dateParam: "primary_release_year" },
+  { min: 2000, max: 2009, weight: 18, minVotes: 80, dateParam: "primary_release_year" },
+  { min: 1990, max: 1999, weight: 15, minVotes: 60, dateParam: "primary_release_year" },
+  { min: 1980, max: 1989, weight: 12, minVotes: 40, dateParam: "primary_release_year" },
+  { min: 1960, max: 1979, weight: 10, minVotes: 25, dateParam: "primary_release_year" },
+  { min: 1920, max: 1959, weight: 10, minVotes: 10, dateParam: "primary_release_year" },
 ];
 
 const TV_ERAS: Era[] = [
-  { min: 2020, max: new Date().getFullYear(), weight: 20, minVotes: 50,  dateParam: "first_air_date_year" },
-  { min: 2010, max: 2019,                    weight: 25, minVotes: 60,  dateParam: "first_air_date_year" },
-  { min: 2000, max: 2009,                    weight: 20, minVotes: 40,  dateParam: "first_air_date_year" },
-  { min: 1990, max: 1999,                    weight: 15, minVotes: 20,  dateParam: "first_air_date_year" },
-  { min: 1980, max: 1989,                    weight: 10, minVotes: 10,  dateParam: "first_air_date_year" },
-  { min: 1960, max: 1979,                    weight: 10, minVotes: 5,   dateParam: "first_air_date_year" },
+  { min: 2020, max: new Date().getFullYear(), weight: 20, minVotes: 50, dateParam: "first_air_date_year" },
+  { min: 2010, max: 2019, weight: 25, minVotes: 60, dateParam: "first_air_date_year" },
+  { min: 2000, max: 2009, weight: 20, minVotes: 40, dateParam: "first_air_date_year" },
+  { min: 1990, max: 1999, weight: 15, minVotes: 20, dateParam: "first_air_date_year" },
+  { min: 1980, max: 1989, weight: 10, minVotes: 10, dateParam: "first_air_date_year" },
+  { min: 1960, max: 1979, weight: 10, minVotes: 5, dateParam: "first_air_date_year" },
 ];
 
-const pickWeightedEra = (eras: Era[]): Era => {
-  const total = eras.reduce((s, e) => s + e.weight, 0);
-  let r = Math.random() * total;
-  for (const era of eras) {
-    r -= era.weight;
-    if (r <= 0) return era;
-  }
-  return eras[eras.length - 1];
-};
+// ─────────────────────────────────────────────
+// GENRES / SORT
+// ─────────────────────────────────────────────
+const MOVIE_GENRES = [
+  28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 53,
+  10752, 37,
+];
 
-const randomYearInEra = (era: Era): number =>
-  Math.floor(Math.random() * (era.max - era.min + 1)) + era.min;
+const TV_GENRES = [
+  10759, 16, 35, 80, 99, 18, 10751, 10762, 9648, 10763, 10764, 10765, 10766,
+  10767, 10768,
+];
 
-// ─── genre randomization ──────────────────────────────────────────────────────
-
-// A broad set of genre IDs — randomly picking one pushes discover into
-// different slices of the catalogue each call.
-const MOVIE_GENRES = [28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 53, 10752, 37];
-const TV_GENRES   = [10759, 16, 35, 80, 99, 18, 10751, 10762, 9648, 10763, 10764, 10765, 10766, 10767, 10768];
-
-const pickRandomGenre = (genres: number[]): number =>
-  genres[Math.floor(Math.random() * genres.length)];
-
-// ─── sort order randomization ─────────────────────────────────────────────────
 const SORT_ORDERS = [
   "popularity.desc",
   "vote_average.desc",
   "vote_count.desc",
-  "revenue.desc",        // movies only but harmless for tv
+  "revenue.desc",
   "primary_release_date.desc",
 ];
 
-const pickRandomSort = (): string =>
+// ─────────────────────────────────────────────
+// HELPERS (FIXED)
+// ─────────────────────────────────────────────
+const pickWeightedEra = (eras: Era[]) => {
+  const total = eras.reduce((s, e) => s + e.weight, 0);
+  let r = Math.random() * total;
+
+  for (const era of eras) {
+    r -= era.weight;
+    if (r <= 0) return era;
+  }
+
+  return eras[eras.length - 1];
+};
+
+const randomYearInEra = (era: Era) =>
+  Math.floor(Math.random() * (era.max - era.min + 1)) + era.min;
+
+const pickRandomGenre = (genres: number[]) =>
+  genres[Math.floor(Math.random() * genres.length)];
+
+const pickRandomSort = () =>
   SORT_ORDERS[Math.floor(Math.random() * SORT_ORDERS.length)];
 
-// ─── network ──────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────
+// FETCH WITH RETRY
+// ─────────────────────────────────────────────
 async function fetchWithRetry(
   url: string,
-  retries = 3,
+  retries = 2,
   delayMs = 400,
 ): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      return res;
-    } catch (err: any) {
+      return await fetch(url, {
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch (err) {
       if (i === retries - 1) throw err;
       await new Promise((r) => setTimeout(r, delayMs * 2 ** i));
     }
   }
-  throw new Error("Unreachable");
+
+  throw new Error("Fetch failed");
 }
 
-// ─── core fetch ───────────────────────────────────────────────────────────────
-
-async function fetchOneRandom(seenIds: Set<number>) {
-  const media_type = Math.random() < 0.55 ? "movie" : "tv"; // slight movie bias
+// ─────────────────────────────────────────────
+// CORE FETCH
+// ─────────────────────────────────────────────
+async function fetchOneRandom(seenIds: Set<number>, logContext: string) {
+  const media_type = Math.random() < 0.55 ? "movie" : "tv";
   const eras = media_type === "movie" ? MOVIE_ERAS : TV_ERAS;
+
   const era = pickWeightedEra(eras);
   const year = randomYearInEra(era);
-  const genre = pickRandomGenre(media_type === "movie" ? MOVIE_GENRES : TV_GENRES);
+  const genre = pickRandomGenre(
+    media_type === "movie" ? MOVIE_GENRES : TV_GENRES,
+  );
   const sort = pickRandomSort();
 
-  // ── 1. discover with randomized parameters ────────────────────────────────
   try {
-    // First probe: get total_pages so we can pick a truly random page
-    const probeUrl =
+    const baseUrl =
       `https://api.themoviedb.org/3/discover/${media_type}?api_key=${TMDB_API_KEY}` +
       `&language=en-US&sort_by=${sort}` +
       `&${era.dateParam}=${year}` +
       `&with_genres=${genre}` +
-      `&vote_count.gte=${era.minVotes}` +
-      `&page=1`;
+      `&vote_count.gte=${era.minVotes}`;
 
-    const probeRes = await fetchWithRetry(probeUrl);
+    const probeRes = await fetchWithRetry(`${baseUrl}&page=1`);
+
     if (probeRes.ok) {
       const probeData: DiscoverResponse = await probeRes.json();
-      // TMDB caps at 500 pages regardless of total_pages value
-      const availablePages = Math.min(probeData.total_pages ?? 1, 500);
-      const page = Math.floor(Math.random() * availablePages) + 1;
 
-      // If page 1 already has results and we randomly picked page 1, use it directly
-      const pageData: DiscoverResponse =
+      const totalPages = Math.min(probeData.total_pages ?? 1, 500);
+      const page = Math.floor(Math.random() * totalPages) + 1;
+
+      const pageRes =
         page === 1
-          ? probeData
-          : await fetchWithRetry(
-              `https://api.themoviedb.org/3/discover/${media_type}?api_key=${TMDB_API_KEY}` +
-              `&language=en-US&sort_by=${sort}` +
-              `&${era.dateParam}=${year}` +
-              `&with_genres=${genre}` +
-              `&vote_count.gte=${era.minVotes}` +
-              `&page=${page}`,
-            ).then((r) => (r.ok ? r.json() : { results: [] }));
+          ? probeRes
+          : await fetchWithRetry(`${baseUrl}&page=${page}`);
 
-      const validItems = (pageData.results ?? []).filter(
-        (item) =>
-          item.poster_path &&
-          (item.vote_average ?? 0) > 5 &&
-          !seenIds.has(item.id),
-      );
+      if (pageRes.ok) {
+        const pageData: DiscoverResponse = await pageRes.json();
 
-      if (validItems.length > 0) {
-        // Pick randomly from the page rather than always taking index 0
-        const item = validItems[Math.floor(Math.random() * validItems.length)];
-        seenIds.add(item.id);
-        return {
-          media_type,
-          id: item.id,
-          title: item.title || item.name,
-          overview: item.overview,
-          poster_path: item.poster_path,
-          vote_average: item.vote_average,
-          release_date: item.release_date || item.first_air_date,
-          year,
-          source: "discover",
-        };
-      }
-    }
-  } catch (err: unknown) {
-    console.error({ level: 'error', endpoint: '/api/randomCall', stage: 'discover', message: (err as Error).message });
-  }
+        const validItems = (pageData.results || []).filter(
+          (item) =>
+            item.poster_path &&
+            (item.vote_average ?? 0) > 5 &&
+            !seenIds.has(item.id),
+        );
 
-  // ── 2. fallback: random ID ────────────────────────────────────────────────
-  // Only used if discover returns nothing (rare genre+era combo).
-  // ID range is tightened to ~500K which is where the bulk of valid entries sit.
-  const MAX_ID = 500_000;
-  for (let i = 0; i < 4; i++) {
-    const randomId = Math.floor(Math.random() * MAX_ID) + 1;
-    if (seenIds.has(randomId)) continue;
+        if (validItems.length) {
+          const item = validItems[Math.floor(Math.random() * validItems.length)];
 
-    try {
-      const res = await fetchWithRetry(
-        `https://api.themoviedb.org/3/${media_type}/${randomId}?api_key=${TMDB_API_KEY}&language=en-US`,
-        2,
-        300,
-      );
-      if (res.ok) {
-        const json: MediaItem = await res.json();
-        const hasTitle = json.title || json.name;
-        if (hasTitle && json.poster_path && (json.vote_average ?? 0) > 5) {
-          seenIds.add(randomId);
+          seenIds.add(item.id);
+
+          const normalized = normalize(item, media_type);
+          if (normalized) return normalized;
+
+          // Relaxed fallback for this page
           return {
             media_type,
-            id: randomId,
-            title: json.title || json.name,
-            overview: json.overview,
-            poster_path: json.poster_path,
-            vote_average: json.vote_average,
-            release_date: json.release_date || json.first_air_date,
-            year: json.release_date
-              ? new Date(json.release_date).getFullYear()
-              : json.first_air_date
-              ? new Date(json.first_air_date).getFullYear()
-              : null,
-            source: "random_id",
+            id: item.id,
+            title: item.title || item.name || `Movie/TV #${item.id}`,
+            overview: item.overview || '',
+            poster_path: item.poster_path || null,
+            vote_average: item.vote_average || 0,
+            release_date: item.release_date || item.first_air_date || '',
           };
         }
       }
-    } catch (err: unknown) {
-      console.error({ level: 'error', endpoint: '/api/randomCall', stage: `random-id-${i+1}`, message: (err as Error).message });
     }
+  } catch {
+    console.error({ stage: "discover", context: logContext });
   }
 
-  // ── 3. final fallback: trending ───────────────────────────────────────────
+  // fallback random ID
+  const MAX_ID = 500_000;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const id = Math.floor(Math.random() * MAX_ID) + 1;
+    if (seenIds.has(id)) continue;
+
+    try {
+      const res = await fetchWithRetry(
+        `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${TMDB_API_KEY}&language=en-US`,
+        2,
+      );
+
+      if (res.ok) {
+        const item: MediaItem = await res.json();
+
+        if (
+          (item.poster_path || true) &&
+          (item.vote_average ?? 0) > 4 &&
+          (item.title || item.name)
+        ) {
+          seenIds.add(id);
+
+          return normalize(item, media_type);
+        }
+      }
+    } catch {}
+  }
+
+  // trending
   try {
     const res = await fetchWithRetry(
       `https://api.themoviedb.org/3/trending/${media_type}/week?api_key=${TMDB_API_KEY}`,
     );
+
     if (res.ok) {
       const data: DiscoverResponse = await res.json();
-      const items = (data.results ?? []).filter((i) => !seenIds.has(i.id));
-      if (items.length > 0) {
+      const items = (data.results || []).filter((i) => !seenIds.has(i.id));
+
+      if (items.length) {
         const item = items[Math.floor(Math.random() * items.length)];
         seenIds.add(item.id);
-        return {
-          media_type,
-          id: item.id,
-          title: item.title || item.name,
-          overview: item.overview,
-          poster_path: item.poster_path,
-          vote_average: item.vote_average,
-          release_date: item.release_date || item.first_air_date,
-          year: item.release_date
-            ? new Date(item.release_date).getFullYear()
-            : item.first_air_date
-            ? new Date(item.first_air_date).getFullYear()
-            : null,
-          source: "trending",
-        };
+
+        return normalize(item, media_type);
+      } else if (data.results && data.results.length > 0) {
+        // Force first trending if no unseen
+        const item = data.results[0];
+        return normalize(item, media_type);
       }
     }
-  } catch (err: unknown) {
-    console.error({ level: 'error', endpoint: '/api/randomCall', stage: 'trending-fallback', message: (err as Error).message });
-  }
+  } catch {}
 
   return null;
 }
 
-// ─── handler ──────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────
+// HANDLER
+// ─────────────────────────────────────────────
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const count = Math.min(parseInt(searchParams.get("count") ?? "1", 10), 20);
+    const count = Math.min(Number(searchParams.get("count") || 1), 20);
+    const entropy = searchParams.get("t") || '';
 
-    // Shared set passed into every parallel call so duplicates are avoided
-    // even across concurrent fetches within the same batch request.
-    const seenIds = new Set<number>();
+    const cacheKey = getCacheKey(count, entropy);
+    const cached = getCached(cacheKey);
 
-    if (count === 1) {
-      const result = await fetchOneRandom(seenIds);
-      if (!result) {
-        return NextResponse.json(
-          { error: "Could not find valid random media. Please try again." },
-          { status: 503 },
-        );
-      }
-      return NextResponse.json(result);
+    if (cached && cached.length === count) {
+      return NextResponse.json(cached);
     }
 
-    // Batch: run in parallel but stagger slightly to avoid TMDB rate limits
-    const results = await Promise.allSettled(
-      Array.from({ length: count }, (_, i) =>
-        new Promise<any>((resolve) =>
-          setTimeout(() => fetchOneRandom(seenIds).then(resolve), i * 50),
-        ),
-      ),
-    );
+    const seenIds = new Set<number>();
+    const results: any[] = [];
 
-    const items = results
-      .filter((r) => r.status === "fulfilled" && r.value !== null)
-      .map((r) => (r as PromiseFulfilledResult<any>).value);
+    for (let i = 0; i < count; i++) {
+      const item = await fetchOneRandom(seenIds, `batch_${i}`);
+      if (item) results.push(item);
 
-    return NextResponse.json(items);
+      if (i % 3 === 0) {
+        await new Promise((r) => setTimeout(r, 80));
+      }
+    }
+
+    setCached(cacheKey, results);
+
+    return NextResponse.json(results);
   } catch (error) {
-    console.error("Error in random media endpoint:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error({ stage: "handler", error });
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

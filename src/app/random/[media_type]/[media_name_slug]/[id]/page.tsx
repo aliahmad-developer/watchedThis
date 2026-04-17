@@ -10,7 +10,19 @@ interface PageParams {
   id: string;
 }
 const fetchMediaDetails = cache(
-  async (media_type: string, media_name_slug: string, id: string) => {
+  async (media_type: string, media_name_slug: string, id: string, prefetchB64?: string) => {
+    // Try pre-fetched data first
+    if (prefetchB64) {
+      try {
+        const jsonStr = atob(prefetchB64);
+        const data = JSON.parse(jsonStr);
+        return data;
+      } catch {
+        console.warn('Failed to parse pre-fetched data');
+      }
+    }
+    
+    // Fallback fetch
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
     const res = await fetch(
       `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
@@ -23,11 +35,14 @@ const fetchMediaDetails = cache(
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<PageParams>;
+  searchParams: Promise<{ prefetch?: string }>;
 }) {
   const { media_type, media_name_slug, id } = await params;
-  const data = await fetchMediaDetails(media_type, media_name_slug, id);
+  const { prefetch } = await searchParams;
+  const data = await fetchMediaDetails(media_type, media_name_slug, id, prefetch || undefined);
   if (!data) return { title: "Media Not Found | WatchedThis" };
 
   const mediaTitle = data.title || data.name || "Media Details";
@@ -56,19 +71,27 @@ export async function generateMetadata({
 
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<PageParams>;
+  searchParams: Promise<{ prefetch?: string }>;
 }) {
   const { media_type, media_name_slug, id } = await params;
+  const { prefetch } = await searchParams;
 
-  const data = await fetchMediaDetails(media_type, media_name_slug, id);
+  const data = await fetchMediaDetails(media_type, media_name_slug, id, prefetch || undefined);
   if (!data) notFound();
 
   const mediaTitle = data.title || data.name || "";
+  const initialLoad = !!prefetch;
 
   return (
-    // Shell only handles scroll-to-top + dice animation on first mount
-    <RandomMediaShell key={id} mediaTitle={mediaTitle}>
+    <RandomMediaShell 
+      key={id} 
+      mediaTitle={mediaTitle}
+      initialLoad={initialLoad}
+      prefetchedData={data}
+    >
       <div className="py-6 px-4 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-md overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>

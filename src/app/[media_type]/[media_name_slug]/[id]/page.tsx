@@ -18,8 +18,16 @@ interface PageParams {
 const fetchMediaDetails = unstable_cache(
   async (media_type: string, media_name_slug: string, id: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`);
-    if (!res.ok) return null;
+    const url = `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`;
+    const res = await fetch(url, { 
+      cache: 'no-store', 
+      next: { revalidate: 3600 } 
+    });
+    if (!res.ok) {
+      console.error(`API fetch failed: ${url} - Status: ${res.status}`);
+      console.error('Response:', await res.text().catch(() => 'Could not read'));
+      return null;
+    }
     return res.json();
   },
   ["media-details"],
@@ -139,14 +147,18 @@ export default async function SpecificRandomMediaPage({
 
   const data = await fetchMediaDetails(media_type, media_name_slug, id);
 
-  if (!data) notFound();
+  if (!data) {
+    console.error(`Media not found: ${media_type}/${media_name_slug}/${id}`);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    console.error(`Fetch failed for: ${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`);
+    notFound();
+  }
 
   const mediaTitle = data.title || data.name || "Media Details";
-
   const expectedSlug = createSlug(mediaTitle);
-  if (media_name_slug !== expectedSlug) {
-    redirect(`/random/${media_type}/${expectedSlug}/${id}`);
-  }
+  
+  // Skip slug correction to prevent mismatch loops on random paths
+  // Both global and random detail pages now use same fetch/API
 
   const jsonLd = buildJsonLd(data, media_type);
 

@@ -357,16 +357,16 @@ export default function Navbar() {
       e.preventDefault();
       try {
         const res = await fetch("/api/randomCall", { cache: "no-store" });
-        const data = await res.json();
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        const json = await res.json();
+        const data = Array.isArray(json) ? json[0] : json;
+        if (!data?.media_type || !data?.id || !data?.title && !data?.name) throw new Error("Invalid random data");
         const slug = createSlug(data.title || data.name || "");
         const newUrl = `/random/${data.media_type}/${slug}/${data.id}`;
-        if (window.location.pathname === newUrl) {
-          window.location.reload();
-        } else {
-          window.location.href = newUrl;
-        }
+        router.push(newUrl);
       } catch (err) {
         console.error("Random nav failed:", err);
+        router.push('/random');
       }
     },
     [],

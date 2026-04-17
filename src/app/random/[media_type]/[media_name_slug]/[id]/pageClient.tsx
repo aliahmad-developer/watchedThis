@@ -8,9 +8,15 @@ import DiceRoll from "./diceRoll";
 interface Props {
   children: React.ReactNode;
   mediaTitle: string;
+  initialLoad?: boolean;
+  prefetchedData?: any;
 }
 
-export default function RandomMediaShell({ children, mediaTitle }: Props) {
+export default function RandomMediaShell({ 
+  children, 
+  mediaTitle, 
+  initialLoad = false 
+}: Props) {
   const [showLoader, setShowLoader] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
@@ -18,19 +24,28 @@ export default function RandomMediaShell({ children, mediaTitle }: Props) {
   const searchParams = useSearchParams();
 
   const isFirstRender = useRef(true);
+  const isInitialLoadRef = useRef(initialLoad);
 
   // Scroll to top on every new media item
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [mediaTitle]);
 
-  // Trigger ONLY on route change (not first mount)
+  // Skip dice on /random direct load, show only on route changes/rerolls
   useEffect(() => {
+    // Skip if initial load from /random prefetch
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    // Skip first render (hydration)
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
 
+    // Show dice for navigation/reroll
     setShowLoader(true);
     setFinishing(false);
 

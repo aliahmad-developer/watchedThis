@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async headers() {
+async headers() {
     return [
       {
         source: "/(.*)",
@@ -25,6 +25,19 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/api/dailyMedia",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, immutable",
+          },
+          {
+            key: "Vary",
+            value: "Accept-Encoding",
+          },
+        ],
+      },
     ];
   },
 
@@ -32,7 +45,7 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 31,
     deviceSizes: [640, 750, 828, 1080, 1200],
-    imageSizes: [64, 128, 256, 500],
+    imageSizes: [64, 128, 256, 500,55],
     remotePatterns: [
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
