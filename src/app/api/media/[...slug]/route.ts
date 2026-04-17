@@ -6,11 +6,12 @@ export async function GET(
 ) {
   const { slug = [] } = await params;
 
-  if (!Array.isArray(slug) || slug.length < 2) {
+  if (!Array.isArray(slug) || slug.length < 3) {
     return NextResponse.json({ error: "Invalid route parameters" }, { status: 400 });
   }
 
-  const [media_type, , id] = slug;
+  const media_type = slug[0];
+  const id = slug[slug.length - 1];
 
   if (!media_type || !id) {
     return NextResponse.json({ error: "Missing media type or ID" }, { status: 400 });
@@ -47,7 +48,12 @@ export async function GET(
 
     if (!detailsRes.ok) {
       return NextResponse.json(
-        { error: `TMDB API error: ${data.status_message || detailsRes.statusText}`, code: detailsRes.status },
+        {
+          error: `TMDB API error: ${
+            data.status_message || detailsRes.statusText
+          }`,
+          code: detailsRes.status,
+        },
         { status: detailsRes.status }
       );
     }
@@ -55,7 +61,9 @@ export async function GET(
     let certification: string | null = null;
 
     if (media_type === "movie" && data.release_dates?.results) {
-      const usRelease = data.release_dates.results.find((r: any) => r.iso_3166_1 === "US");
+      const usRelease = data.release_dates.results.find(
+        (r: any) => r.iso_3166_1 === "US"
+      );
       if (usRelease?.release_dates?.length) {
         const theatrical =
           usRelease.release_dates.find((d: any) => d.type === 3) ||
@@ -63,11 +71,13 @@ export async function GET(
         certification = theatrical?.certification?.trim() || null;
       }
     } else if (media_type === "tv" && data.content_ratings?.results) {
-      const usRating = data.content_ratings.results.find((r: any) => r.iso_3166_1 === "US");
+      const usRating = data.content_ratings.results.find(
+        (r: any) => r.iso_3166_1 === "US"
+      );
       certification = usRating?.rating?.trim() || null;
     }
 
-    const transformedData = {
+    return NextResponse.json({
       status: data.status,
       id: data.id,
       tagline: data.tagline,
@@ -88,11 +98,12 @@ export async function GET(
       certification,
       credits,
       keywords: data.keywords ?? null,
-    };
-
-    return NextResponse.json(transformedData);
+    });
   } catch (error) {
     console.error("TMDB API request failed:", error);
-    return NextResponse.json({ error: "Failed to fetch media data from TMDB" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch media data from TMDB" },
+      { status: 500 }
+    );
   }
 }
