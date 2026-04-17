@@ -1,6 +1,11 @@
-export function createSlug(name: string) {
-  return name
+export function createSlug(text: string): string {
+  return text
+    .normalize("NFKD")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-") // replace spaces & special chars with hyphen
-    .replace(/^-+|-+$/g, "");    // remove leading/trailing hyphens
+    .trim()
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-\u4e00-\u9fff\u3040-\u30ff\u0400-\u04ff]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }

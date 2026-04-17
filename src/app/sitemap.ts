@@ -8,10 +8,14 @@ export const revalidate = 0
 
 function slugify(text: string): string {
   return text
+    .normalize("NFKD")
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
     .trim()
-    .replace(/\s+/g, "-");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-\u4e00-\u9fff\u3040-\u30ff\u0400-\u04ff]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 async function tmdbFetch<T>(endpoint: string): Promise<T> {
