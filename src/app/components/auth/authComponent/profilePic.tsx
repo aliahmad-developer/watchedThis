@@ -1,137 +1,262 @@
 "use client";
-import { useState, useRef, useCallback, useEffect } from "react";
-import Image from "next/image";
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  memo,
+} from "react";
+
 import toast from "react-hot-toast";
+import {
+  ref,
+  getDownloadURL,
+  uploadBytesResumable,
+} from "firebase/storage";
+import { updateProfile } from "firebase/auth";
+import { doc, updateDoc } from "firebase/firestore";
+import {
+  getFirebaseStorage,
+  getFirebaseDB,
+} from "../../../firebase/firebaseConfig";
 
 type Props = { user: any; onUpdated?: (newPhotoURL: string) => void };
 
+/* ─── module-level constants ─────────────────────────────────────────────── */
+const RING_CIRCUMFERENCE = 2 * Math.PI * 46;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_RESOLUTION = 4096;
+const CACHE_TTL = 3600000;
+const CROP_JPEG_QUALITY = 0.92;
+const MAX_ZOOM = 4;
+const MIN_ZOOM = 0.5;
+
+/* ─── helpers ────────────────────────────────────────────────────────────── */
+function validateImage(file: File): Promise<boolean> {
+  // Client-side: MIME, size, magic bytes, dimensions
+  if (!file.type.startsWith("image/")) return Promise.resolve(false);
+  if (file.size > MAX_FILE_SIZE) return Promise.resolve(false);
+  
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      // Max 4K resolution (prevent huge uploads)
+      if (img.naturalWidth > MAX_RESOLUTION || img.naturalHeight > MAX_RESOLUTION) {
+        resolve(false);
+      } else {
+        // Magic bytes check
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const arr = new Uint8Array(reader.result as ArrayBuffer).subarray(0, 4);
+          const header = Array.from(arr)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+          const isValid =
+            header.startsWith("ffd8ff") ||   // JPEG
+            header.startsWith("89504e47") || // PNG
+            header.startsWith("47494638") || // GIF
+            header.startsWith("52494646");   // WEBP
+          resolve(isValid);
+        };
+        reader.readAsArrayBuffer(file.slice(0, 4));
+      }
+    };
+    img.onerror = () => resolve(false);
+    img.src = URL.createObjectURL(file);
+  });
+  // NOTE: Server-side validation in Firebase Storage rules & API proxy required!
+}
+
 /* ─── crop hook ──────────────────────────────────────────────────────────── */
-function useCrop(imgSrc: string | null) {
+function useCrop(imgSrc: string | null, canvasSize: number) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [scale, setScale] = useState(1);
-  const [dragging, setDragging] = useState(false);
+
+  // Drive canvas imperatively via refs — avoids the state → useCallback → useEffect
+  // re-creation chain triggered on every single drag event
+  const offsetRef = useRef({ x: 0, y: 0 });
+  const scaleRef = useRef(1);
+
+  // Thin state scalar only for the range slider UI
+  const [scaleState, setScaleState] = useState(1);
+
+  const dragging = useRef(false);
   const dragStart = useRef({ mx: 0, my: 0, ox: 0, oy: 0 });
+  const lastPinchDist = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!imgSrc) return;
-    const img = new window.Image();
-    img.onload = () => {
-      imgRef.current = img;
-      setOffset({ x: 0, y: 0 });
-      const SIZE = canvasRef.current?.width ?? 260;
-      const fitScale = Math.max(
-        SIZE / img.naturalWidth,
-        SIZE / img.naturalHeight,
-      );
-      setScale(fitScale);
-    };
-    img.src = imgSrc;
-  }, [imgSrc]);
-
+  // draw is now fully stable — reads everything from refs
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
     if (!canvas || !img) return;
     const SIZE = canvas.width;
     const ctx = canvas.getContext("2d")!;
+    const { x, y } = offsetRef.current;
+    const scale = scaleRef.current;
+
     ctx.clearRect(0, 0, SIZE, SIZE);
     const drawW = img.naturalWidth * scale;
     const drawH = img.naturalHeight * scale;
-    const dx = (SIZE - drawW) / 2 + offset.x;
-    const dy = (SIZE - drawH) / 2 + offset.y;
-    ctx.drawImage(img, dx, dy, drawW, drawH);
+    ctx.drawImage(img, (SIZE - drawW) / 2 + x, (SIZE - drawH) / 2 + y, drawW, drawH);
+
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, 0, SIZE, SIZE);
+
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
     ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2 - 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+
     ctx.strokeStyle = "rgba(255,255,255,0.75)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2 - 2, 0, Math.PI * 2);
     ctx.stroke();
-  }, [offset, scale]);
+  }, []); // stable — no deps; reads refs directly
 
   useEffect(() => {
+    if (!imgSrc) return;
+    const img = new window.Image();
+    img.onload = () => {
+      imgRef.current = img;
+      offsetRef.current = { x: 0, y: 0 };
+      const fitScale = Math.max(
+        canvasSize / img.naturalWidth,
+        canvasSize / img.naturalHeight,
+      );
+      scaleRef.current = fitScale;
+      setScaleState(fitScale);
+      draw();
+    };
+    img.src = imgSrc;
+  }, [imgSrc, canvasSize, draw]);
+
+  // Non-passive wheel — must be a native listener
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scaleRef.current - e.deltaY * 0.001));
+      scaleRef.current = next;
+      setScaleState(next);
+      draw();
+    };
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
+  }, [draw]);
+
+  const setScale = useCallback((val: number) => {
+    scaleRef.current = val;
+    setScaleState(val);
     draw();
-  }, [draw, imgSrc]);
+  }, [draw]);
 
-  const onMouseDown = (e: React.MouseEvent) => {
-    setDragging(true);
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    dragging.current = true;
     dragStart.current = {
-      mx: e.clientX,
-      my: e.clientY,
-      ox: offset.x,
-      oy: offset.y,
+      mx: e.clientX, my: e.clientY,
+      ox: offsetRef.current.x, oy: offsetRef.current.y,
     };
-  };
-  const onMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!dragging) return;
-      setOffset({
-        x: dragStart.current.ox + e.clientX - dragStart.current.mx,
-        y: dragStart.current.oy + e.clientY - dragStart.current.my,
-      });
-    },
-    [dragging],
-  );
-  const stopDrag = () => setDragging(false);
+  }, []);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    setDragging(true);
-    dragStart.current = {
-      mx: t.clientX,
-      my: t.clientY,
-      ox: offset.x,
-      oy: offset.y,
+  const rafRef = useRef<number | null>(null);
+  const throttledDraw = useCallback(() => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      draw();
+      rafRef.current = null;
+    });
+  }, [draw]);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragging.current) return;
+    offsetRef.current = {
+      x: dragStart.current.ox + e.clientX - dragStart.current.mx,
+      y: dragStart.current.oy + e.clientY - dragStart.current.my,
     };
-  };
-  const onTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      if (!dragging) return;
+    throttledDraw();
+  }, [throttledDraw]);
+
+  const stopDrag = useCallback(() => {
+    dragging.current = false;
+    lastPinchDist.current = null;
+  }, []);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
       const t = e.touches[0];
-      setOffset({
-        x: dragStart.current.ox + t.clientX - dragStart.current.mx,
-        y: dragStart.current.oy + t.clientY - dragStart.current.my,
-      });
-    },
-    [dragging],
-  );
+      dragging.current = true;
+      dragStart.current = {
+        mx: t.clientX, my: t.clientY,
+        ox: offsetRef.current.x, oy: offsetRef.current.y,
+      };
+    } else if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastPinchDist.current = Math.hypot(dx, dy);
+    }
+  }, []);
 
-  const getCroppedBlob = (): Promise<Blob> =>
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      if (lastPinchDist.current !== null) {
+        const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scaleRef.current + (dist - lastPinchDist.current) * 0.01));
+        scaleRef.current = next;
+        setScaleState(next);
+        throttledDraw();
+      }
+      lastPinchDist.current = dist;
+      return;
+    }
+    if (!dragging.current || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    offsetRef.current = {
+      x: dragStart.current.ox + t.clientX - dragStart.current.mx,
+      y: dragStart.current.oy + t.clientY - dragStart.current.my,
+    };
+    throttledDraw();
+  }, [throttledDraw]);
+
+  // Uses a separate offscreen canvas — never corrupts the preview
+  const getCroppedBlob = useCallback((): Promise<Blob> =>
     new Promise((resolve, reject) => {
-      const canvas = canvasRef.current;
       const img = imgRef.current;
-      if (!canvas || !img) return reject(new Error("No canvas"));
-      const SIZE = canvas.width;
-      const ctx = canvas.getContext("2d")!;
-      ctx.clearRect(0, 0, SIZE, SIZE);
+      if (!img) return reject(new Error("No image loaded"));
+
+      const offscreen = document.createElement("canvas");
+      offscreen.width = canvasSize;
+      offscreen.height = canvasSize;
+      const ctx = offscreen.getContext("2d")!;
+
       ctx.save();
       ctx.beginPath();
-      ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2, 0, Math.PI * 2);
+      ctx.arc(canvasSize / 2, canvasSize / 2, canvasSize / 2, 0, Math.PI * 2);
       ctx.clip();
+
+      const scale = scaleRef.current;
+      const { x, y } = offsetRef.current;
       const drawW = img.naturalWidth * scale;
       const drawH = img.naturalHeight * scale;
-      const dx = (SIZE - drawW) / 2 + offset.x;
-      const dy = (SIZE - drawH) / 2 + offset.y;
-      ctx.drawImage(img, dx, dy, drawW, drawH);
+      ctx.drawImage(img, (canvasSize - drawW) / 2 + x, (canvasSize - drawH) / 2 + y, drawW, drawH);
       ctx.restore();
-      canvas.toBlob(
+
+      offscreen.toBlob(
         (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
         "image/jpeg",
-        0.92,
+        CROP_JPEG_QUALITY,
       );
-    });
+    }), [canvasSize]);
 
   return {
     canvasRef,
-    scale,
+    scale: scaleState,
     setScale,
     onMouseDown,
     onMouseMove,
@@ -143,7 +268,7 @@ function useCrop(imgSrc: string | null) {
 }
 
 /* ─── crop modal ─────────────────────────────────────────────────────────── */
-function CropModal({
+const CropModal = memo(function CropModal({
   imgSrc,
   onApply,
   onCancel,
@@ -152,33 +277,28 @@ function CropModal({
   onApply: (blob: Blob) => void;
   onCancel: () => void;
 }) {
-  const canvasSize =
-    typeof window !== "undefined" ? Math.min(280, window.innerWidth - 48) : 260;
-
-  const crop = useCrop(imgSrc);
+  // Stable for the modal's lifetime
+  const canvasSize = useMemo(() => Math.min(280, window.innerWidth - 48), []); // TODO: Extract 280
+  const crop = useCrop(imgSrc, canvasSize);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, []);
 
-  const handleApply = async () => {
+  const handleApply = useCallback(async () => {
     try {
       const blob = await crop.getCroppedBlob();
       onApply(blob);
-    } catch (err) {
+    } catch {
       toast.error("Crop failed.");
     }
-  };
+  }, [crop.getCroppedBlob, onApply]);
 
   return (
     <div
-      className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="bg-light-card dark:bg-dark-card rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl overflow-hidden">
         <div className="flex justify-center pt-3 sm:hidden">
@@ -194,18 +314,8 @@ function CropModal({
               onClick={onCancel}
               className="bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text transition-colors"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
@@ -218,6 +328,9 @@ function CropModal({
             ref={crop.canvasRef}
             width={canvasSize}
             height={canvasSize}
+            role="img"
+            aria-label={`Crop preview, zoom ${crop.scale.toFixed(1)}x`}
+            aria-roledescription="circular crop area"
             className="rounded-full cursor-grab active:cursor-grabbing touch-none"
             onMouseDown={crop.onMouseDown}
             onMouseMove={crop.onMouseMove}
@@ -226,39 +339,24 @@ function CropModal({
             onTouchStart={crop.onTouchStart}
             onTouchMove={crop.onTouchMove}
             onTouchEnd={crop.stopDrag}
-            onWheel={(e) => {
-              e.preventDefault();
-              crop.setScale((s) =>
-                Math.min(4, Math.max(0.5, s - e.deltaY * 0.001)),
-              );
-            }}
+            // onWheel intentionally omitted — handled via native non-passive listener
           />
 
           <div className="flex items-center gap-2 w-full">
-            <svg
-              className="w-3 h-3 shrink-0 text-light-secondary-text dark:text-dark-secondary-text"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
+            <svg className="w-3 h-3 shrink-0 text-light-secondary-text dark:text-dark-secondary-text" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <circle cx="11" cy="11" r="6" strokeWidth="2" />
               <path d="M21 21l-3.5-3.5" strokeWidth="2" strokeLinecap="round" />
             </svg>
             <input
               type="range"
-              min={0.5}
-              max={4}
-              step={0.01}
+              min={MIN_ZOOM} max={MAX_ZOOM} step={0.01}
               value={crop.scale}
               onChange={(e) => crop.setScale(parseFloat(e.target.value))}
+              aria-valuetext={`${crop.scale.toFixed(1)}x zoom`}
+              aria-label="Zoom level"
               className="flex-1 accent-light-accent dark:accent-dark-accent h-1 cursor-pointer"
             />
-            <svg
-              className="w-4 h-4 shrink-0 text-light-secondary-text dark:text-dark-secondary-text"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
+            <svg className="w-4 h-4 shrink-0 text-light-secondary-text dark:text-dark-secondary-text" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <circle cx="11" cy="11" r="6" strokeWidth="2" />
               <path d="M21 21l-3.5-3.5" strokeWidth="2" strokeLinecap="round" />
             </svg>
@@ -287,73 +385,96 @@ function CropModal({
       </div>
     </div>
   );
-}
+});
 
 /* ─── main component ─────────────────────────────────────────────────────── */
-export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
+const ProfilePictureUpdate = memo(function ProfilePictureUpdate({ user, onUpdated }: Props) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadTaskRef = useRef<ReturnType<typeof uploadBytesResumable> | null>(null);
+  const prevImgSrc = useRef<string | null>(null);
+  const cacheKey = `profilePhoto_${user?.uid}`;
 
-  const initials = (() => {
+  // Cache profile photo URL (1h TTL)
+  useEffect(() => {
+    if (!user?.photoURL || !user.uid) return;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { url, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_TTL) { // 1h
+          // Already cached, no action needed (displayed via prop)
+        }
+      }
+    } catch {}
+  }, [user?.photoURL, user?.uid, cacheKey]);
+
+  // Update cache on successful upload
+  const updateCache = useCallback((newUrl: string) => {
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        url: newUrl,
+        timestamp: Date.now()
+      }));
+    } catch {}
+  }, [cacheKey]);
+
+  // Revoke stale object URLs to prevent memory leaks
+  useEffect(() => {
+    if (prevImgSrc.current) URL.revokeObjectURL(prevImgSrc.current);
+    prevImgSrc.current = imgSrc;
+    return () => { if (imgSrc) URL.revokeObjectURL(imgSrc); };
+  }, [imgSrc]);
+
+  // Cancel any in-flight upload on unmount
+  useEffect(() => {
+    return () => { uploadTaskRef.current?.cancel(); };
+  }, []);
+
+  const initials = useMemo(() => {
     const name = user.displayName?.trim();
     const email = user.email?.split("@")[0] || "";
     return (name ? name.charAt(0) : email.charAt(0)).toUpperCase();
-  })();
+  }, [user.displayName, user.email]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (!f.type.startsWith("image/")) {
-      toast.error("Please select an image file.");
-      return;
-    }
-    if (f.size > 5 * 1024 * 1024) {
-      toast.error("Image must be under 5MB.");
-      return;
+    if (!(await validateImage(f))) { 
+      toast.error("Invalid image: must be JPEG/PNG/GIF/WEBP, <5MB, <4K resolution.");
+      return; 
     }
     setImgSrc(URL.createObjectURL(f));
     if (inputRef.current) inputRef.current.value = "";
-  };
+  }, []);
 
-  const handleCropApply = async (blob: Blob) => {
-    if (!user) {
-      toast.error("Not logged in.");
-      return;
-    }
+  const uploadBlob = useCallback(async (blob: Blob) => {
+    if (!user) { toast.error("Not logged in."); return; }
     setUploading(true);
-    setProgress(10);
-    setImgSrc(null); // close modal after we have the blob
+    setProgress(0);
 
     try {
-      const { getStorage, ref, uploadBytes, getDownloadURL } =
-        await import("firebase/storage");
-      const configModule = await import("../../../firebase/firebaseConfig");
+      const storageRef = ref(getFirebaseStorage(), `profile_pictures/profile_${user.uid}.jpg`);
+      const uploadTask = uploadBytesResumable(storageRef, blob);
+      uploadTaskRef.current = uploadTask;
 
-      const storage = configModule.getFirebaseStorage();
-      const fileName = `profile_${user.uid}.jpg`;
-      const storageRef = ref(storage, `profile_pictures/${fileName}`);
-
-      setProgress(30);
-
-      await uploadBytes(storageRef, blob);
-      setProgress(80);
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snap) => setProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+          reject,
+          resolve,
+        );
+      });
 
       const downloadURL = await getDownloadURL(storageRef);
-      const urlWithBust = `${downloadURL}&v=${Date.now()}`;
-      setProgress(100);
-
-      const { updateProfile } = await import("firebase/auth");
-      await updateProfile(user, { photoURL: urlWithBust });
+      await updateProfile(user, { photoURL: downloadURL });
       await user.reload();
 
-      const { doc, updateDoc, getFirestore } =
-        await import("firebase/firestore");
-      const firestoreConfig = await import("../../../firebase/firebaseConfig");
-      const db = firestoreConfig.getFirebaseDB();
       try {
-        await updateDoc(doc(db, "users", user.uid), { photoURL: downloadURL });
+        await updateDoc(doc(getFirebaseDB(), "users", user.uid), { photoURL: downloadURL });
       } catch (err) {
         console.warn("Firestore update non-critical:", err);
       }
@@ -361,17 +482,28 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
       window.dispatchEvent(new CustomEvent("user-photo-updated"));
       toast.success("Profile picture updated!");
+      updateCache(downloadURL);
       onUpdated?.(downloadURL);
     } catch (err: any) {
+      if (err?.code === "storage/canceled") return;
       console.error("Upload error:", err);
       toast.error(err?.message || "Failed to upload photo.");
     } finally {
       setUploading(false);
       setProgress(0);
+      uploadTaskRef.current = null;
     }
-  };
+  }, [user, onUpdated]);
 
-  const circumference = 2 * Math.PI * 46;
+  const handleCropApply = useCallback((blob: Blob) => {
+    setImgSrc(null);
+    uploadBlob(blob);
+  }, [uploadBlob]);
+
+  const handleCancel = useCallback(() => setImgSrc(null), []);
+  const handleAvatarClick = useCallback(() => {
+    if (!uploading) inputRef.current?.click();
+  }, [uploading]);
 
   return (
     <>
@@ -379,54 +511,44 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
         <CropModal
           imgSrc={imgSrc}
           onApply={handleCropApply}
-          onCancel={() => setImgSrc(null)}
+          onCancel={handleCancel}
         />
       )}
 
       <div className="flex flex-col items-center gap-1.5">
         <div
           className="relative group cursor-pointer w-24 h-24"
-          onClick={() => !uploading && inputRef.current?.click()}
+          onClick={handleAvatarClick}
           title="Click to change profile picture"
         >
-          {user.photoURL ? (
-            <Image
+{user.photoURL ? (
+            <img
               src={user.photoURL}
               alt="Profile"
               width={96}
               height={96}
+              fetchPriority="high"
               referrerPolicy="no-referrer"
-              unoptimized
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none'; // Hide broken images
+              }}
               className="rounded-full object-cover w-24 h-24 ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
             />
           ) : (
-            <div
-              className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold
+            <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold
               bg-light-accent/15 dark:bg-dark-accent/15 text-light-accent dark:text-dark-accent
-              ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
-            >
+              ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200">
               {initials}
             </div>
           )}
 
           {!uploading && (
             <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.8}
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                   d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"
                 />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.8}
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                   d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"
                 />
               </svg>
@@ -434,29 +556,17 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
           )}
 
           {uploading && (
-            <svg
-              className="absolute inset-0 w-24 h-24 -rotate-90"
-              viewBox="0 0 96 96"
-            >
-              <circle
-                cx="48"
-                cy="48"
-                r="46"
-                fill="none"
-                strokeWidth="3"
-                className="text-light-accent/20 dark:text-dark-accent/20"
-                stroke="currentColor"
+            <svg className="absolute inset-0 w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="46" fill="none" strokeWidth="3"
+                className="text-light-accent/20 dark:text-dark-accent/20" stroke="currentColor"
               />
               <circle
-                cx="48"
-                cy="48"
-                r="46"
-                fill="none"
-                strokeWidth="3"
+                cx="48" cy="48" r="46"
+                fill="none" strokeWidth="3"
                 className="text-light-accent dark:text-dark-accent transition-all duration-150"
                 stroke="currentColor"
-                strokeDasharray={circumference}
-                strokeDashoffset={circumference * (1 - progress / 100)}
+                strokeDasharray={RING_CIRCUMFERENCE}
+                strokeDashoffset={RING_CIRCUMFERENCE * (1 - progress / 100)}
                 strokeLinecap="round"
               />
             </svg>
@@ -477,4 +587,6 @@ export default function ProfilePictureUpdate({ user, onUpdated }: Props) {
       </div>
     </>
   );
-}
+});
+
+export default ProfilePictureUpdate;
