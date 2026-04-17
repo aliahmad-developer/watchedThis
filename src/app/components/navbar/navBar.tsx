@@ -353,23 +353,11 @@ export default function Navbar() {
   }, []);
 
   const handleRandomClick = useCallback(
-    async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault();
-      try {
-        const res = await fetch("/api/randomCall", { cache: "no-store" });
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-        const json = await res.json();
-        const data = Array.isArray(json) ? json[0] : json;
-        if (!data?.media_type || !data?.id || !data?.title && !data?.name) throw new Error("Invalid random data");
-        const slug = createSlug(data.title || data.name || "");
-        const newUrl = `/random/${data.media_type}/${slug}/${data.id}`;
-        router.push(newUrl);
-      } catch (err) {
-        console.error("Random nav failed:", err);
-        router.push('/random');
-      }
+      router.push("/random");
     },
-    [],
+    [router],
   );
 
   const handleCloseDropdown = useCallback(() => {
@@ -410,12 +398,13 @@ export default function Navbar() {
               </button>
 
               <Link href="/" className="shrink-0 flex items-center">
+                {/* Mobile row logo — constrained width so it doesn't stretch */}
                 <Image
                   src="/watchedthis.svg"
                   alt="WatchedThis"
-                  width={140}
-                  height={32}
-                  priority
+                  width={120}
+                  height={28}
+                  style={{ width: "120px", height: "auto" }}
                 />
               </Link>
 
@@ -440,9 +429,10 @@ export default function Navbar() {
                   <Image
                     src="/watchedthis.svg"
                     alt="WatchedThis"
-                    width={200}
+                    width={160}
                     height={30}
                     priority
+                    style={{ width: "160px", height: "auto" }}
                   />
                 </Link>
               </div>
@@ -536,7 +526,7 @@ export default function Navbar() {
       {/* ── Mobile / Tablet Drawer ── */}
       {hasMounted && (
         <>
-          {/* Backdrop — fades in/out */}
+          {/* Backdrop */}
           <div
             onClick={() => setDrawerOpen(false)}
             aria-hidden="true"
@@ -548,7 +538,7 @@ export default function Navbar() {
             }}
           />
 
-          {/* Drawer panel — slides in from left + fades in */}
+          {/* Drawer panel */}
           <div
             id="mobile-drawer"
             ref={drawerRef}
@@ -575,9 +565,10 @@ export default function Navbar() {
                 <Image
                   src="/watchedthis.svg"
                   alt="WatchedThis"
-                  width={130}
-                  height={32}
+                  width={110}
+                  height={28}
                   priority
+                  style={{ width: "110px", height: "auto" }}
                 />
               </Link>
               <button

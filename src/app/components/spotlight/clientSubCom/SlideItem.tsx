@@ -29,8 +29,9 @@ const SlideItem = ({
   currentIndex,
   isActive,
 }: SlideItemProps) => {
-  // Prioritize loading for the active slide and its immediate neighbour
-  const shouldPrioritize = isActive || rawIndex === currentIndex + 1;
+  // Only prioritize the first real slide (rawIndex 1 = first real item after prepended clone)
+  const shouldPrioritize = rawIndex === 1;
+  const tmdbSize = isMobile ? "w780" : "w1280";
 
   if (isMobile) {
     return (
@@ -40,7 +41,7 @@ const SlideItem = ({
             <>
               <Image
                 draggable={false}
-                src={`https://image.tmdb.org/t/p/w1280${item.backdrop_path}`}
+                src={`https://image.tmdb.org/t/p/${tmdbSize}${item.backdrop_path}`}
                 alt={item.title || item.name || "Media backdrop"}
                 fill
                 className="object-cover"

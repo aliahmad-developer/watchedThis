@@ -17,17 +17,24 @@ export default async function PopularSpotlightSliderServer({
     const isMobile = /mobile|android|iphone|ipad/i.test(ua);
     const firstBackdrop = results[0]?.backdrop_path;
 
+    // Must match the tmdbSize logic in SlideItem exactly
+    const tmdbSize = isMobile ? "w780" : "w1280";
+    const preloadHref = firstBackdrop
+      ? `https://image.tmdb.org/t/p/${tmdbSize}${firstBackdrop}`
+      : null;
+
     return (
       <section
         aria-label="Popular Spotlight Slider"
         className={`spotlight-section ${className}`}
       >
-        {firstBackdrop && (
+        {preloadHref && (
           <link
             rel="preload"
             as="image"
-            href={`https://image.tmdb.org/t/p/w1280${firstBackdrop}`}
+            href={preloadHref}
             fetchPriority="high"
+            imageSizes="100vw"
           />
         )}
         <PopularSpotlightSliderClient
@@ -44,7 +51,6 @@ export default async function PopularSpotlightSliderServer({
     );
   } catch (err) {
     console.error("Failed to fetch spotlight data:", err);
-
     return (
       <section
         aria-label="Popular Spotlight Slider"

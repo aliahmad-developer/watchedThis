@@ -11,36 +11,55 @@ import type { Metadata } from "next";
 
 interface PageParams {
   media_type: string;
-  media_name_slug: string;
-  id: string;
+  slug: string[];
 }
+
+type ResolvedMedia =
+  | { shouldRedirect: true; redirectTo: string }
+  | { shouldRedirect: false; data: any; media_name_slug: string; id: string };
+
+// ─── Fetchers ─────────────────────────────────────────────────────────────────
+
+const fetchMediaById = unstable_cache(
+  async (media_type: string, id: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const url = `${baseUrl}/api/media/${media_type}/_/${id}`; 
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    return res.json();
+  },
+  ["media-by-id"],
+  { revalidate: 3600 },
+);
 
 const fetchMediaDetails = unstable_cache(
   async (media_type: string, media_name_slug: string, id: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
     const url = `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`;
-    const res = await fetch(url, { 
-      cache: 'no-store', 
-      next: { revalidate: 3600 } 
+    const res = await fetch(url, {
+      next: { revalidate: 3600 },
     });
     if (!res.ok) {
       console.error(`API fetch failed: ${url} - Status: ${res.status}`);
-      console.error('Response:', await res.text().catch(() => 'Could not read'));
+      console.error(
+        "Response:",
+        await res.text().catch(() => "Could not read"),
+      );
       return null;
     }
     return res.json();
   },
   ["media-details"],
-  { revalidate: 3600 }
+  { revalidate: 3600 },
 );
 
-// ─── Structured Data ─────────────────────────────────────────────────────────
+// ─── Structured Data ──────────────────────────────────────────────────────────
 
 function buildJsonLd(data: any, media_type: string) {
   const mediaTitle = data.title || data.name || "Media Details";
   const isMovie = media_type === "movie";
 
-  const base = {
+  return {
     "@context": "https://schema.org",
     "@type": isMovie ? "Movie" : "TVSeries",
     name: mediaTitle,
@@ -76,7 +95,7 @@ function buildJsonLd(data: any, media_type: string) {
     ...(data.credits?.crew?.length
       ? (() => {
           const director = data.credits.crew.find(
-            (c: any) => c.job === "Director"
+            (c: any) => c.job === "Director",
           );
           return director
             ? { director: { "@type": "Person", name: director.name } }
@@ -84,28 +103,58 @@ function buildJsonLd(data: any, media_type: string) {
         })()
       : {}),
   };
-
-  return base;
 }
 
-// ─── Metadata ────────────────────────────────────────────────────────────────
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+async function resolveParams(
+  media_type: string,
+  slug: string[],
+): Promise<ResolvedMedia | null> {
+  // /tv/76479 → slug = ['76479']
+  if (slug.length === 1 && /^\d+$/.test(slug[0])) {
+    const id = slug[0];
+    const data = await fetchMediaById(media_type, id);
+    if (!data) return null;
+    const correctSlug = createSlug(data.title || data.name);
+    return {
+      shouldRedirect: true,
+      redirectTo: `/${media_type}/${correctSlug}/${id}`,
+    };
+  }
+
+  // /tv/the-rookie/76479 → slug = ['the-rookie', '76479']
+  const media_name_slug = slug[0];
+  const id = slug[1];
+  if (!media_name_slug || !id) return null;
+
+  const data = await fetchMediaDetails(media_type, media_name_slug, id);
+  if (!data) return null;
+
+  return { shouldRedirect: false, data, media_name_slug, id };
+}
+
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<PageParams>;
 }): Promise<Metadata> {
-  const { media_type, media_name_slug, id } = await params;
-  const data = await fetchMediaDetails(media_type, media_name_slug, id);
+  const { media_type, slug } = await params;
 
-  if (!data) {
-    return { title: "Media Not Found | WatchedThis" };
-  }
+  if (slug.length === 1) return { title: "Loading... | WatchedThis" };
+
+  const media_name_slug = slug[0];
+  const id = slug[1];
+  if (!media_name_slug || !id) return { title: "Media Not Found | WatchedThis" };
+
+  const data = await fetchMediaDetails(media_type, media_name_slug, id);
+  if (!data) return { title: "Media Not Found | WatchedThis" };
 
   const mediaTitle = data.title || data.name || "Media Details";
   const year = (data.release_date || data.first_air_date || "").substring(0, 4);
   const typeLabel = media_type === "movie" ? "Movie" : "TV Series";
-
   const description = data.overview
     ? `${data.overview.substring(0, 155)}...`
     : `Details about ${mediaTitle}`;
@@ -125,7 +174,14 @@ export async function generateMetadata({
       title: `${mediaTitle} ${year ? `(${year})` : ""} — ${typeLabel} | WatchedThis`,
       description,
       type: "video.movie",
-      images: [{ url: ogUrl.toString(), width: 1200, height: 630, alt: `${mediaTitle} — WatchedThis` }],
+      images: [
+        {
+          url: ogUrl.toString(),
+          width: 1200,
+          height: 630,
+          alt: `${mediaTitle} — WatchedThis`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -136,30 +192,24 @@ export async function generateMetadata({
   };
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function SpecificRandomMediaPage({
   params,
 }: {
   params: Promise<PageParams>;
 }) {
-  const { media_type, media_name_slug, id } = await params;
+  const { media_type, slug } = await params;
 
-  const data = await fetchMediaDetails(media_type, media_name_slug, id);
+  const resolved = await resolveParams(media_type, slug);
 
-  if (!data) {
-    console.error(`Media not found: ${media_type}/${media_name_slug}/${id}`);
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    console.error(`Fetch failed for: ${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`);
-    notFound();
-  }
+  if (!resolved) notFound();
+  if (resolved.shouldRedirect) redirect(resolved.redirectTo);
+
+  const { data, media_name_slug, id } = resolved;
 
   const mediaTitle = data.title || data.name || "Media Details";
   const expectedSlug = createSlug(mediaTitle);
-  
-  // Skip slug correction to prevent mismatch loops on random paths
-  // Both global and random detail pages now use same fetch/API
-
   const jsonLd = buildJsonLd(data, media_type);
 
   return (
@@ -169,7 +219,6 @@ export default async function SpecificRandomMediaPage({
       expectedSlug={expectedSlug}
       id={id}
     >
-      {/* ── JSON-LD Structured Data ── */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
