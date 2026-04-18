@@ -1,5 +1,5 @@
 import { adminDb } from "@/lib/firebaseAdmin";
-import { getRandomMedia } from "@/lib/randomMedia";
+import { getRandomMedia } from "./randomMedia";
 
 export interface MediaItem {
   id: number;
@@ -34,19 +34,24 @@ export async function generateDailyMedia(
 ): Promise<MediaItem[]> {
   const seen = new Set(existing.map((i) => i.id));
   const results = [...existing];
-  const maxAttempts = 3;
+  const maxAttempts = 9; // 3 items × 3 attempts each
 
   for (let i = 0; i < maxAttempts && results.length < 3; i++) {
-    const batch = await getRandomMedia(seen, 1);
+    try {
+      const batch = await getRandomMedia(seen, 1);
 
-    for (const item of batch) {
-      if (item && !seen.has(item.id)) {
-        seen.add(item.id);
-        results.push(item);
-        if (results.length === 3) break;
+      for (const item of batch) {
+        if (item) {
+          // Don't re-check seen — getRandomMedia already handles dedup
+          results.push(item);
+          if (results.length === 3) break;
+        }
       }
+    } catch (err) {
+      console.error(`[generateDailyMedia] attempt ${i + 1} threw:`, err);
     }
   }
+
 
   if (results.length < 3) {
     throw new Error(`Failed to generate enough items (${results.length}/3)`);
@@ -54,9 +59,10 @@ export async function generateDailyMedia(
 
   return results.slice(0, 3);
 }
-
 // ── Main: get or create with race condition protection ────────────────────────
-export async function getOrCreateDailyMedia(today: string): Promise<MediaItem[]> {
+export async function getOrCreateDailyMedia(
+  today: string,
+): Promise<MediaItem[]> {
   const docRef = adminDb.collection(COLLECTION).doc(DOC);
 
   // Try to get existing data or set lock inside transaction

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrCreateDailyMedia } from "@/lib/dailyMedia";
 
-export async function GET() {
-  try {
+export async function GET() {  try {
     const today = new Date().toISOString().split("T")[0];
 
     const data = await getOrCreateDailyMedia(today);

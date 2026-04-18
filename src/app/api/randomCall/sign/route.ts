@@ -4,9 +4,7 @@ import { signToken } from "@/app/components/utilities/signId";
 export async function POST(req: Request) {
   
   try {
-    const body = await req.json().catch(() => null);
-    console.log("BODY:", body);
-    if (!body) {
+    const body = await req.json().catch(() => null);    if (!body) {
       return NextResponse.json({ error: "Empty body" }, { status: 400 });
     }
 
