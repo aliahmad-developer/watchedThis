@@ -19,7 +19,7 @@ function isBadBot(req: NextRequest): boolean {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PROTECTED_ROUTES = ["/user/library"];
-const AUTH_REDIRECT = "/user/profile"; 
+const AUTH_REDIRECT = "/user/profile";
 const SAFE_FALLBACK = "/";
 
 // Nonce would be better for CSP, but requires per-request generation + passing to layout
@@ -112,7 +112,7 @@ export default function middleware(request: NextRequest) {
   }
 
   const isProtected = PROTECTED_ROUTES.some((route) =>
-    pathname.startsWith(route)
+    pathname.startsWith(route),
   );
 
   if (isProtected) {

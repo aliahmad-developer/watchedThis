@@ -18,7 +18,12 @@ interface MediaCardProps {
   index?: number;
 }
 
-export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 }: MediaCardProps) {
+export default function MediaCard({
+  item,
+  displayTitle,
+  hideMetaData,
+  index = 0,
+}: MediaCardProps) {
   const title = item.title || item.name || "Untitled";
   const mediaType = item.media_type || "movie";
   const duration =
@@ -34,6 +39,7 @@ export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 
 
   return (
     <Link
+      prefetch={false}
       href={href}
       draggable
       onClick={handleClick}
@@ -45,11 +51,10 @@ export default function MediaCard({ item, displayTitle, hideMetaData, index = 0 
         <div className="absolute inset-0 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
           <MediaPoster data={item} />
         </div>
-        {/* Subtle shine on hover */}
+
         <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/0 group-hover:ring-white/10 transition-all duration-300 pointer-events-none" />
       </div>
 
-      {/* Title */}
       <div className="mt-2 text-sm font-semibold text-center line-clamp-2 wrap-break-word transition-colors duration-200 group-hover:text-light-accent dark:group-hover:text-dark-accent">
         {title}
       </div>
