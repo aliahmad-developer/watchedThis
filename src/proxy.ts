@@ -96,10 +96,10 @@ export function proxy(request: NextRequest) {
 
   // 3. Rate limit — stricter for /api routes
   const isApiRoute = pathname.startsWith("/api/");
-  if (isApiRoute && isRateLimited(`api:${ip}`, 20, 60_000)) {
+  if (isApiRoute && isRateLimited(`api:${ip}`,120, 60_000)) {
     return new NextResponse("Too Many Requests", { status: 429 });
   }
-  if (!isApiRoute && isRateLimited(ip, 60, 60_000)) {
+  if (!isApiRoute && isRateLimited(ip, 200, 60_000)) {
     return new NextResponse("Too Many Requests", { status: 429 });
   }
 
