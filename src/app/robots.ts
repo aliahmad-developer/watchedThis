@@ -6,7 +6,15 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: ['/', '/echo', '/find', '/random', '/spinner', '/about', '/terms', '/privacy'],
-        disallow: ['/user', '/api/', '/admin'],
+        disallow: [
+          '/user',
+          '/api/',
+          '/admin',
+          '/_next/',
+          '/private/',
+          '*.json$',
+          '/*?*',       
+        ],
       },
     ],
     sitemap: 'https://watchedthis.com/sitemap.xml',
