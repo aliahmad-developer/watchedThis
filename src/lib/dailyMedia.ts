@@ -17,6 +17,7 @@ export interface MediaItem {
 const COLLECTION = "appData";
 const DOC = "dailyMedia";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const dedupe = (items: MediaItem[]): MediaItem[] => {
   const map = new Map<number, MediaItem>();
   for (const item of items) {
@@ -27,50 +28,12 @@ const dedupe = (items: MediaItem[]): MediaItem[] => {
   return Array.from(map.values());
 };
 
-// ─────────────────────────────────────────────────────────────
-// 🔹 Read cached daily media
-// ─────────────────────────────────────────────────────────────
-export async function getDailyMediaItems(
-  today: string,
-): Promise<MediaItem[] | null> {
-  const docRef = adminDb.collection(COLLECTION).doc(DOC);
-  const snap = await docRef.get();
-
-  if (!snap.exists) return null;
-
-  const data = snap.data() as { date: string; items: MediaItem[] };
-
-  if (data?.date === today && data.items?.length === 3) {
-    return dedupe(data.items);
-  }
-
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────
-// 🔹 Simple write (NO transaction)
-// ─────────────────────────────────────────────────────────────
-async function saveDailyMedia(today: string, items: MediaItem[]) {
-  const docRef = adminDb.collection(COLLECTION).doc(DOC);
-
-  await docRef.set(
-    {
-      date: today,
-      items,
-    },
-    { merge: true },
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// 🔹 Core generator (safe + bounded)
-// ─────────────────────────────────────────────────────────────
+// ── Core generator ────────────────────────────────────────────────────────────
 export async function generateDailyMedia(
   existing: MediaItem[] = [],
 ): Promise<MediaItem[]> {
   const seen = new Set(existing.map((i) => i.id));
   const results = [...existing];
-
   const maxAttempts = 3;
 
   for (let i = 0; i < maxAttempts && results.length < 3; i++) {
@@ -80,7 +43,6 @@ export async function generateDailyMedia(
       if (item && !seen.has(item.id)) {
         seen.add(item.id);
         results.push(item);
-
         if (results.length === 3) break;
       }
     }
@@ -93,38 +55,65 @@ export async function generateDailyMedia(
   return results.slice(0, 3);
 }
 
-export async function getOrCreateDailyMedia(
-  today: string,
-): Promise<MediaItem[]> {
+// ── Main: get or create with race condition protection ────────────────────────
+export async function getOrCreateDailyMedia(today: string): Promise<MediaItem[]> {
   const docRef = adminDb.collection(COLLECTION).doc(DOC);
 
-  const snap = await docRef.get();
-
-  if (snap.exists) {
-    const data = snap.data() as {
-      date: string;
-      items: MediaItem[];
-      lockUntil?: number;
-    };
-
+  // Try to get existing data or set lock inside transaction
+  const result = await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
     const now = Date.now();
 
-    if (data.lockUntil && data.lockUntil > now) {
-      return data.items;
+    if (snap.exists) {
+      const data = snap.data() as {
+        date: string;
+        items: MediaItem[];
+        lockUntil?: number;
+      };
+
+      // Another instance is generating — return what we have
+      if (data.lockUntil && data.lockUntil > now) {
+        return { items: data.items, needsGeneration: false };
+      }
+
+      // Already generated today
+      if (data.date === today && data.items?.length === 3) {
+        return { items: dedupe(data.items), needsGeneration: false };
+      }
     }
 
-    if (data?.date === today && data.items?.length === 3) {
-      return data.items;
-    }
-  }
+    // Claim the lock so no other instance generates simultaneously
+    tx.set(docRef, {
+      date: today,
+      items: [],
+      lockUntil: Date.now() + 10_000,
+    });
 
-  const fresh = await generateDailyMedia([]);
-
-  await docRef.set({
-    date: today,
-    items: fresh,
-    lockUntil: Date.now() + 10_000,
+    return { items: [], needsGeneration: true };
   });
 
-  return fresh;
+  // Return cached data — no generation needed
+  if (!result.needsGeneration) return result.items;
+
+  // Generate outside transaction (async TMDB calls can't run inside)
+  try {
+    const fresh = await generateDailyMedia([]);
+
+    await docRef.set({
+      date: today,
+      items: fresh,
+      lockUntil: 0, // release lock
+    });
+
+    return fresh;
+  } catch (error) {
+    // Release lock on failure so next request can retry
+    await docRef.set({
+      date: today,
+      items: [],
+      lockUntil: 0,
+    });
+
+    throw error;
+  }
 }

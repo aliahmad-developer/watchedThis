@@ -5,15 +5,31 @@ const TMDB_KEY = process.env.TMDB_API_KEY ?? "";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
 export async function GET(req: NextRequest) {
-  const path   = req.nextUrl.searchParams.get("path") ?? "";
+  const path = req.nextUrl.searchParams.get("path") ?? "";
   const params = req.nextUrl.searchParams.get("params") ?? "";
 
   if (!path) {
     return NextResponse.json({ error: "Missing path param" }, { status: 400 });
   }
+  const ALLOWED_PATHS = [
+    "/movie/",
+    "/tv/",
+    "/search/",
+    "/discover/",
+    "/trending/",
+    "/genre/",
+    "/person/",
+  ];
+
+  if (!ALLOWED_PATHS.some((allowed) => path.startsWith(allowed))) {
+    return NextResponse.json({ error: "Path not allowed" }, { status: 403 });
+  }
 
   if (!TMDB_KEY) {
-    return NextResponse.json({ error: "TMDB_API_KEY not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "TMDB_API_KEY not configured" },
+      { status: 500 },
+    );
   }
 
   // Build cache key from path + params so different queries cache separately
@@ -34,7 +50,10 @@ export async function GET(req: NextRequest) {
           url.searchParams.set(k, v as string);
         }
       } catch {
-        return NextResponse.json({ error: "Invalid params JSON" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid params JSON" },
+          { status: 400 },
+        );
       }
     }
 
@@ -52,7 +71,7 @@ export async function GET(req: NextRequest) {
     console.error(`[/api/tmdb] path=${path}`, error);
     return NextResponse.json(
       { message: "Error fetching from TMDB", error: String(error) },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }

@@ -8,7 +8,6 @@ const CACHE_KEY = "spotlight:streaming:US";
 
 export async function GET() {
   try {
-    // ✅ 1. FULL RESPONSE CACHE (early return)
     const cached = cache.get(CACHE_KEY, TTL.MEDIUM);
     if (cached) {
       return NextResponse.json(cached);

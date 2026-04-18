@@ -2,7 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const RESULTS_PER_PAGE = 20;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+// ── In-memory cache ───────────────────────────────────────────────────────────
+const cache = new Map<string, { data: unknown; expires: number }>();
+
+async function cachedFetch(url: string): Promise<unknown> {
+  const now = Date.now();
+  const cached = cache.get(url);
+  if (cached && now < cached.expires) return cached.data;
+
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  cache.set(url, { data, expires: now + CACHE_TTL_MS });
+  return data;
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface TMDBResult {
   id: number;
   media_type: "movie" | "tv";
@@ -38,7 +56,6 @@ interface DetailedResult {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
 function buildScore(item: TMDBResult, query: string): number {
   const title = (item.title || item.name || "").toLowerCase();
   const q = query.toLowerCase();
@@ -66,12 +83,13 @@ async function fetchSearchPage(
   mediaType?: "movie" | "tv"
 ): Promise<TMDBResult[]> {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await cachedFetch(url) as { results?: TMDBResult[] } | null;
+    if (!data) return [];
     const results: TMDBResult[] = data.results || [];
     if (mediaType) return results.map((r) => ({ ...r, media_type: mediaType }));
-    return results.filter((r) => r.media_type === "movie" || r.media_type === "tv");
+    return results.filter(
+      (r) => r.media_type === "movie" || r.media_type === "tv"
+    );
   } catch {
     return [];
   }
@@ -82,15 +100,23 @@ async function fetchDetails(
   apiKey: string
 ): Promise<DetailedResult | null> {
   try {
-    const res = await fetch(
-      `${TMDB_BASE}/${item.media_type}/${item.id}?api_key=${apiKey}&language=en-US`
-    );
-    if (!res.ok) return null;
-    const detail = await res.json();
+    const url = `${TMDB_BASE}/${item.media_type}/${item.id}?api_key=${apiKey}&language=en-US`;
+    const detail = await cachedFetch(url) as {
+      runtime?: number;
+      episode_run_time?: number[];
+      vote_average?: number;
+      vote_count?: number;
+      overview?: string;
+      genres?: { name: string }[];
+    } | null;
+
+    if (!detail) return null;
+
     const runtime =
       item.media_type === "movie"
         ? detail.runtime ?? null
         : detail.episode_run_time?.[0] ?? detail.runtime ?? null;
+
     return {
       id: item.id,
       media_type: item.media_type,
@@ -104,7 +130,7 @@ async function fetchDetails(
       vote_average: detail.vote_average ?? 0,
       vote_count: detail.vote_count ?? 0,
       overview: detail.overview || item.overview || "",
-      genres: detail.genres?.map((g: { name: string }) => g.name) ?? [],
+      genres: detail.genres?.map((g) => g.name) ?? [],
     };
   } catch {
     return null;
@@ -112,7 +138,6 @@ async function fetchDetails(
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("query")?.trim();
@@ -121,41 +146,51 @@ export async function GET(req: NextRequest) {
   const currentPage = Math.max(1, parseInt(pageParam));
 
   if (!query && !keyword) {
-    return NextResponse.json({ error: "Missing query parameter" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing query parameter" },
+      { status: 400 }
+    );
   }
 
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "TMDB API key missing" }, { status: 500 });
+    return NextResponse.json(
+      { error: "TMDB API key missing" },
+      { status: 500 }
+    );
   }
 
   const base = `api_key=${apiKey}&language=en-US`;
 
   try {
-    // ── Keyword mode ────────────────────────────────────────────────────────────
+    // ── Keyword mode ──────────────────────────────────────────────────────────
     if (keyword) {
-      const kwRes = await fetch(
-        `${TMDB_BASE}/search/keyword?api_key=${apiKey}&query=${encodeURIComponent(keyword)}`
-      );
-      const kwData = await kwRes.json();
-      const kwId: number | undefined = kwData.results?.[0]?.id;
+      const kwUrl = `${TMDB_BASE}/search/keyword?api_key=${apiKey}&query=${encodeURIComponent(keyword)}`;
+      const kwData = await cachedFetch(kwUrl) as { results?: { id: number }[] } | null;
+      const kwId: number | undefined = kwData?.results?.[0]?.id;
 
       if (!kwId) {
-        return NextResponse.json({ results: [], page: 1, total_pages: 1, has_more: false });
+        return NextResponse.json({
+          results: [],
+          page: 1,
+          total_pages: 1,
+          has_more: false,
+        });
       }
 
-      const [movieRes, tvRes] = await Promise.all([
-        fetch(`${TMDB_BASE}/discover/movie?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
-        fetch(`${TMDB_BASE}/discover/tv?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
-      ]);
+      const [movieData, tvData] = await Promise.all([
+        cachedFetch(`${TMDB_BASE}/discover/movie?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
+        cachedFetch(`${TMDB_BASE}/discover/tv?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
+      ]) as [
+        { results?: TMDBResult[]; total_pages?: number } | null,
+        { results?: TMDBResult[]; total_pages?: number } | null
+      ];
 
-      const [movieData, tvData] = await Promise.all([movieRes.json(), tvRes.json()]);
-
-      const movies: TMDBResult[] = (movieData.results || []).map((r: TMDBResult) => ({
+      const movies: TMDBResult[] = (movieData?.results || []).map((r) => ({
         ...r,
         media_type: "movie" as const,
       }));
-      const shows: TMDBResult[] = (tvData.results || []).map((r: TMDBResult) => ({
+      const shows: TMDBResult[] = (tvData?.results || []).map((r) => ({
         ...r,
         media_type: "tv" as const,
       }));
@@ -165,11 +200,10 @@ export async function GET(req: NextRequest) {
       );
 
       const totalPages = Math.max(
-        movieData.total_pages ?? 1,
-        tvData.total_pages ?? 1
+        movieData?.total_pages ?? 1,
+        tvData?.total_pages ?? 1
       );
 
-      // ✅ REPLACED BLOCK (no detail fetch)
       const detailedResults: DetailedResult[] = combined.map((item) => ({
         id: item.id,
         media_type: item.media_type,
@@ -194,10 +228,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // ── Query mode ──────────────────────────────────────────────────────────────
-    const enc = encodeURIComponent(query!);
-    const words = query!.split(/\s+/);
-
+    // ── # mode ────────────────────────────────────────────────────────────────
     if (query === "#") {
       const numWords = ["zero","one","two","three","four","five","six","seven","eight","nine"];
       const digits = ["0","1","2","3","4","5","6","7","8","9"];
@@ -245,7 +276,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // ── Normal search (unchanged) ──────────────────────────────────────────────
+    // ── Normal search ─────────────────────────────────────────────────────────
+    const enc = encodeURIComponent(query!);
+
     const tasks: Promise<TMDBResult[]>[] = [
       fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${enc}&page=1`),
       fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${enc}&page=2`),
