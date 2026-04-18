@@ -1,37 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-// ─── Rate Limiting ────────────────────────────────────────────────────────────
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-
-function isRateLimited(ip: string, limit = 60, windowMs = 60_000): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
-    return false;
-  }
-
-  entry.count++;
-  return entry.count > limit;
-}
 
 // ─── Bot Detection ────────────────────────────────────────────────────────────
 const BAD_BOTS =
-  /bot|crawler|spider|scraper|curl|wget|python|go-http|java|libwww/i;
+  /crawler|spider|scraper|go-http|libwww|python-requests|curl|wget|axios|java\/|ruby|perl|php|bot(?!tle)/i;
 
 function isBadBot(req: NextRequest): boolean {
-  const ua = req.headers.get("user-agent") || "";
-  return BAD_BOTS.test(ua) || ua.trim() === "";
+  const ua = req.headers.get("user-agent") ?? "";
+  const host = req.headers.get("host") ?? "";
+
+  // Always allow local dev
+  if (host.includes("localhost") || host.includes("127.0.0.1")) return false;
+
+  // Reject empty or clearly bot UAs
+  if (ua.trim() === "" || BAD_BOTS.test(ua)) return true;
+
+  return false;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PROTECTED_ROUTES = ["/user/library"];
+const AUTH_REDIRECT = "/user/profile"; 
+const SAFE_FALLBACK = "/";
 
+// Nonce would be better for CSP, but requires per-request generation + passing to layout
 const SECURITY_HEADERS: Record<string, string> = {
   "X-DNS-Prefetch-Control": "on",
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  // Tightened: removed camera=*, restricted mic + geo
+  "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload", // 2 years + preload
+  "X-XSS-Protection": "0", // Deprecated — modern browsers ignore it; CSP replaces it
   "Content-Security-Policy":
     "default-src 'self' https: data:; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
@@ -60,16 +61,19 @@ const SECURITY_HEADERS: Record<string, string> = {
     "https://accounts.google.com " +
     "https://www.youtube.com; " +
     "object-src 'none';",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "camera=*, microphone=(), geolocation=()",
-  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-  "X-XSS-Protection": "1; mode=block",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Only allow relative paths that don't start with // (open redirect prevention) */
 function getSafeRedirectPath(pathname: string): string {
   if (pathname.startsWith("/") && !pathname.startsWith("//")) return pathname;
-  return "/user/library";
+  return SAFE_FALLBACK;
+}
+
+/** Looks like a plausible (non-empty) JWT: three base64url segments */
+function looksLikeJWT(token: string): boolean {
+  return /^[\w-]+\.[\w-]+\.[\w-]+$/.test(token);
 }
 
 function applySecurityHeaders(response: NextResponse): NextResponse {
@@ -80,30 +84,18 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-export function proxy(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // 1. Get IP
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+  // 1. Pass RSC (React Server Component) requests straight through
+  if (request.headers.has("rsc") || searchParams.has("_rsc")) {
+    return applySecurityHeaders(NextResponse.next());
+  }
 
-  // 2. Block bad bots
   if (isBadBot(request)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // 3. Rate limit — stricter for /api routes
-  const isApiRoute = pathname.startsWith("/api/");
-  if (isApiRoute && isRateLimited(`api:${ip}`,120, 60_000)) {
-    return new NextResponse("Too Many Requests", { status: 429 });
-  }
-  if (!isApiRoute && isRateLimited(ip, 200, 60_000)) {
-    return new NextResponse("Too Many Requests", { status: 429 });
-  }
-
-  // 4. Firebase action URLs
   const mode = searchParams.get("mode");
   const oobCode = searchParams.get("oobCode");
 
@@ -119,22 +111,22 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 5. Protected route guard
-  const token =
-    request.cookies.get("__session")?.value ||
-    request.cookies.get("firebase-auth-token")?.value;
-
   const isProtected = PROTECTED_ROUTES.some((route) =>
-    pathname.startsWith(route),
+    pathname.startsWith(route)
   );
 
-  if (isProtected && !token) {
-    const redirectUrl = new URL("/user/profile", request.url);
-    redirectUrl.searchParams.set("redirect", getSafeRedirectPath(pathname));
-    return NextResponse.redirect(redirectUrl);
+  if (isProtected) {
+    const rawToken =
+      request.cookies.get("__session")?.value ??
+      request.cookies.get("firebase-auth-token")?.value;
+
+    if (!rawToken || !looksLikeJWT(rawToken)) {
+      const redirectUrl = new URL(AUTH_REDIRECT, request.url);
+      redirectUrl.searchParams.set("redirect", getSafeRedirectPath(pathname));
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
-  // 6. Apply security headers and pass through
   return applySecurityHeaders(NextResponse.next());
 }
 
