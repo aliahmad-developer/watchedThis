@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { createSlug } from "@/app/components/utilities/createSlug";
 import { verifyToken } from "@/app/components/utilities/signId";
 import RandomMediaShell from "./pageClient";
 import Desc from "@/app/components/randomMedia/detailsPage";

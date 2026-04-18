@@ -1,23 +1,36 @@
-import { MetadataRoute } from 'next'
+import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
-        userAgent: '*',
-        allow: ['/', '/echo', '/find', '/random', '/spinner', '/about', '/terms', '/privacy'],
+        userAgent: "*",
+        allow: [
+          "/",
+          "/echo",
+          "/find",
+          "/random",
+          "/spinner",
+          "/about",
+          "/terms",
+          "/privacy",
+          "/movie/",
+          "/tv/",
+          "/person/",
+          "/genre/",
+          "/production-company/",
+        ],
         disallow: [
-          '/user',
-          '/api/',
-          '/admin',
-          '/_next/',
-          '/private/',
-          '*.json$',
-          '/*?*',       
+          "/user",
+          "/api/",
+          "/admin",
+          "/_next/",
+          "/private/",
+          "/random/*",
         ],
       },
     ],
-    sitemap: 'https://watchedthis.com/sitemap.xml',
-    host: 'https://watchedthis.com',
-  }
+    sitemap: "https://watchedthis.com/sitemap.xml",
+    host: "https://watchedthis.com",
+  };
 }
