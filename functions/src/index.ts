@@ -1,6 +1,6 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { getOrCreateDailyMedia } from "./dailyMedia";
-import { generateSitemap } from "./sitemap";
+import { generateSitemap, tmdbApiKey } from "./sitemap";
 
 export const updateDailyMedia = onSchedule("0 0 * * *", async () => {
   const today = new Date().toISOString().slice(0, 10);
@@ -8,7 +8,10 @@ export const updateDailyMedia = onSchedule("0 0 * * *", async () => {
   console.log("Daily media updated for", today);
 });
 
-export const updateSitemap = onSchedule("0 1 * * *", async () => {
-  await generateSitemap();
-  console.log("Sitemap updated");
-});
+export const updateSitemap = onSchedule(
+  { schedule: "0 1 * * *", secrets: [tmdbApiKey] },
+  async () => {
+    await generateSitemap();
+    console.log("Sitemap updated");
+  }
+);

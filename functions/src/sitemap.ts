@@ -1,6 +1,7 @@
 import { getFirestore } from "firebase-admin/firestore";
+import { defineSecret } from "firebase-functions/params";
 
-const API_KEY = process.env.TMDB_API_KEY;
+const tmdbApiKey = defineSecret("TMDB_API_KEY");
 const BASE_URL = "https://api.themoviedb.org/3";
 const COLLECTION = "appData";
 const DOC = "sitemapCache";
@@ -17,24 +18,25 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-async function tmdbFetch<T>(endpoint: string): Promise<T> {
+async function tmdbFetch<T>(endpoint: string, apiKey: string): Promise<T> {
   const sep = endpoint.includes("?") ? "&" : "?";
-  const res = await fetch(`${BASE_URL}${endpoint}${sep}api_key=${API_KEY}`);
+  const res = await fetch(`${BASE_URL}${endpoint}${sep}api_key=${apiKey}`);
   if (!res.ok) throw new Error(`TMDB error: ${res.status}`);
   return res.json();
 }
 
 async function fetchAllPages<T extends { id: number; title?: string; name?: string }>(
   endpoint: string,
+  apiKey: string,
   maxPages = 5,
 ): Promise<T[]> {
-  const first = await tmdbFetch<{ results: T[]; total_pages: number }>(`${endpoint}&page=1`);
+  const first = await tmdbFetch<{ results: T[]; total_pages: number }>(`${endpoint}&page=1`, apiKey);
   const pages = Math.min(first.total_pages, maxPages);
   if (pages <= 1) return first.results;
 
   const rest = await Promise.all(
     Array.from({ length: pages - 1 }, (_, i) =>
-      tmdbFetch<{ results: T[] }>(`${endpoint}&page=${i + 2}`)
+      tmdbFetch<{ results: T[] }>(`${endpoint}&page=${i + 2}`, apiKey)
         .then((d) => d.results)
         .catch(() => [] as T[]),
     ),
@@ -43,21 +45,22 @@ async function fetchAllPages<T extends { id: number; title?: string; name?: stri
 }
 
 export async function generateSitemap() {
+  const API_KEY = tmdbApiKey.value(); // ← called inside function, not at module level
   const db = getFirestore();
 
   const [movies, tvShows, persons, genres] = await Promise.all([
     fetchAllPages<{ id: number; title: string }>(
-      "/discover/movie?sort_by=popularity.desc&language=en-US", 5
+      "/discover/movie?sort_by=popularity.desc&language=en-US", API_KEY, 5
     ).catch(() => []),
     fetchAllPages<{ id: number; name: string }>(
-      "/discover/tv?sort_by=popularity.desc&language=en-US", 5
+      "/discover/tv?sort_by=popularity.desc&language=en-US", API_KEY, 5
     ).catch(() => []),
     fetchAllPages<{ id: number; name: string }>(
-      "/person/popular?language=en-US", 5
+      "/person/popular?language=en-US", API_KEY, 5
     ).catch(() => []),
     Promise.all([
-      tmdbFetch<{ genres: { id: number }[] }>("/genre/movie/list?language=en-US"),
-      tmdbFetch<{ genres: { id: number }[] }>("/genre/tv/list?language=en-US"),
+      tmdbFetch<{ genres: { id: number }[] }>("/genre/movie/list?language=en-US", API_KEY),
+      tmdbFetch<{ genres: { id: number }[] }>("/genre/tv/list?language=en-US", API_KEY),
     ]).then(([m, t]) => ({ movie: m.genres, tv: t.genres })).catch(() => ({ movie: [], tv: [] })),
   ]);
 
@@ -75,3 +78,5 @@ export async function generateSitemap() {
   await db.collection(COLLECTION).doc(DOC).set(sitemapData);
   console.log(`Sitemap cached: ${movies.length} movies, ${tvShows.length} tv, ${persons.length} persons`);
 }
+
+export { tmdbApiKey };
