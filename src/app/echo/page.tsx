@@ -4,8 +4,14 @@ import EchoClient from "./clientPage";
 export const metadata: Metadata = {
   title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
   description:
-    "Describe a movie or show you loved and Echo finds similar ones instantly. Matches by plot, genre, keywords, and synopsis — just type something like 'movies like Sherlock Holmes'.",
+    "Describe a movie or show or anime you loved and Echo finds similar ones instantly. Matches by plot, genre, keywords, and synopsis — just type something like 'movies like Sherlock Holmes'.",
   keywords: [
+    "movie like",
+    "anime like",
+    "drama like",
+    "similar movie",
+    "movies like",
+    "similar movies",
     "movies like",
     "similar movies",
     "find movies like this",
