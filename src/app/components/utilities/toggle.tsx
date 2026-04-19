@@ -9,7 +9,10 @@ type ThemeToggleProps = {
 
 export default function ThemeToggle({ size = "md" }: ThemeToggleProps) {
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+  // resolvedTheme gives the actual applied theme ("dark" | "light"),
+  // even when `theme` is "system" — fixes the bug where system-dark
+  // was treated as light because theme === "system", not "dark".
+  const { resolvedTheme, setTheme } = useTheme();
 
   useEffect(() => {
     setMounted(true);
@@ -37,7 +40,7 @@ export default function ThemeToggle({ size = "md" }: ThemeToggleProps) {
   };
 
   const s = sizes[size];
-  const isDark = theme === "dark";
+  const isDark = resolvedTheme === "dark";
 
   if (!mounted) {
     return (
