@@ -8,17 +8,20 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "WatchedThis - Best Random Movie Finder & TV Show Recommender",
   description:
-    "AI-powered random movie picker, scene detection, personalized TV recommendations. Find what to watch instantly with WatchedThis.",
+    "AI-powered movie picker, scene detection, personalized TV recommendations. Find what to watch instantly with WatchedThis.",
   keywords: [
     "random movie generator",
     "movie finder",
+    "random TV show picker",
+    "random movie picker",
+    "random anime picker",
     "what to watch tonight",
     "TV show recommendations",
     "scene detection movies",
     "AI movie recommendations",
     "film discovery platform",
     "movie picker",
-    "best movies 2024",
+    "best movies 2026",
     "trending TV shows",
   ],
   openGraph: {
