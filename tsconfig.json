@@ -38,6 +38,7 @@
     ".next/dev/types/**/*.ts"
 , "src/app/api/auth/resetPassword"  ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "functions"
   ]
 }
