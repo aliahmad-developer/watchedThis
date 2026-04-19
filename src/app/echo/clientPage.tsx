@@ -65,7 +65,7 @@ const buildAmbient = (
   r: number,
   g: number,
   b: number,
-  light: boolean
+  light: boolean,
 ): AmbientColor => {
   const lum = calcLuminance(r, g, b);
   if (light) {
@@ -96,7 +96,7 @@ const buildAmbient = (
 const getAmbientText = (
   light: boolean,
   rawRgb: string,
-  processedLum: number
+  processedLum: number,
 ) => {
   const [r, g, b] = rawRgb.split(",").map(Number);
   const useLightText = !light || processedLum < 0.45;
@@ -120,13 +120,17 @@ const getAmbientText = (
 };
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
+function proxyUrl(tmdbPath: string, size: string): string {
+  const upstream = `https://image.tmdb.org/t/p/${size}${tmdbPath}`;
+  return `/api/image-proxy?url=${encodeURIComponent(upstream)}`;
+}
 
 function useTheme() {
   const [light, setLight] = useState(false);
   const check = useCallback(() => {
     setLight(
       document.documentElement.classList.contains("light") ||
-        window.matchMedia(COLOR_SCHEME_MQ).matches
+        window.matchMedia(COLOR_SCHEME_MQ).matches,
     );
   }, []);
   useEffect(() => {
@@ -289,9 +293,9 @@ function MediaCard({
   isLightMode: boolean;
 }) {
   const imageUrl = item.backdrop
-    ? `https://image.tmdb.org/t/p/w1280${item.backdrop}`
+    ? proxyUrl(item.backdrop, "w1280")
     : item.poster
-      ? `https://image.tmdb.org/t/p/w780${item.poster}`
+      ? proxyUrl(item.poster, "w780")
       : null;
 
   const { imgRef, ambient } = useAmbient(imageUrl, isLightMode);
@@ -452,7 +456,7 @@ export default function EchoClient() {
         ignoreLocation: true,
         shouldSort: true,
       }),
-    [rawHits]
+    [rawHits],
   );
 
   const suggestions = useMemo<SearchHit[]>(() => {
@@ -477,9 +481,7 @@ export default function EchoClient() {
           type: item.type,
           title: item.title,
           year: item.year,
-          poster: item.poster
-            ? `https://image.tmdb.org/t/p/w92${item.poster}`
-            : null,
+          poster: item.poster ? proxyUrl(item.poster, "w92") : null,
           vote: item.vote,
         }));
       } catch {
@@ -512,8 +514,8 @@ export default function EchoClient() {
         variants.map((v) =>
           fetch(`/api/echo?query=${encodeURIComponent(v)}`)
             .then((r) => (r.ok ? r.json() : { results: [] }))
-            .catch(() => ({ results: [] }))
-        )
+            .catch(() => ({ results: [] })),
+        ),
       );
       const seen = new Set<string>();
       const merged: SearchHit[] = [];
@@ -622,7 +624,7 @@ export default function EchoClient() {
       setCards((prev) => {
         const existingKeys = new Set(prev.map((c) => `${c.type}-${c.id}`));
         const deduped = newItems.filter(
-          (item) => !existingKeys.has(`${item.type}-${item.id}`)
+          (item) => !existingKeys.has(`${item.type}-${item.id}`),
         );
         return [...prev, ...deduped];
       });
@@ -653,14 +655,15 @@ export default function EchoClient() {
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
-
         {/* ── Header ── */}
         <div className="text-center space-y-3 pt-4">
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">
             Discover what to watch{" "}
             <em className="text-color-accent not-italic">next.</em>
           </h1>
-          <p className={`${dimTextClass} text-xs sm:text-sm max-w-lg mx-auto leading-relaxed`}>
+          <p
+            className={`${dimTextClass} text-xs sm:text-sm max-w-lg mx-auto leading-relaxed`}
+          >
             Echo uses machine learning to find similar media based on synopsis,
             score, reviews, and more.{" "}
             <span className="text-light-body-text dark:text-dark-body-text opacity-50">
@@ -735,7 +738,9 @@ export default function EchoClient() {
         {!loading && cards.length > 0 && (
           <div className="flex items-center gap-3">
             <div className="w-0.5 h-4 bg-color-accent rounded shrink-0" />
-            <p className={`${dimTextClass} text-[11px] font-mono tracking-wider m-0`}>
+            <p
+              className={`${dimTextClass} text-[11px] font-mono tracking-wider m-0`}
+            >
               {isTrending
                 ? "TRENDING THIS WEEK"
                 : `SIMILAR TO — ${sourceTitle?.toUpperCase()}`}
@@ -810,12 +815,18 @@ export default function EchoClient() {
             >
               {loadingMore ? (
                 <>
-                  <FontAwesomeIcon icon={faSpinner} className="w-3.5 h-3.5 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    className="w-3.5 h-3.5 animate-spin"
+                  />
                   Loading…
                 </>
               ) : (
                 <>
-                  <FontAwesomeIcon icon={faLayerGroup} className="w-3.5 h-3.5" />
+                  <FontAwesomeIcon
+                    icon={faLayerGroup}
+                    className="w-3.5 h-3.5"
+                  />
                   Load more
                 </>
               )}
