@@ -52,7 +52,6 @@ export async function generateDailyMedia(
     }
   }
 
-
   if (results.length < 3) {
     throw new Error(`Failed to generate enough items (${results.length}/3)`);
   }
@@ -65,7 +64,6 @@ export async function getOrCreateDailyMedia(
 ): Promise<MediaItem[]> {
   const docRef = adminDb.collection(COLLECTION).doc(DOC);
 
-  // Try to get existing data or set lock inside transaction
   const result = await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(docRef);
     const now = Date.now();
@@ -77,49 +75,43 @@ export async function getOrCreateDailyMedia(
         lockUntil?: number;
       };
 
-      // Another instance is generating — return what we have
       if (data.lockUntil && data.lockUntil > now) {
         return { items: data.items, needsGeneration: false };
       }
 
-      // Already generated today
       if (data.date === today && data.items?.length === 3) {
         return { items: dedupe(data.items), needsGeneration: false };
       }
+
+      tx.set(docRef, {
+        date: today,
+        items: data.items ?? [],
+        lockUntil: Date.now() + 10_000,
+      });
+      return { items: data.items ?? [], needsGeneration: true };
     }
 
-    // Claim the lock so no other instance generates simultaneously
-    tx.set(docRef, {
-      date: today,
-      items: [],
-      lockUntil: Date.now() + 10_000,
-    });
-
+    tx.set(docRef, { date: today, items: [], lockUntil: Date.now() + 10_000 });
     return { items: [], needsGeneration: true };
   });
 
-  // Return cached data — no generation needed
   if (!result.needsGeneration) return result.items;
 
-  // Generate outside transaction (async TMDB calls can't run inside)
   try {
-    const fresh = await generateDailyMedia([]);
+    const existingIds = new Set(result.items.map((i) => i.id));
 
-    await docRef.set({
-      date: today,
-      items: fresh,
-      lockUntil: 0, // release lock
-    });
+    // Generate only 1 new item
+    const newItems = await getRandomMedia(existingIds, 1);
 
+    if (!newItems.length) throw new Error("Failed to generate new item");
+
+    // Prepend new item, drop oldest
+    const fresh = [newItems[0], ...result.items].slice(0, 3);
+
+    await docRef.set({ date: today, items: fresh, lockUntil: 0 });
     return fresh;
   } catch (error) {
-    // Release lock on failure so next request can retry
-    await docRef.set({
-      date: today,
-      items: [],
-      lockUntil: 0,
-    });
-
+    await docRef.set({ date: today, items: result.items, lockUntil: 0 });
     throw error;
   }
 }
