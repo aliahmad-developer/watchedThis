@@ -66,9 +66,9 @@ const calculateLuminance = (r: number, g: number, b: number) =>
 
 interface AmbientColor {
   solid: string;
-  rgb: string; // processed — used for gradients & card bg
-  rawRgb: string; // raw dominant — used for text tinting
-  luminance: number; // luminance of processed color — used for text flip
+  rgb: string;
+  rawRgb: string;
+  luminance: number;
 }
 
 const buildAmbientColor = (
@@ -154,6 +154,15 @@ const useThemeDetection = () => {
   }, [check]);
   return isLightMode;
 };
+
+// ── Proxy URL helper ──────────────────────────────────────────────────────────
+
+function proxyUrl(tmdbPath: string, size: string): string {
+  const upstream = `https://image.tmdb.org/t/p/${size}${tmdbPath}`;
+  return `/api/image-proxy?url=${encodeURIComponent(upstream)}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
   const [ambient, setAmbient] = useState<AmbientColor | null>(null);
@@ -249,8 +258,6 @@ export default function FindResultsPage() {
     router.push(`/find?${filterParams.toString()}`);
   };
 
-  // Replace the param-reading block and header section:
-
   const mediaTypes = (searchParams.get("mediaType") || "movie,tv").split(",");
   const isBoth = mediaTypes.length === 2;
   const isTV = mediaTypes.includes("tv") && !mediaTypes.includes("movie");
@@ -337,7 +344,6 @@ export default function FindResultsPage() {
           tvStatus.length > 0 ||
           networkIds.length > 0) && (
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            {/* Include genres */}
             {genreNames.map((name) => (
               <span
                 key={name}
@@ -346,7 +352,6 @@ export default function FindResultsPage() {
                 {name}
               </span>
             ))}
-            {/* Exclude genres */}
             {excludeGenreNames.map((name) => (
               <span
                 key={name}
@@ -355,7 +360,6 @@ export default function FindResultsPage() {
                 ✕ {name}
               </span>
             ))}
-            {/* Exclude keywords */}
             {excludeKeywords.map((kw) => (
               <span
                 key={kw}
@@ -364,37 +368,31 @@ export default function FindResultsPage() {
                 ✕ {kw}
               </span>
             ))}
-            {/* Year */}
             {(minYear || maxYear) && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 {minYear} – {maxYear}
               </span>
             )}
-            {/* Rating */}
             {(minRating || maxRating) && (
               <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 <FontAwesomeIcon icon={faStar} /> {minRating} – {maxRating}
               </span>
             )}
-            {/* Runtime */}
             {(minRuntime || maxRuntime) && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 {minRuntime ?? 0}m – {maxRuntime ?? 240}m
               </span>
             )}
-            {/* Language */}
             {language && (
               <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 <FontAwesomeIcon icon={faEarth} /> {language.toUpperCase()}
               </span>
             )}
-            {/* Min votes */}
             {minVotes && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 ≥{Number(minVotes).toLocaleString()} votes
               </span>
             )}
-            {/* Networks */}
             {networkIds.map(
               (id) =>
                 NETWORK_LABELS[id] && (
@@ -406,7 +404,6 @@ export default function FindResultsPage() {
                   </span>
                 ),
             )}
-            {/* TV Status */}
             {tvStatus.map(
               (s) =>
                 TV_STATUS_LABELS[s] && (
@@ -418,7 +415,6 @@ export default function FindResultsPage() {
                   </span>
                 ),
             )}
-            {/* Strict mode */}
             {strict && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
                 Strict
@@ -500,10 +496,11 @@ function ResultCard({ item }: { item: MediaResult }) {
     .map((id) => Object.entries(ALL_GENRES).find(([, v]) => v === id)?.[0])
     .filter(Boolean) as string[];
 
+  // Both URLs now go through your proxy — same-origin, no CORS, ColorThief works fine
   const imageUrl = item.backdrop_path
-    ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`
+    ? proxyUrl(item.backdrop_path, "w1280")
     : item.poster_path
-      ? `https://image.tmdb.org/t/p/w780${item.poster_path}`
+      ? proxyUrl(item.poster_path, "w780")
       : null;
 
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
@@ -538,12 +535,12 @@ function ResultCard({ item }: { item: MediaResult }) {
     >
       <div className="relative w-full aspect-4/3 sm:aspect-16/6 lg:aspect-16/5 overflow-hidden">
         {imageUrl ? (
+          // No crossOrigin needed — proxy serves from your own origin
           <Image
             ref={imgRef}
             src={imageUrl}
             alt={item.title}
             fill
-            crossOrigin="anonymous"
             className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1280px"
           />
