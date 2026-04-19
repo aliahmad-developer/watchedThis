@@ -17,7 +17,6 @@ export interface MediaItem {
 const COLLECTION = "appData";
 const DOC = "dailyMedia";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const dedupe = (items: MediaItem[]): MediaItem[] => {
   const map = new Map<number, MediaItem>();
   for (const item of items) {
@@ -28,7 +27,6 @@ const dedupe = (items: MediaItem[]): MediaItem[] => {
   return Array.from(map.values());
 };
 
-// ── Main: get or create with race condition protection ────────────────────────
 export async function getOrCreateDailyMedia(
   today: string,
 ): Promise<MediaItem[]> {
@@ -49,12 +47,10 @@ export async function getOrCreateDailyMedia(
         return { items: data.items, needsGeneration: false };
       }
 
-      // Already updated today
       if (data.date === today && data.items?.length === 3) {
         return { items: dedupe(data.items), needsGeneration: false };
       }
 
-      // Date changed — keep existing items for rolling window
       tx.set(docRef, {
         date: today,
         items: data.items ?? [],
@@ -71,19 +67,21 @@ export async function getOrCreateDailyMedia(
 
   try {
     const existingIds = new Set(result.items.map((i) => i.id));
+    const needed = result.items.length < 3 ? 3 - result.items.length : 1;
+    const newItems = await getRandomMedia(existingIds, needed);
 
-    // Generate only 1 new item
-    const newItems = await getRandomMedia(existingIds, 1);
+    if (!newItems.length) throw new Error("Failed to generate new items");
 
-    if (!newItems.length) throw new Error("Failed to generate new item");
-
-    // Prepend new item, drop oldest
-    const fresh = [newItems[0], ...result.items].slice(0, 3);
+    const fresh = [...newItems, ...result.items].slice(0, 3);
 
     await docRef.set({ date: today, items: fresh, lockUntil: 0 });
     return fresh;
   } catch (error) {
     await docRef.set({ date: today, items: result.items, lockUntil: 0 });
+    console.error("[getOrCreateDailyMedia] Generation failed:", error);
+    if (result.items.length > 0) {
+      return result.items;
+    }
     throw error;
   }
 }
