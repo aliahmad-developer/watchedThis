@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "./firebaseAdmin";
 import { getRandomMedia } from "./randomMedia";
 
 export interface MediaItem {
