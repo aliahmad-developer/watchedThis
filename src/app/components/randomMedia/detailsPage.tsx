@@ -8,7 +8,11 @@ import MediaInfo from "./MediaInfo/mediaInfo";
 import MediaInfoSkeleton from "./MediaInfo/Skeleton/MainInfoSkeleton";
 import MediaPosterSkeleton from "./MediaInfo/Skeleton/PosterSkeleton";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCopy, faShareNodes, faCheck } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCopy,
+  faShareNodes,
+  faCheck,
+} from "@fortawesome/free-solid-svg-icons";
 
 interface DescProps {
   data: any;
@@ -277,9 +281,7 @@ function MediaActions({
       ? `rgba(${rgbColor},0.55)`
       : `rgba(${rgbColor},0.65)`;
   const btnBorder =
-    textScheme === "light"
-      ? "rgba(255,255,255,0.18)"
-      : "rgba(0,0,0,0.25)";
+    textScheme === "light" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.25)";
   const iconColor =
     textScheme === "light" ? "rgba(255,255,255,0.88)" : "rgba(20,20,20,0.82)";
 
@@ -507,7 +509,6 @@ export default function Desc({
       {/* Main content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
-
           {/* Poster */}
           <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">
             {isLoading ? (
@@ -515,6 +516,7 @@ export default function Desc({
             ) : (
               <div className="animate-[fadeUp_0.5s_ease_both]">
                 <MediaPoster
+                  key={data?.id}
                   data={data}
                   textScheme={textScheme}
                   ambientText={ambientText}
@@ -534,6 +536,7 @@ export default function Desc({
                 style={{ animationDelay: "80ms" }}
               >
                 <MediaInfo
+                  key={data?.id}
                   data={data}
                   textScheme={textScheme}
                   ambientText={ambientText}

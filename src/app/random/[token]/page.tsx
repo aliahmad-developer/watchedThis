@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { verifyToken } from "@/app/components/utilities/signId";
 import RandomMediaShell from "./pageClient";
-import Desc from "@/app/components/randomMedia/detailsPage";
+import DetailsPage from "@/app/components/randomMedia/detailsPage";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 import { Metadata } from "next";
 
@@ -92,7 +92,7 @@ export default async function Page({
       <div className="py-6 px-4 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-md overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
-          <Desc data={safeData} backdropUrl={safeData.backdrop_path ?? ""} isLoading={false} />
+          <DetailsPage data={safeData} backdropUrl={safeData.backdrop_path ?? ""} isLoading={false} />
         </div>
 
         {safeData?.credits?.cast?.length > 0 && (

@@ -9,9 +9,8 @@ interface DetailsClientShellProps {
   id: string;
   children: React.ReactNode;
 }
-export default function DetailsClientShell({
-  children,
-}: DetailsClientShellProps) {
+
+export default function DetailsClientShell({ children }: DetailsClientShellProps) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);

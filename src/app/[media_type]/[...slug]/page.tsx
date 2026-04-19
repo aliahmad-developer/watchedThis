@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import CastScroll from "@/app/components/mediaCard/castScroll";
-import Desc from "@/app/components/randomMedia/detailsPage";
+import DetailsPage from "@/app/components/randomMedia/detailsPage";
 import DetailsClientShell from "./clientShell";
 import type { Metadata } from "next";
 
@@ -20,38 +20,39 @@ type ResolvedMedia =
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 
-const fetchMediaById = unstable_cache(
-  async (media_type: string, id: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const url = `${baseUrl}/api/media/${media_type}/_/${id}`; 
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    return res.json();
-  },
-  ["media-by-id"],
-  { revalidate: 3600 },
-);
+const fetchMediaById = (media_type: string, id: string) =>
+  unstable_cache(
+    async () => {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+      const res = await fetch(`${baseUrl}/api/media/${media_type}/_/${id}`, {
+        next: { revalidate: 3600 },
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    [`media-by-id-${media_type}-${id}`],
+    { revalidate: 3600 },
+  )();
 
-const fetchMediaDetails = unstable_cache(
-  async (media_type: string, media_name_slug: string, id: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const url = `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`;
-    const res = await fetch(url, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) {
-      console.error(`API fetch failed: ${url} - Status: ${res.status}`);
-      console.error(
-        "Response:",
-        await res.text().catch(() => "Could not read"),
-      );
-      return null;
-    }
-    return res.json();
-  },
-  ["media-details"],
-  { revalidate: 3600 },
-);
+const fetchMediaDetails = (
+  media_type: string,
+  media_name_slug: string,
+  id: string,
+) =>
+  unstable_cache(
+    async () => {
+      console.log("FETCHING:", media_type, media_name_slug, id); // ← add this
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+      const url = `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`;
+      const res = await fetch(url, { next: { revalidate: 3600 } });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    [`media-details-${media_type}-${media_name_slug}-${id}`],
+    { revalidate: 3600 },
+  )();
 
 // ─── Structured Data ──────────────────────────────────────────────────────────
 
@@ -131,6 +132,14 @@ async function resolveParams(
   const data = await fetchMediaDetails(media_type, media_name_slug, id);
   if (!data) return null;
 
+  const correctSlug = createSlug(data.title || data.name);
+  if (correctSlug !== media_name_slug) {
+    return {
+      shouldRedirect: true,
+      redirectTo: `/${media_type}/${correctSlug}/${id}`,
+    };
+  }
+
   return { shouldRedirect: false, data, media_name_slug, id };
 }
 
@@ -147,7 +156,8 @@ export async function generateMetadata({
 
   const media_name_slug = slug[0];
   const id = slug[1];
-  if (!media_name_slug || !id) return { title: "Media Not Found | WatchedThis" };
+  if (!media_name_slug || !id)
+    return { title: "Media Not Found | WatchedThis" };
 
   const data = await fetchMediaDetails(media_type, media_name_slug, id);
   if (!data) return { title: "Media Not Found | WatchedThis" };
@@ -228,7 +238,7 @@ export default async function SpecificRandomMediaPage({
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-lg overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
 
-          <Desc
+          <DetailsPage
             data={data}
             backdropUrl={data.backdrop_path ?? ""}
             isLoading={false}
