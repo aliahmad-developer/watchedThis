@@ -19,12 +19,12 @@ export default function robots(): MetadataRoute.Robots {
           "/person/",
           "/genre/",
           "/production-company/",
+          "/_next/static/", 
         ],
         disallow: [
           "/user",
           "/api/",
           "/admin",
-          "/_next/",
           "/private/",
           "/random/*",
         ],

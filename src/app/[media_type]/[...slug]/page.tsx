@@ -123,8 +123,6 @@ async function resolveParams(
       redirectTo: `/${media_type}/${correctSlug}/${id}`,
     };
   }
-
-  // /tv/the-rookie/76479 → slug = ['the-rookie', '76479']
   const media_name_slug = slug[0];
   const id = slug[1];
   if (!media_name_slug || !id) return null;
