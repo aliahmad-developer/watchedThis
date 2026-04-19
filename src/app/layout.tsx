@@ -57,14 +57,14 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    shortcut: "/favicon.ico",
+    shortcut: "/favicon.ico?v=2",
     icon: [
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png?v=2", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
     ],
-    apple: "/apple-touch-icon.png",
+    apple: "/apple-touch-icon.png?v=2",
   },
-  manifest: "/site.webmanifest",
+  manifest: "/site.webmanifest?v=2",
 };
 
 const organizationSchema = {
@@ -126,10 +126,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             __html: JSON.stringify(websiteSchema),
           }}
         />
-
-        <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#1f2937" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
         <meta name="mobile-web-app-capable" content="yes" />
 
