@@ -3,14 +3,12 @@ import { NextRequest } from 'next/server'
 
 export const runtime = 'edge'
 
-// ─── Scale factor trick: render at 2× then downscale via width/height ───────
-// ImageResponse renders at 72 dpi. By doubling the canvas and halving via
-// the returned dimensions we effectively get 2× sharpness on all displays.
+// ─── Render at exactly 1200×630 — what every platform expects ───────────────
+// Sharpness comes from: high-res TMDB source images + native pixel rendering.
+// The old 2× trick caused platforms (WhatsApp, Telegram, Facebook) to crop
+// the image because the internal canvas size didn't match the exported size.
 const W = 1200
 const H = 630
-const SCALE = 2          // render at 2400 × 1260, export as 1200 × 630
-const SW = W * SCALE     // 2400
-const SH = H * SCALE     // 1260
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -19,27 +17,20 @@ export async function GET(req: NextRequest) {
   const poster   = searchParams.get('poster')   // TMDB path e.g. /abc.jpg
   const logo     = searchParams.get('logo')     // TMDB path e.g. /xyz.png
 
-  // Use w780 instead of w500 — higher source res for crisp downscale
+  // w780 poster — enough resolution to fill 420px slot sharply
   const posterUrl = poster ? `https://image.tmdb.org/t/p/w780${poster}` : null
-  // Use w500 instead of w300 for logos
+  // w500 logo — crisp in the 70px badge
   const logoUrl   = logo   ? `https://image.tmdb.org/t/p/w500${logo}`   : null
 
   const hasPoster = Boolean(posterUrl)
   const hasLogo   = Boolean(logoUrl)
 
-  // Font size scales with SCALE factor
-  const titleSize    = (hasPoster || hasLogo ? 38 : 48) * SCALE
-  const subtitleSize = 17 * SCALE
-  const brandSize    = 13 * SCALE
-  const ctaSize      = 15 * SCALE
-  const domainSize   = 12 * SCALE
-
   return new ImageResponse(
     (
       <div
         style={{
-          width:  `${SW}px`,
-          height: `${SH}px`,
+          width:  `${W}px`,
+          height: `${H}px`,
           background: '#031926',
           display: 'flex',
           flexDirection: 'row',
@@ -47,10 +38,11 @@ export async function GET(req: NextRequest) {
           overflow: 'hidden',
         }}
       >
+
         {/* ── Top accent bar ─────────────────────────────────── */}
         <div style={{
           position: 'absolute', top: 0, left: 0,
-          width: `${SW}px`, height: `${6 * SCALE}px`,
+          width: '1200px', height: '4px',
           background: 'linear-gradient(to right, #468189, #9dbebb)',
           display: 'flex',
         }} />
@@ -58,49 +50,42 @@ export async function GET(req: NextRequest) {
         {/* ── Left accent line ───────────────────────────────── */}
         <div style={{
           position: 'absolute',
-          top: `${60 * SCALE}px`, left: `${60 * SCALE}px`,
-          width: `${2 * SCALE}px`, height: `${510 * SCALE}px`,
-          background: 'rgba(70,129,137,0.35)',
+          top: '52px', left: '52px',
+          width: '2px', height: '526px',
+          background: 'rgba(70,129,137,0.3)',
           display: 'flex',
         }} />
 
-        {/* ── POSTER (right side, full bleed) ───────────────── */}
+        {/* ── POSTER — right side, full bleed ───────────────── */}
         {posterUrl && (
           <div style={{
             position: 'absolute',
             right: 0, top: 0,
-            width: `${420 * SCALE}px`,
-            height: `${SH}px`,
+            width: '420px',
+            height: '630px',
             display: 'flex',
           }}>
-            {/* Poster image — object-position top centres on face/title area */}
             <img
               src={posterUrl}
               style={{
-                width:  `${420 * SCALE}px`,
-                height: `${SH}px`,
+                width: '420px',
+                height: '630px',
                 objectFit: 'cover',
                 objectPosition: 'center top',
               }}
             />
-            {/* Gradient fade: left strong, right keeps a subtle vignette */}
+            {/* Left-to-right fade so text stays readable */}
             <div style={{
               position: 'absolute', top: 0, left: 0,
               width: '100%', height: '100%',
-              background: `linear-gradient(
-                to right,
-                #031926 0%,
-                rgba(3,25,38,0.85) 30%,
-                rgba(3,25,38,0.3) 65%,
-                rgba(3,25,38,0.08) 100%
-              )`,
+              background: 'linear-gradient(to right, #031926 0%, rgba(3,25,38,0.9) 25%, rgba(3,25,38,0.4) 60%, rgba(3,25,38,0.05) 100%)',
               display: 'flex',
             }} />
-            {/* Bottom vignette so domain text stays legible */}
+            {/* Bottom vignette */}
             <div style={{
               position: 'absolute', bottom: 0, left: 0,
-              width: '100%', height: `${120 * SCALE}px`,
-              background: 'linear-gradient(to top, rgba(3,25,38,0.7) 0%, transparent 100%)',
+              width: '100%', height: '80px',
+              background: 'linear-gradient(to top, rgba(3,25,38,0.65) 0%, transparent 100%)',
               display: 'flex',
             }} />
           </div>
@@ -111,145 +96,136 @@ export async function GET(req: NextRequest) {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          paddingLeft:  `${80 * SCALE}px`,
-          paddingRight: hasPoster ? `${460 * SCALE}px` : `${60 * SCALE}px`,
+          paddingLeft: '76px',
+          paddingRight: hasPoster ? '450px' : '56px',
           flex: 1,
           zIndex: 2,
         }}>
 
-          {/* ── Brand row — your actual WatchedThis logo ──────── */}
-          {/* Icon: watchedthis-logo.svg redrawn as divs (edge-safe, no img needed) */}
+          {/* ── WatchedThis logo (icon + wordmark) ────────────── */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: `${16 * SCALE}px`,
-            marginBottom: `${36 * SCALE}px`,
+            gap: '12px',
+            marginBottom: '32px',
           }}>
-            {/* Outer teal rounded square */}
+
+            {/* Icon — mirrors watchedthis-logo.svg exactly */}
+            {/* Outer teal border */}
             <div style={{
-              width:  `${52 * SCALE}px`,
-              height: `${48 * SCALE}px`,
+              width: '38px', height: '36px',
               background: '#2a7f8a',
-              borderRadius: `${8 * SCALE}px`,
+              borderRadius: '7px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
             }}>
-              {/* Dark navy inset */}
+              {/* Navy body */}
               <div style={{
-                width:  `${47 * SCALE}px`,
-                height: `${43 * SCALE}px`,
+                width: '34px', height: '32px',
                 background: '#0f1e30',
-                borderRadius: `${6 * SCALE}px`,
+                borderRadius: '5px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-                {/* Cream TV body */}
+                {/* Cream TV frame */}
                 <div style={{
-                  width:  `${38 * SCALE}px`,
-                  height: `${30 * SCALE}px`,
+                  width: '27px', height: '22px',
                   background: '#e8e0d0',
-                  borderRadius: `${5 * SCALE}px`,
+                  borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  {/* Dark screen face */}
+                  {/* Dark screen */}
                   <div style={{
-                    width:  `${30 * SCALE}px`,
-                    height: `${22 * SCALE}px`,
+                    width: '21px', height: '15px',
                     background: '#0f1e30',
-                    borderRadius: `${3 * SCALE}px`,
+                    borderRadius: '2px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-around',
-                    paddingLeft:  `${3 * SCALE}px`,
-                    paddingRight: `${3 * SCALE}px`,
+                    paddingLeft: '2px',
+                    paddingRight: '2px',
                   }}>
                     {/* Left eye */}
-                    <div style={{ width: `${8 * SCALE}px`, height: `${6 * SCALE}px`, background: '#3a9aa8', borderRadius: `${1 * SCALE}px`, display: 'flex' }} />
+                    <div style={{ width: '6px', height: '5px', background: '#3a9aa8', borderRadius: '1px', display: 'flex' }} />
                     {/* Right eye */}
-                    <div style={{ width: `${8 * SCALE}px`, height: `${6 * SCALE}px`, background: '#3a9aa8', borderRadius: `${1 * SCALE}px`, display: 'flex' }} />
+                    <div style={{ width: '6px', height: '5px', background: '#3a9aa8', borderRadius: '1px', display: 'flex' }} />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Wordmark — matches watchedthis.svg text */}
+            {/* Wordmark */}
             <div style={{ display: 'flex', alignItems: 'baseline' }}>
-              <span style={{ fontSize: `${brandSize}px`, color: '#ffffff', letterSpacing: `${-0.5 * SCALE}px`, fontWeight: 700 }}>
+              <span style={{ fontSize: '18px', color: '#ffffff', fontWeight: 700, letterSpacing: '-0.3px' }}>
                 Watched
               </span>
-              <span style={{ fontSize: `${brandSize}px`, color: '#468189', letterSpacing: `${-0.5 * SCALE}px`, fontWeight: 700 }}>
+              <span style={{ fontSize: '18px', color: '#468189', fontWeight: 700, letterSpacing: '-0.3px' }}>
                 This
               </span>
             </div>
           </div>
 
-          {/* Show/movie logo badge */}
+          {/* ── Show/movie logo badge (TMDB logo) ─────────────── */}
           {logoUrl && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width:  `${80 * SCALE}px`,
-              height: `${80 * SCALE}px`,
+              width: '68px', height: '68px',
               background: '#0d2535',
-              borderRadius: `${10 * SCALE}px`,
-              border: `${1 * SCALE}px solid #1a3a4a`,
-              marginBottom: `${24 * SCALE}px`,
+              borderRadius: '10px',
+              border: '1px solid #1a3a4a',
+              marginBottom: '20px',
               overflow: 'hidden',
             }}>
               <img
                 src={logoUrl}
-                style={{
-                  maxWidth:  `${64 * SCALE}px`,
-                  maxHeight: `${64 * SCALE}px`,
-                  objectFit: 'contain',
-                }}
+                style={{ maxWidth: '54px', maxHeight: '54px', objectFit: 'contain' }}
               />
             </div>
           )}
 
-          {/* Title */}
+          {/* ── Title ─────────────────────────────────────────── */}
           <div style={{
-            fontSize: `${titleSize}px`,
+            fontSize: hasPoster || hasLogo ? '36px' : '46px',
             color: '#eef0f2',
             lineHeight: 1.15,
-            letterSpacing: `${-0.5 * SCALE}px`,
-            marginBottom: `${14 * SCALE}px`,
+            letterSpacing: '-0.5px',
+            marginBottom: '12px',
             display: 'flex',
             flexWrap: 'wrap',
-            maxWidth: `${540 * SCALE}px`,
+            maxWidth: '530px',
             fontWeight: 700,
           }}>
             {title}
           </div>
 
-          {/* Subtitle */}
+          {/* ── Subtitle ──────────────────────────────────────── */}
           <div style={{
-            fontSize: `${subtitleSize}px`,
+            fontSize: '16px',
             color: '#8693ab',
-            marginBottom: `${32 * SCALE}px`,
+            marginBottom: '28px',
             display: 'flex',
-            maxWidth: `${480 * SCALE}px`,
+            maxWidth: '460px',
             lineHeight: 1.5,
           }}>
             {subtitle}
           </div>
 
-          {/* CTA button */}
+          {/* ── CTA ───────────────────────────────────────────── */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width:  `${200 * SCALE}px`,
-            height: `${46 * SCALE}px`,
+            width: '178px', height: '40px',
             background: '#468189',
-            borderRadius: `${6 * SCALE}px`,
-            fontSize: `${ctaSize}px`,
+            borderRadius: '6px',
+            fontSize: '14px',
             fontWeight: 700,
             color: '#ffffff',
           }}>
@@ -257,40 +233,35 @@ export async function GET(req: NextRequest) {
           </div>
         </div>
 
-        {/* ── Mock cards (shown when no poster/logo) ─────────── */}
+        {/* ── Mock cards (no poster/logo fallback) ───────────── */}
         {!hasPoster && !hasLogo && (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'flex-end',
-            gap: `${14 * SCALE}px`,
-            paddingRight: `${60 * SCALE}px`,
-            width: `${340 * SCALE}px`,
+            gap: '12px',
+            paddingRight: '52px',
+            width: '320px',
             zIndex: 2,
           }}>
-            {[{ h: 150, pw: 90 }, { h: 110, pw: 75 }, { h: 90, pw: 62 }].map((card, i) => (
+            {[{ h: 140, pw: 86 }, { h: 100, pw: 70 }, { h: 82, pw: 58 }].map((card, i) => (
               <div key={i} style={{
                 display: 'flex',
-                width:  `${290 * SCALE}px`,
-                height: `${card.h * SCALE}px`,
+                width: '270px',
+                height: `${card.h}px`,
                 background: '#0d2535',
-                borderRadius: `${8 * SCALE}px`,
-                border: `${1 * SCALE}px solid #1a3a4a`,
+                borderRadius: '8px',
+                border: '1px solid #1a3a4a',
                 overflow: 'hidden',
                 opacity: 1 - i * 0.12,
               }}>
-                <div style={{
-                  width: `${card.pw * SCALE}px`,
-                  height: `${card.h * SCALE}px`,
-                  background: '#1a3a4a',
-                  display: 'flex',
-                }} />
-                <div style={{ display: 'flex', flexDirection: 'column', padding: `${12 * SCALE}px`, flex: 1 }}>
-                  <div style={{ width: `${140 * SCALE}px`, height: `${8 * SCALE}px`, background: '#2a4a5a', borderRadius: `${3 * SCALE}px`, marginBottom: `${8 * SCALE}px`, display: 'flex' }} />
-                  <div style={{ width: `${100 * SCALE}px`, height: `${8 * SCALE}px`, background: '#2a4a5a', borderRadius: `${3 * SCALE}px`, marginBottom: `${8 * SCALE}px`, display: 'flex' }} />
-                  <div style={{ width: `${70 * SCALE}px`,  height: `${7 * SCALE}px`, background: '#1a3a4a', borderRadius: `${3 * SCALE}px`, marginBottom: `${10 * SCALE}px`, display: 'flex' }} />
-                  <div style={{ fontSize: `${11 * SCALE}px`, color: '#468189', display: 'flex' }}>
+                <div style={{ width: `${card.pw}px`, height: `${card.h}px`, background: '#1a3a4a', display: 'flex' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', padding: '11px', flex: 1 }}>
+                  <div style={{ width: '130px', height: '7px', background: '#2a4a5a', borderRadius: '3px', marginBottom: '7px', display: 'flex' }} />
+                  <div style={{ width: '95px',  height: '7px', background: '#2a4a5a', borderRadius: '3px', marginBottom: '7px', display: 'flex' }} />
+                  <div style={{ width: '65px',  height: '6px', background: '#1a3a4a', borderRadius: '3px', marginBottom: '9px', display: 'flex' }} />
+                  <div style={{ fontSize: '10px', color: '#468189', display: 'flex' }}>
                     {i === 0 ? '★★★★★' : '★★★★☆'}
                   </div>
                 </div>
@@ -302,11 +273,10 @@ export async function GET(req: NextRequest) {
         {/* ── Domain watermark ───────────────────────────────── */}
         <div style={{
           position: 'absolute',
-          bottom: `${24 * SCALE}px`,
-          left:   `${80 * SCALE}px`,
-          fontSize: `${domainSize}px`,
+          bottom: '22px', left: '76px',
+          fontSize: '11px',
           color: '#637074',
-          letterSpacing: `${1.5 * SCALE}px`,
+          letterSpacing: '1.5px',
           display: 'flex',
         }}>
           watchedthis.com
@@ -316,15 +286,16 @@ export async function GET(req: NextRequest) {
         <div style={{
           position: 'absolute',
           bottom: 0, left: 0,
-          width: `${SW}px`, height: `${3 * SCALE}px`,
+          width: '1200px', height: '3px',
           background: 'rgba(70,129,137,0.3)',
           display: 'flex',
         }} />
+
       </div>
     ),
     {
-      width:  W,   // export at 1200 — browser sees crisp 2× source
-      height: H,   // export at 630
+      width:  W,  // 1200 — exact OG spec, no tricks
+      height: H,  // 630
       headers: {
         'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
       },
