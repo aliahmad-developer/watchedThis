@@ -28,36 +28,6 @@ const dedupe = (items: MediaItem[]): MediaItem[] => {
   return Array.from(map.values());
 };
 
-// ── Core generator ────────────────────────────────────────────────────────────
-export async function generateDailyMedia(
-  existing: MediaItem[] = [],
-): Promise<MediaItem[]> {
-  const seen = new Set(existing.map((i) => i.id));
-  const results = [...existing];
-  const maxAttempts = 9; // 3 items × 3 attempts each
-
-  for (let i = 0; i < maxAttempts && results.length < 3; i++) {
-    try {
-      const batch = await getRandomMedia(seen, 1);
-
-      for (const item of batch) {
-        if (item) {
-          // Don't re-check seen — getRandomMedia already handles dedup
-          results.push(item);
-          if (results.length === 3) break;
-        }
-      }
-    } catch (err) {
-      console.error(`[generateDailyMedia] attempt ${i + 1} threw:`, err);
-    }
-  }
-
-  if (results.length < 3) {
-    throw new Error(`Failed to generate enough items (${results.length}/3)`);
-  }
-
-  return results.slice(0, 3);
-}
 // ── Main: get or create with race condition protection ────────────────────────
 export async function getOrCreateDailyMedia(
   today: string,
