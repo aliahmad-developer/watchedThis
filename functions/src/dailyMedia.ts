@@ -27,6 +27,35 @@ const dedupe = (items: MediaItem[]): MediaItem[] => {
   return Array.from(map.values());
 };
 
+export async function generateDailyMedia(
+  existing: MediaItem[] = [],
+): Promise<MediaItem[]> {
+  const seen = new Set(existing.map((i) => i.id));
+  const results = [...existing];
+  const maxAttempts = 9;
+
+  for (let i = 0; i < maxAttempts && results.length < 3; i++) {
+    try {
+      const batch = await getRandomMedia(seen, 1);
+      for (const item of batch) {
+        if (item) {
+          results.push(item);
+          seen.add(item.id);
+          if (results.length === 3) break;
+        }
+      }
+    } catch (err) {
+      console.error(`[generateDailyMedia] attempt ${i + 1} threw:`, err);
+    }
+  }
+
+  if (results.length < 3) {
+    throw new Error(`Failed to generate enough items (${results.length}/3)`);
+  }
+
+  return results.slice(0, 3);
+}
+
 export async function getOrCreateDailyMedia(
   today: string,
 ): Promise<MediaItem[]> {
@@ -48,24 +77,22 @@ export async function getOrCreateDailyMedia(
         return { items: data.items ?? [], needsGeneration: false };
       }
 
-      // Already up-to-date for today — nothing to do
-      if (data.date === today && data.items?.length === 3) {
+      // Already full — nothing to do
+      if (data.date === today && data.items?.length >= 3) {
         return { items: dedupe(data.items), needsGeneration: false };
       }
 
-      // Rolling to a new day (or partial write): always keep existing items
-      // so we only ever add 1 new one rather than re-fetching all 3.
+      // Partial or new day — preserve existing items, claim lock
       const existingItems: MediaItem[] = data.items ?? [];
-
       tx.set(docRef, {
         date: today,
         items: existingItems,
-        lockUntil: now + 15_000, // 15 s covers Cloud Run cold-start races
+        lockUntil: now + 15_000,
       });
       return { items: existingItems, needsGeneration: true };
     }
 
-    // First ever run — no document yet
+    // No doc yet — first ever run
     tx.set(docRef, { date: today, items: [], lockUntil: Date.now() + 15_000 });
     return { items: [], needsGeneration: true };
   });
@@ -73,27 +100,16 @@ export async function getOrCreateDailyMedia(
   if (!result.needsGeneration) return result.items;
 
   try {
-    const existingIds = new Set(result.items.map((i) => i.id));
-
-    // Always fetch exactly 1 — never recompute "needed" from items.length.
-    // That was the root cause: on a date rollover result.items came back empty
-    // (transaction wrote [] for the new day) so needed = 3, fetching all fresh.
-    const newItems = await getRandomMedia(existingIds, 1);
-
-    if (!newItems.length) throw new Error("Failed to generate new media item");
-
-    // Prepend the new item, drop the oldest — always 3 total after seeding
-    const fresh = dedupe([newItems[0], ...result.items]).slice(0, 3);
-
+    const fresh = await generateDailyMedia(result.items);
+    console.log(
+      `[dailyMedia] Generated ${fresh.length - result.items.length} new item(s) for ${today}, total: ${fresh.length}`,
+    );
     await docRef.set({ date: today, items: fresh, lockUntil: 0 });
     return fresh;
   } catch (error) {
-    // Release lock so the next request can retry
     await docRef.set({ date: today, items: result.items, lockUntil: 0 });
     console.error("[getOrCreateDailyMedia] Generation failed:", error);
-    if (result.items.length > 0) {
-      return result.items;
-    }
+    if (result.items.length > 0) return result.items;
     throw error;
   }
 }
