@@ -125,7 +125,7 @@ export default function ProductionPageClient({ id }: { id: string }) {
         <div className="shrink-0 w-35 h-35 flex items-center justify-center bg-white dark:bg-white/5 rounded-xl shadow-sm border border-light-border dark:border-dark-border p-3">
           {company.logo_path ? (
             <Image
-              drggable={false}
+              draggable={false}
               src={`https://image.tmdb.org/t/p/w300${company.logo_path}`}
               alt={company.name}
               width={120}
