@@ -46,7 +46,6 @@ const ProductionPageSkeleton = () => (
 );
 
 export default function ProductionPageClient({ id }: { id: string }) {
-
   const [company, setCompany] = useState<any>(null);
   const [mediaType, setMediaType] = useState<"movie" | "tv">("movie");
   const [items, setItems] = useState<any[]>([]);
@@ -62,7 +61,9 @@ export default function ProductionPageClient({ id }: { id: string }) {
       if (pageNum === 1) setLoading(true);
       else setLoadingMore(true);
 
-      const res = await fetch(`/api/company/${id}?mediaType=${type}&page=${pageNum}`);
+      const res = await fetch(
+        `/api/company/${id}?mediaType=${type}&page=${pageNum}`,
+      );
       const data = await res.json();
 
       if (pageNum === 1) {
@@ -88,7 +89,12 @@ export default function ProductionPageClient({ id }: { id: string }) {
     if (!loaderRef.current) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !loading && !loadingMore && page < totalPages)
+        if (
+          entries[0].isIntersecting &&
+          !loading &&
+          !loadingMore &&
+          page < totalPages
+        )
           setPage((prev) => prev + 1);
       },
       { rootMargin: "200px" },
@@ -119,6 +125,7 @@ export default function ProductionPageClient({ id }: { id: string }) {
         <div className="shrink-0 w-35 h-35 flex items-center justify-center bg-white dark:bg-white/5 rounded-xl shadow-sm border border-light-border dark:border-dark-border p-3">
           {company.logo_path ? (
             <Image
+              drggable={false}
               src={`https://image.tmdb.org/t/p/w300${company.logo_path}`}
               alt={company.name}
               width={120}
@@ -187,7 +194,8 @@ export default function ProductionPageClient({ id }: { id: string }) {
       ) : (
         <div className="flex items-center justify-center py-20">
           <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
-            No {mediaType === "movie" ? "movies" : "TV shows"} found for this company.
+            No {mediaType === "movie" ? "movies" : "TV shows"} found for this
+            company.
           </p>
         </div>
       )}
