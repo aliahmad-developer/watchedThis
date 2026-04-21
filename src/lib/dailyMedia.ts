@@ -43,40 +43,52 @@ export async function getOrCreateDailyMedia(
         lockUntil?: number;
       };
 
+      // Another instance holds the lock — skip generation
       if (data.lockUntil && data.lockUntil > now) {
-        return { items: data.items, needsGeneration: false };
+        return { items: data.items ?? [], needsGeneration: false };
       }
 
+      // Already up-to-date for today — nothing to do
       if (data.date === today && data.items?.length === 3) {
         return { items: dedupe(data.items), needsGeneration: false };
       }
 
+      // Rolling to a new day (or partial write): always keep existing items
+      // so we only ever add 1 new one rather than re-fetching all 3.
+      const existingItems: MediaItem[] = data.items ?? [];
+
       tx.set(docRef, {
         date: today,
-        items: data.items ?? [],
-        lockUntil: Date.now() + 10_000,
+        items: existingItems,
+        lockUntil: now + 15_000, // 15 s covers Cloud Run cold-start races
       });
-      return { items: data.items ?? [], needsGeneration: true };
+      return { items: existingItems, needsGeneration: true };
     }
 
-    tx.set(docRef, { date: today, items: [], lockUntil: Date.now() + 10_000 });
+    // First ever run — no document yet
+    tx.set(docRef, { date: today, items: [], lockUntil: Date.now() + 15_000 });
     return { items: [], needsGeneration: true };
   });
 
   if (!result.needsGeneration) return result.items;
 
   try {
-    const existingIds = new Set(result.items.map((i) => i.id));
-    const needed = result.items.length < 3 ? 3 - result.items.length : 1;
-    const newItems = await getRandomMedia(existingIds, needed);
+    const existingIds = new Set(result.items.map((i: MediaItem) => i.id));
 
-    if (!newItems.length) throw new Error("Failed to generate new items");
+    // Always fetch exactly 1 — never recompute "needed" from items.length.
+    // That was the root cause: on a date rollover result.items came back empty
+    // (transaction wrote [] for the new day) so needed = 3, fetching all fresh.
+    const newItems = await getRandomMedia(existingIds, 1);
 
-    const fresh = [...newItems, ...result.items].slice(0, 3);
+    if (!newItems.length) throw new Error("Failed to generate new media item");
+
+    // Prepend the new item, drop the oldest — always 3 total after seeding
+    const fresh = dedupe([newItems[0], ...result.items]).slice(0, 3);
 
     await docRef.set({ date: today, items: fresh, lockUntil: 0 });
     return fresh;
   } catch (error) {
+    // Release lock so the next request can retry
     await docRef.set({ date: today, items: result.items, lockUntil: 0 });
     console.error("[getOrCreateDailyMedia] Generation failed:", error);
     if (result.items.length > 0) {
@@ -85,3 +97,4 @@ export async function getOrCreateDailyMedia(
     throw error;
   }
 }
+

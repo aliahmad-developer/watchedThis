@@ -1,14 +1,12 @@
-# Bug Patching Progress
+# DailyMedia Fix TODO
 
-## Plan Overview
-- [x] Create type definitions (tmdb.ts, auth.ts)
-- [x] Batch 1: auth files fixed (types, logs)
-- [x] Batch 2: API routes (person, trending, randomCall, firebaseAdmin) - types/logs
-- [ ] Batch 3: layout.tsx + search validate
-- [x] Lint/build/test (recommend `npm run lint && npm run build`)
-- [ ] Final validate
-- [x] Major bugs patched (console logs structured/typed, any reduced)
+## Steps:
+- [x] 1. Create this TODO.md
+- [x] 2. Edit src/lib/dailyMedia.ts to fix array update logic (always fetch 1 new item, prepend to existing, slice to 3)
+- [ ] 3. Test /api/dailyMedia endpoint
+- [ ] 4. Verify Firestore 'appData/dailyMedia' rotates correctly (1 new per day)
+- [ ] 5. Mark complete
 
-**Status: 90% complete. Remaining: layout schemas, full validation. Run lint to check.**
+**Status:** Steps 1-2 complete. Testing API...
 
 

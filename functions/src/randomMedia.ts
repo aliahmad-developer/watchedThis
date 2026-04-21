@@ -182,13 +182,7 @@ export async function getRandomMedia(
   seenIds = new Set<number>(),
   count = 1,
 ): Promise<MediaItem[]> {
-
-  // test one direct TMDB call
-  const testRes = await fetch(
-    `https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&language=en-US&page=1`,
-  );
-  const testData = await testRes.json();
-  // Fail fast if key is missing — don't waste 32 seconds timing out
+  // Fail fast if key is missing — don't waste time on doomed requests
   if (!TMDB_API_KEY) {
     throw new Error(
       "TMDB_API_KEY is not set — add it to Cloud Run environment variables",
@@ -196,7 +190,7 @@ export async function getRandomMedia(
   }
 
   const results: MediaItem[] = [];
-  const maxAttempts = count * 5; // generous attempts to find unseen items
+  const maxAttempts = count * 8; // generous attempts to find unseen items
 
   for (let i = 0; i < maxAttempts && results.length < count; i++) {
     const media_type = Math.random() < 0.55 ? "movie" : "tv";
@@ -205,7 +199,7 @@ export async function getRandomMedia(
     const year = randomInt(era.min, era.max);
     const genre = pick(media_type === "movie" ? MOVIE_GENRES : TV_GENRES);
     const sort = pick(SORT_ORDERS);
-    const page = randomInt(1, 10); // skip probe — pick page directly
+    const page = randomInt(1, 10);
 
     const url =
       `${TMDB_BASE}/discover/${media_type}?api_key=${TMDB_API_KEY}` +
