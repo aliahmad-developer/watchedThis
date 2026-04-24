@@ -7,8 +7,6 @@ import Footer from "./components/footer/footer";
 import { Metadata } from "next";
 import { Suspense } from "react";
 import Script from "next/script";
-import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
-
 export const metadata: Metadata = {
   metadataBase: new URL("https://watchedthis.com"),
   title: {
@@ -164,7 +162,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <ClientProviders>
           <Suspense>
             <Navbar />
-            <Breadcrumbs />
           </Suspense>
 
           <div className="relative">
