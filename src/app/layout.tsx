@@ -7,6 +7,7 @@ import Footer from "./components/footer/footer";
 import { Metadata } from "next";
 import { Suspense } from "react";
 import Script from "next/script";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://watchedthis.com"),
@@ -65,6 +66,11 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png?v=2",
   },
   manifest: "/site.webmanifest?v=2",
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 const organizationSchema = {
@@ -141,6 +147,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           crossOrigin="anonymous"
         />
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
+        <link rel="canonical" href="https://watchedthis.com" />
       </head>
 
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">
@@ -157,6 +164,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <ClientProviders>
           <Suspense>
             <Navbar />
+            <Breadcrumbs />
           </Suspense>
 
           <div className="relative">

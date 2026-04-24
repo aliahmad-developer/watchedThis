@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  trailingSlash: true,
+
   async headers() {
     return [
       {
@@ -44,18 +46,25 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 31,
-
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [64, 128, 256, 500],
-
     qualities: [55, 75],
-
     remotePatterns: [
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "res.cloudinary.com" },
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
       { protocol: "https", hostname: "fyp-movie-4d46d.firebasestorage.app" },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3000",
+        pathname: "/api/image-proxy**",
+      },
+      {
+        protocol: "https",
+        hostname: "watchedthis.com",
+        pathname: "/api/image-proxy**",
+      },
     ],
   },
 

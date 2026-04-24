@@ -10,6 +10,7 @@ import {
   faLayerGroup,
   faSpinner,
   faWaveSquare,
+  faStar,
 } from "@fortawesome/free-solid-svg-icons";
 import Fuse from "fuse.js";
 import { trackSearch } from "../components/Recommendation/behaviourTracker";
@@ -329,6 +330,7 @@ function MediaCard({
             ref={imgRef}
             src={imageUrl}
             alt={item.title}
+            unoptimized
             fill
             crossOrigin="anonymous"
             className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
@@ -349,7 +351,7 @@ function MediaCard({
         <div className="absolute inset-0" style={{ background: layerCenter }} />
         {rating && (
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/40 backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
-            ★ {rating}
+            <FontAwesomeIcon icon={faStar} /> {rating}
           </div>
         )}
         <div className="absolute top-2 right-2 sm:top-3 sm:right-3 text-[10px] text-white sm:text-xs px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm">
@@ -458,7 +460,6 @@ export default function EchoClient() {
       }),
     [rawHits],
   );
-
   const suggestions = useMemo<SearchHit[]>(() => {
     if (!query.trim() || rawHits.length === 0) return rawHits;
     const results = fuse.search(query.trim());
@@ -630,8 +631,9 @@ export default function EchoClient() {
       });
       setHasMore(data.has_more ?? false);
       setPage(nextPage);
-    } catch {
-      /* silent */
+    } catch (error) {
+      console.error("Trending fetch failed:", error);
+      setError("Failed to load trending content.");
     } finally {
       setLoadingMore(false);
     }
@@ -811,7 +813,7 @@ export default function EchoClient() {
             <button
               onClick={loadMore}
               disabled={loadingMore}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text text-sm font-medium hover:border-color-accent hover:text-color-accent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text text-sm font-medium hover:border-color-accent hover:text-color-accent hover:bg-light-bg dark:hover:bg-dark-bg hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
             >
               {loadingMore ? (
                 <>

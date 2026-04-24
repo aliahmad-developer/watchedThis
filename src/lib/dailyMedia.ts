@@ -43,58 +43,63 @@ export async function getOrCreateDailyMedia(
         lockUntil?: number;
       };
 
-      // Another instance holds the lock — skip generation
+      // Another instance holds the lock — return what we have
       if (data.lockUntil && data.lockUntil > now) {
-        return { items: data.items ?? [], needsGeneration: false };
+        return { carryover: data.items ?? [], needsGeneration: false };
       }
 
-      // Already up-to-date for today — nothing to do
-      if (data.date === today && data.items?.length === 3) {
-        return { items: dedupe(data.items), needsGeneration: false };
+      // Same day, already full — nothing to do
+      if (data.date === today && data.items?.length >= 3) {
+        return { carryover: dedupe(data.items), needsGeneration: false };
       }
 
-      // Rolling to a new day (or partial write): always keep existing items
-      // so we only ever add 1 new one rather than re-fetching all 3.
-      const existingItems: MediaItem[] = data.items ?? [];
+      // New day — roll the window: drop oldest, carry forward 2
+      const carryover =
+        data.date !== today
+          ? (data.items ?? []).slice(0, 2)
+          : (data.items ?? []);
 
       tx.set(docRef, {
         date: today,
-        items: existingItems,
-        lockUntil: now + 15_000, // 15 s covers Cloud Run cold-start races
+        items: carryover,
+        lockUntil: now + 15_000,
       });
-      return { items: existingItems, needsGeneration: true };
+      return { carryover, needsGeneration: true };
     }
 
-    // First ever run — no document yet
+    // No doc yet — first ever run
     tx.set(docRef, { date: today, items: [], lockUntil: Date.now() + 15_000 });
-    return { items: [], needsGeneration: true };
+    return { carryover: [], needsGeneration: true };
   });
 
-  if (!result.needsGeneration) return result.items;
+  if (!result.needsGeneration) return result.carryover;
 
   try {
-    const existingIds = new Set(result.items.map((i: MediaItem) => i.id));
+    const needed = 3 - result.carryover.length;
+    const seenIds = new Set(result.carryover.map((i: MediaItem) => i.id));
 
-    // Always fetch exactly 1 — never recompute "needed" from items.length.
-    // That was the root cause: on a date rollover result.items came back empty
-    // (transaction wrote [] for the new day) so needed = 3, fetching all fresh.
-    const newItems = await getRandomMedia(existingIds, 1);
+    const newItems = await getRandomMedia(seenIds, needed);
 
-    if (!newItems.length) throw new Error("Failed to generate new media item");
-
-    // Prepend the new item, drop the oldest — always 3 total after seeding
-    const fresh = dedupe([newItems[0], ...result.items]).slice(0, 3);
-
-    await docRef.set({ date: today, items: fresh, lockUntil: 0 });
-    return fresh;
-  } catch (error) {
-    // Release lock so the next request can retry
-    await docRef.set({ date: today, items: result.items, lockUntil: 0 });
-    console.error("[getOrCreateDailyMedia] Generation failed:", error);
-    if (result.items.length > 0) {
-      return result.items;
+    if (newItems.length < needed) {
+      throw new Error(
+        `Failed to generate enough items (got ${newItems.length}, needed ${needed})`,
+      );
     }
+
+    // Prepend new items: index 0 = today, 1 = yesterday, 2 = 2 days ago
+    const ordered = dedupe([...newItems, ...result.carryover]).slice(0, 3);
+
+    console.log(
+      `[dailyMedia] Generated ${newItems.length} new item(s) for ${today}, total: ${ordered.length}`,
+    );
+
+    await docRef.set({ date: today, items: ordered, lockUntil: 0 });
+    return ordered;
+  } catch (error) {
+    // Release lock, keep whatever we had
+    await docRef.set({ date: today, items: result.carryover, lockUntil: 0 });
+    console.error("[getOrCreateDailyMedia] Generation failed:", error);
+    if (result.carryover.length > 0) return result.carryover;
     throw error;
   }
 }
-

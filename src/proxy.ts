@@ -8,10 +8,8 @@ function isBadBot(req: NextRequest): boolean {
   const ua = req.headers.get("user-agent") ?? "";
   const host = req.headers.get("host") ?? "";
 
-  // Always allow local dev
   if (host.includes("localhost") || host.includes("127.0.0.1")) return false;
 
-  // Reject empty or clearly bot UAs
   if (ua.trim() === "" || BAD_BOTS.test(ua)) return true;
 
   return false;
@@ -22,17 +20,15 @@ const PROTECTED_ROUTES = ["/user/library"];
 const AUTH_REDIRECT = "/user/profile";
 const SAFE_FALLBACK = "/";
 
-// Nonce would be better for CSP, but requires per-request generation + passing to layout
 const SECURITY_HEADERS: Record<string, string> = {
   "X-DNS-Prefetch-Control": "on",
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  // Tightened: removed camera=*, restricted mic + geo
   "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
-  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload", // 2 years + preload
-  "X-XSS-Protection": "0", // Deprecated — modern browsers ignore it; CSP replaces it
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+  "X-XSS-Protection": "0",
   "Content-Security-Policy":
     "default-src 'self' https: data:; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
@@ -51,7 +47,6 @@ const SECURITY_HEADERS: Record<string, string> = {
     "https://identitytoolkit.googleapis.com " +
     "https://securetoken.googleapis.com " +
     "https://formspree.io " +
-    "https://api.cloudinary.com " +
     "https://image.tmdb.org " +
     "https://www.googletagmanager.com " +
     "https://www.google-analytics.com " +
@@ -64,14 +59,11 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Only allow relative paths that don't start with // (open redirect prevention) */
 function getSafeRedirectPath(pathname: string): string {
   if (pathname.startsWith("/") && !pathname.startsWith("//")) return pathname;
   return SAFE_FALLBACK;
 }
 
-/** Looks like a plausible (non-empty) JWT: three base64url segments */
 function looksLikeJWT(token: string): boolean {
   return /^[\w-]+\.[\w-]+\.[\w-]+$/.test(token);
 }
@@ -84,18 +76,20 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // 1. Pass RSC (React Server Component) requests straight through
+  // 1. Pass RSC requests straight through
   if (request.headers.has("rsc") || searchParams.has("_rsc")) {
     return applySecurityHeaders(NextResponse.next());
   }
 
+  // 2. Block bad bots
   if (isBadBot(request)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
+  // 3. Firebase auth action redirects
   const mode = searchParams.get("mode");
   const oobCode = searchParams.get("oobCode");
 
@@ -111,6 +105,7 @@ export default function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // 4. Protected route guard
   const isProtected = PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route),
   );
@@ -131,5 +126,5 @@ export default function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|og|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|og|api/|.*\\..*).*)"],
 };

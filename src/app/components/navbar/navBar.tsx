@@ -443,6 +443,7 @@ export default function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
+
                     onClick={
                       item.label === "Random" ? handleRandomClick : undefined
                     }
@@ -545,7 +546,7 @@ export default function Navbar() {
             role="dialog"
             aria-modal="true"
             aria-label="Navigation menu"
-            className="lg:hidden fixed top-0 left-0 z-50 h-full w-60 sm:w-64 bg-light-nav dark:bg-dark-nav shadow-2xl flex flex-col"
+            className="lg:hidden fixed top-0 left-0 z-50 h-full w-60 sm:w-64 shadow-2xl flex flex-col"
             style={{
               transform: drawerOpen ? "translateX(0)" : "translateX(-12px)",
               opacity: drawerOpen ? 1 : 0,
@@ -555,8 +556,8 @@ export default function Navbar() {
                 : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease",
             }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-3 py-3.5 border-b border-light-border dark:border-dark-border">
+            {/* Top section — same bg as navbar */}
+            <div className="bg-light-nav dark:bg-dark-nav flex items-center justify-between px-3 py-3.5 border-b border-light-border dark:border-dark-border">
               <Link
                 href="/"
                 className="flex items-center"
@@ -573,18 +574,19 @@ export default function Navbar() {
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="flex items-center justify-center w-7 h-7 rounded-md bg-transparent
-                           text-light-secondary-text dark:text-dark-secondary-text
-                           hover:text-light-accent dark:hover:text-dark-accent
-                           hover:bg-light-card dark:hover:bg-dark-card transition-colors"
+                className="flex items-center justify-center w-7 h-7 rounded-md
+                 text-dark-secondary-text
+                 hover:text-dark-accent
+                 hover:bg-dark-border/40 transition-colors bg-transparent"
                 aria-label="Close menu"
+                
               >
                 <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            {/* Nav links */}
-            <nav className="flex flex-col gap-0.5 px-2 py-3 flex-1 overflow-y-auto">
+            {/* Bottom section — theme responsive */}
+            <nav className="bg-light-card dark:bg-dark-card flex flex-col gap-0.5 px-2 py-3 flex-1 overflow-y-auto">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.href}
@@ -593,10 +595,10 @@ export default function Navbar() {
                     if (item.label === "Random") handleRandomClick(e);
                     setDrawerOpen(false);
                   }}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 border-b border-teal-500/30 last:border-b-0 ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 border-b border-light-border/50 dark:border-dark-border/50 last:border-b-0 ${
                     pathname === item.href
-                      ? "bg-light-card dark:bg-dark-card text-light-accent dark:text-dark-accent"
-                      : "text-light-secondary-text dark:text-dark-secondary-text hover:bg-light-card dark:hover:bg-dark-card hover:text-light-accent dark:hover:text-dark-accent"
+                      ? "bg-light-bg dark:bg-dark-bg text-light-accent dark:text-dark-accent"
+                      : "text-light-body-text dark:text-dark-body-text hover:bg-light-bg dark:hover:bg-dark-bg hover:text-light-accent dark:hover:text-dark-accent"
                   }`}
                 >
                   <FontAwesomeIcon

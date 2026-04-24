@@ -148,6 +148,56 @@ export default async function Home() {
         <Strip />
       </div>
       <HomepageSchema />
+      <FAQSchema />
     </>
+  );
+}
+
+function FAQSchema() {
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What is a random movie picker?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "A random movie picker instantly suggests movies or TV shows based on algorithms, genres, eras, and popularity – perfect when you can't decide what to watch.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How does WatchedThis find personalized recommendations?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Using your viewing history, behavior data, and AI matching against trending content from TMDB, we suggest hidden gems tailored to your taste.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What is scene detection in movies?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Scene detection analyzes keyframes to identify specific moments, moods, or visuals in films for precise discovery.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Can I create watchlists on WatchedThis?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes, sign up for free to save lists, track watched items, and get better personalized picks.",
+        },
+      },
+    ],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      key="faq-schema"
+    />
   );
 }

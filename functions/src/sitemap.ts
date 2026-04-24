@@ -65,8 +65,8 @@ export async function generateSitemap() {
   ]);
 
   const sitemapData = {
-    movies: movies.map(({ id, title }) => ({ id, slug: slugify(title ?? String(id)) })),
-    tvShows: tvShows.map(({ id, name }) => ({ id, slug: slugify(name ?? String(id)) })),
+    movies: movies.map(({ id, title }) => ({ id, slug: slugify(title ?? String(id)), poster_path: '/tmdb/movie/' + id + '/w780.jpg' })),
+    tvShows: tvShows.map(({ id, name }) => ({ id, slug: slugify(name ?? String(id)), poster_path: '/tmdb/tv/' + id + '/w780.jpg' })),
     persons: persons.map(({ id, name }) => ({ id, slug: slugify(name ?? String(id)) })),
     genres: [
       ...genres.movie.map((g) => ({ id: g.id, mediaType: "movie" })),

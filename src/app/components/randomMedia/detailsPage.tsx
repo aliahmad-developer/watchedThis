@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import KeywordsSection from "./MediaInfo/KeywordSection";
 import MediaPoster from "./mediaPoster";
@@ -508,6 +509,7 @@ export default function Desc({
 
       {/* Main content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
+        
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
           {/* Poster */}
           <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">

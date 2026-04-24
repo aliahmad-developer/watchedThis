@@ -390,7 +390,6 @@ function AnimatedPlus() {
   );
 }
 
-
 /* ─── Inner page ────────────────────────────────────────────────────────── */
 function FindPageInner() {
   const router = useRouter();
@@ -563,7 +562,10 @@ function FindPageInner() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSearch();
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleSearch();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -698,7 +700,8 @@ function FindPageInner() {
             <div>
               <SectionLabel icon={faSearch}>Keywords</SectionLabel>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2.5 -mt-1 leading-relaxed">
-                Include media matching these words in title, description, or tags.
+                Include media matching these words in title, description, or
+                tags.
               </p>
               <KeywordInput
                 placeholder="e.g. heist, space, vampire…"
@@ -959,7 +962,8 @@ function FindPageInner() {
             <div>
               <SectionLabel icon={faBan}>Blacklist Keywords</SectionLabel>
               <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text mb-2.5 -mt-1 leading-relaxed">
-                Exclude media containing these words in title, description, or tags.
+                Exclude media containing these words in title, description, or
+                tags.
               </p>
               <KeywordInput
                 placeholder="e.g. violence, war, zombies…"
@@ -1075,7 +1079,5 @@ function FindPageInner() {
 }
 
 export default function FindPage() {
-  return (
-      <FindPageInner />
-  );
+  return <FindPageInner />;
 }

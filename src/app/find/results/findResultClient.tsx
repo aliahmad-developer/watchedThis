@@ -537,6 +537,7 @@ function ResultCard({ item }: { item: MediaResult }) {
         {imageUrl ? (
           // No crossOrigin needed — proxy serves from your own origin
           <Image
+            unoptimized
             ref={imgRef}
             src={imageUrl}
             alt={item.title}
