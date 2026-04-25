@@ -1,4 +1,4 @@
-import "./globals.css";
+import './globals.css'
 import "../lib/fontawesome";
 import ClientProviders from "./components/utilities/clientProvider/clientProvider";
 import BackButton from "./components/utilities/backButton";
@@ -56,13 +56,15 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    shortcut: "/favicon.ico?v=2",
-    icon: [
-      { url: "/favicon-16x16.png?v=2", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png?v=2",
-  },
+  shortcut: "/favicon.ico?v=2",
+  icon: [
+    { url: "/favicon-16x16.png?v=2", sizes: "16x16", type: "image/png" },
+    { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
+    { url: "/android-chrome-192x192.png?v=2", sizes: "192x192", type: "image/png" }, 
+    { url: "/android-chrome-512x512.png?v=2", sizes: "512x512", type: "image/png" }, 
+  ],
+  apple: "/apple-touch-icon.png?v=2",
+},
   manifest: "/site.webmanifest?v=2",
 };
 
