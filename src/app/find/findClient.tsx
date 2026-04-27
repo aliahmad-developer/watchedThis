@@ -841,7 +841,7 @@ function FindPageInner() {
                 className="w-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border
                   rounded-xl px-4 py-2.5 pr-10 text-sm appearance-none cursor-pointer
                   bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23468189%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%2F%3E%3C%2Fsvg%3E')]
-                  bg-no-repeat bg-[position:right_0.85rem_center] bg-[length:18px_18px]
+                  bg-no-repeat bg-position-[right_0.85rem_center] bg-size-[18px_18px]
                   focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
                   transition-all duration-200 hover:border-light-accent/50 dark:hover:border-dark-accent/50"
               >

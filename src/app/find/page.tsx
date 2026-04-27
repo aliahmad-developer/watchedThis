@@ -39,12 +39,12 @@ export default function Page() {
       <h1 className="sr-only">
         Find – Scene Detection &amp; Advanced Movie Filters | WatchedThis
       </h1>
-      <Suspense fallback={null}>
-        <div className="min-h-screen">
+      <div className="min-h-screen">
+        <Suspense fallback={null}>
           <FindPageClient />
           <SceneDetect />
-        </div>
-      </Suspense>
+        </Suspense>
+      </div>
     </>
   );
 }
