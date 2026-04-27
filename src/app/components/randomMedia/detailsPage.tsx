@@ -311,7 +311,6 @@ function MediaActions({
       try {
         await navigator.share(shareData);
       } catch {
-        // user dismissed — no-op
       }
     } else {
       await navigator.clipboard.writeText(window.location.href).catch(() => {});

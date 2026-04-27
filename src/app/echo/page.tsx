@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     "find movies by synopsis",
     "similar tv shows",
   ],
-  alternates: { canonical: '/echo' },
+  alternates: { canonical: "/echo" },
   openGraph: {
     title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
     description:
@@ -42,7 +42,9 @@ export default function EchoPage() {
       <h1 className="sr-only">
         Echo – Find Movies and TV Shows Similar to What You Already Watched
       </h1>
-      <EchoClient />
+      <div className="min-h-screen">
+        <EchoClient />
+      </div>
     </>
   );
 }
