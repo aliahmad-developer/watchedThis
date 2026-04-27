@@ -62,7 +62,7 @@ export default function ProductionPageClient({ id }: { id: string }) {
       else setLoadingMore(true);
 
       const res = await fetch(
-        `/api/company/${id}?mediaType=${type}&page=${pageNum}`,
+        `/api/production/${id}?mediaType=${type}&page=${pageNum}`,
       );
       const data = await res.json();
 
