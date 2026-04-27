@@ -217,6 +217,10 @@ export async function getRandomMedia(
           !seenIds.has(item.id),
       );
 
+      console.log(
+        `[randomMedia] attempt ${i + 1}: ${valid.length} valid candidates, picked ${valid.length ? pick(valid).id : "none"}`,
+      );
+
       if (!valid.length) continue;
 
       const item = pick(valid);

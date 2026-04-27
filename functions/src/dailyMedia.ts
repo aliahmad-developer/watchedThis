@@ -31,80 +31,48 @@ export async function getOrCreateDailyMedia(
   today: string,
 ): Promise<MediaItem[]> {
   const docRef = adminDb.collection(COLLECTION).doc(DOC);
+  const snap = await docRef.get();
 
-  const result = await adminDb.runTransaction(async (tx) => {
-    const snap = await tx.get(docRef);
-    const now = Date.now();
+  if (snap.exists) {
+    const data = snap.data() as { date: string; items: MediaItem[] };
 
-    if (snap.exists) {
-      const data = snap.data() as {
-        date: string;
-        items: MediaItem[];
-        lockUntil?: number;
-      };
-
-      // Another instance holds the lock — return what we have
-      if (data.lockUntil && data.lockUntil > now) {
-        return { carryover: data.items ?? [], needsGeneration: false };
-      }
-
-      // Same day, already full — nothing to do
-      if (data.date === today && data.items?.length >= 3) {
-        return { carryover: dedupe(data.items), needsGeneration: false };
-      }
-
-      // New day — roll the window: drop oldest, carry forward 2
-      const carryover =
-        data.date !== today
-          ? (data.items ?? []).slice(0, 2) // shift: today's fetch will become index 0
-          : (data.items ?? []); // same day but incomplete, keep what we have
-
-      tx.set(docRef, {
-        date: today,
-        items: carryover,
-        lockUntil: now + 15_000,
-      });
-      return { carryover, needsGeneration: true };
+    // Case 1: today, already full
+    if (data.date === today && data.items?.length >= 3) {
+      return data.items;
     }
 
-    // No doc yet — first ever run
-    tx.set(docRef, { date: today, items: [], lockUntil: Date.now() + 15_000 });
-    return { carryover: [], needsGeneration: true };
-  });
-
-  if (!result.needsGeneration) return result.carryover;
-
-  try {
-    const needed = 3 - result.carryover.length;
-    const seenIds = new Set(result.carryover.map((i) => i.id));
-
-    // Fetch only the items we're missing
-    const newItems = await getRandomMedia(seenIds, needed);
-
-    if (newItems.length < needed) {
-      throw new Error(
-        `Failed to generate enough items (got ${newItems.length}, needed ${needed})`,
+    // Case 2: today, needs filling
+    if (data.date === today && data.items?.length < 3) {
+      const existing = data.items ?? [];
+      const needed = 3 - existing.length;
+      const seenIds = new Set(existing.map((i) => i.id));
+      const newItems = await getRandomMedia(seenIds, needed);
+      const updated = dedupe([...newItems, ...existing]).slice(0, 3);
+      await docRef.set({ date: today, items: updated });
+      console.log(
+        `[dailyMedia] Generated ${newItems.length} new item(s) for ${today}, total: ${updated.length}`,
       );
+      return updated;
     }
 
-    // Prepend new items so index 0 = today, 1 = yesterday, 2 = 2 days ago
-    const ordered = [...newItems, ...result.carryover].slice(0, 3);
-
-    console.log(
-      `[dailyMedia] Generated ${newItems.length} new item(s) for ${today}, total: ${ordered.length}`,
-    );
-
-    await docRef.set({ date: today, items: ordered, lockUntil: 0 });
-    return ordered;
-  } catch (error) {
-    // Release lock, keep whatever we had
-    await docRef.set({
-      date: today,
-      items: result.carryover,
-      lockUntil: 0,
-    });
-    console.error("[getOrCreateDailyMedia] Generation failed:", error);
-    if (result.carryover.length > 0) return result.carryover;
-    throw error;
+    // Case 3: new day — carry 2, drop 1, fetch 1 new
+    if (data.date !== today) {
+      const carryover = (data.items ?? []).slice(0, 2);
+      const seenIds = new Set(data.items.map((i) => i.id)); // all 3, not just carryover
+      const newItems = await getRandomMedia(seenIds, 1);
+      const updated = dedupe([...newItems, ...carryover]).slice(0, 3);
+      await docRef.set({ date: today, items: updated });
+      console.log(
+        `[dailyMedia] Rotated 1 new item for ${today}, total: ${updated.length}`,
+      );
+      return updated;
+    }
   }
+
+  // Case 4: no doc yet
+  const newItems = await getRandomMedia(new Set(), 3);
+  const items = dedupe(newItems).slice(0, 3);
+  await docRef.set({ date: today, items });
+  console.log(`[dailyMedia] First run, generated ${items.length} item(s)`);
+  return items;
 }
