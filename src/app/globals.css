@@ -53,6 +53,19 @@
   --scrollbar-track-dark: var(--color-dark-bg);
   --scrollbar-thumb-dark: var(--color-dark-accent);
 }
+/* Light mode */
+::selection {
+  background-color: var(--color-light-accent);
+  color: var(--color-light-btn-text); /* #ffffff */
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  ::selection {
+    background-color: var(--color-dark-accent);
+    color: var(--color-dark-btn-text); /* #ffffff */
+  }
+}
 
 @theme {
   --font-irish-grover: "Irish Grover", cursive;
