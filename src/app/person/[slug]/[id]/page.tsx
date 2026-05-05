@@ -5,9 +5,9 @@ import { fetchPerson } from "@/lib/fetchPerson";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
+  const { id ,slug} = await params;
 
   try {
     const data = await fetchPerson(id);
@@ -27,9 +27,9 @@ export async function generateMetadata({
     return {
       title: `${name} | WatchedThis`,
       description,
-      alternates: {
-        canonical: `https://watchedthis.com/person/${id}`,
-      },
+     alternates: {
+  canonical: `https://watchedthis.com/person/${slug}/${id}`,
+},
       openGraph: {
         title: `${name} | WatchedThis`,
         description,
@@ -58,16 +58,16 @@ export async function generateMetadata({
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; slug: string }>;
 }) {
-  const { id } = await params;
+  const { id, slug } = await params;
   const data = await fetchPerson(id);
   const name = data?.details?.name || "Person";
 
   return (
     <>
       <h1 className="sr-only">{name} | WatchedThis</h1>
-      <PersonPageClient id={id} initialData={data} />
+      <PersonPageClient id={id} slug={slug} initialData={data} />
     </>
   );
 }

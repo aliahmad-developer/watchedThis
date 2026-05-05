@@ -13,13 +13,17 @@ export default function CastCard({
   index?: number;
 }) {
   const actorName = actor.name || "Unknown Actor";
+  const slug = actorName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
   const characterName =
     actor.character && !["Self", "Himself", "Herself"].includes(actor.character)
       ? actor.character
       : actor.roles
           ?.map((r: any) => r.character)
           .filter(
-            (c: string) => c && !["Self", "Himself", "Herself"].includes(c)
+            (c: string) => c && !["Self", "Himself", "Herself"].includes(c),
           )
           .join(", ");
 
@@ -36,7 +40,10 @@ export default function CastCard({
       <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-light-border dark:bg-dark-border group">
         {actor.profile_path ? (
           <>
-            <Link href={`/person/${actor.id}`} className="block w-full h-full">
+            <Link
+              href={`/person/${slug}/${actor.id}`}
+              className="block w-full h-full"
+            >
               <div className="relative w-full h-full">
                 <Image
                   src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}

@@ -1,6 +1,7 @@
-import type { PersonData } from "../app/person/[id]/types";
+import { unstable_cache } from "next/cache";
+import type { PersonData } from "../app/person/[slug]/[id]/types";
 
-export const fetchPerson = async (id: string): Promise<PersonData | null> => {
+const _fetchPerson = async (id: string): Promise<PersonData | null> => {
   try {
     const res = await fetch(
       `https://api.themoviedb.org/3/person/${id}?append_to_response=combined_credits,images`,
@@ -8,8 +9,8 @@ export const fetchPerson = async (id: string): Promise<PersonData | null> => {
         headers: {
           Authorization: `Bearer ${process.env.TMDB_ACCESS_TOKEN}`,
         },
-        next: { revalidate: 3600 },
-      }
+        signal: AbortSignal.timeout(25000),
+      },
     );
     if (!res.ok) return null;
     const data = await res.json();
@@ -40,3 +41,7 @@ export const fetchPerson = async (id: string): Promise<PersonData | null> => {
     return null;
   }
 };
+
+export const fetchPerson = unstable_cache(_fetchPerson, ["fetch-person"], {
+  revalidate: 3600,
+});

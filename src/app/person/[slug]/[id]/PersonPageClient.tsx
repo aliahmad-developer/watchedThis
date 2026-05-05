@@ -131,6 +131,7 @@ export default function PersonPageClient({
   id,
   initialData,
 }: {
+  slug: string;
   id: string;
   initialData: PersonData | null;
 }) {
