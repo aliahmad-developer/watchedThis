@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     const upstream = await fetch(parsed.toString(), {
       headers: { "User-Agent": "Mozilla/5.0" },
       credentials: "omit",
+      signal: AbortSignal.timeout(8000), // ← only change
     });
 
     if (!upstream.ok) {
@@ -42,7 +43,10 @@ export async function GET(request: NextRequest) {
         "Access-Control-Allow-Origin": "*",
       },
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === "TimeoutError") {
+      return new NextResponse("Upstream timed out", { status: 504 });
+    }
     return new NextResponse("Failed to fetch image", { status: 502 });
   }
 }
