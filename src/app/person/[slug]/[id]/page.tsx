@@ -7,7 +7,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string; slug: string }>;
 }): Promise<Metadata> {
-  const { id ,slug} = await params;
+  const { id, slug } = await params;
 
   try {
     const data = await fetchPerson(id);
@@ -27,9 +27,9 @@ export async function generateMetadata({
     return {
       title: `${name} | WatchedThis`,
       description,
-     alternates: {
-  canonical: `https://watchedthis.com/person/${slug}/${id}`,
-},
+      alternates: {
+        canonical: `https://watchedthis.com/person/${slug}/${id}`,
+      },
       openGraph: {
         title: `${name} | WatchedThis`,
         description,
@@ -62,7 +62,16 @@ export default async function Page({
 }) {
   const { id, slug } = await params;
   const data = await fetchPerson(id);
-  const name = data?.details?.name || "Person";
+
+  if (!data) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-lg text-muted-foreground">Person not found.</p>
+      </main>
+    );
+  }
+
+  const name = data.details?.name || "Person";
 
   return (
     <>
