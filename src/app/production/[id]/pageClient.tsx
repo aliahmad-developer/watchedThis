@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import Image from "next/image";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 // ── Skeleton card — mirrors MediaCard exactly ─────────────────
 
@@ -126,7 +127,7 @@ export default function ProductionPageClient({ id }: { id: string }) {
           {company.logo_path ? (
             <Image
               draggable={false}
-              src={`https://image.tmdb.org/t/p/w300${company.logo_path}`}
+              src={tmdbImage(company.logo_path, "w300")!}
               alt={company.name}
               width={120}
               height={120}

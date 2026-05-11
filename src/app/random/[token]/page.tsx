@@ -5,6 +5,7 @@ import RandomMediaShell from "./pageClient";
 import DetailsPage from "@/app/components/randomMedia/detailsPage";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 import { Metadata } from "next";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 interface PageParams {
   token: string;
@@ -21,7 +22,7 @@ const fetchMediaDetails = cache(async (media_type: string, id: number) => {
   try {
     const res = await fetch(
       `${baseUrl}/api/media/${media_type}/placeholder/${id}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: 3600 } },
     );
     if (!res.ok) return null;
     return await res.json();
@@ -42,7 +43,8 @@ export async function generateMetadata({
 
   const data = await fetchMediaDetails(payload.media_type, payload.id);
   const title = data?.title || data?.name || "Random Pick";
-  const description = data?.overview?.substring(0, 160) ?? `Details about ${title}`;
+  const description =
+    data?.overview?.substring(0, 160) ?? `Details about ${title}`;
 
   return {
     title: `${title} | WatchedThis`,
@@ -50,9 +52,8 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      images: data?.poster_path
-        ? [`https://image.tmdb.org/t/p/original${data.poster_path}`]
-        : [],
+
+      images: data?.poster_path ? [tmdbImage(data.poster_path, "w780")!] : [],
       type: "website",
     },
     twitter: {
@@ -92,11 +93,18 @@ export default async function Page({
       <div className="py-6 px-4 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-md overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
-          <DetailsPage data={safeData} backdropUrl={safeData.backdrop_path ?? ""} isLoading={false} />
+          <DetailsPage
+            data={safeData}
+            backdropUrl={safeData.backdrop_path ?? ""}
+            isLoading={false}
+          />
         </div>
 
         {safeData?.credits?.cast?.length > 0 && (
-          <CastScroll cast={safeData.credits.cast} mediaType={safeData.media_type} />
+          <CastScroll
+            cast={safeData.credits.cast}
+            mediaType={safeData.media_type}
+          />
         )}
       </div>
     </RandomMediaShell>

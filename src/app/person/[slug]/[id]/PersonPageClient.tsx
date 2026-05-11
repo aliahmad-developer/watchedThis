@@ -6,6 +6,7 @@ import { useMediaType } from "@/app/components/hooks/Genre/useMediaType";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import { useEffect, useState, useRef } from "react";
 import { GenreHeader } from "@/app/components/Genre/mediaTypeToggle";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 const PersonPageSkeleton = () => (
   <div className="container mx-auto px-4 py-8 max-w-7xl min-h-screen bg-light-bg dark:bg-dark-bg space-y-12 animate-pulse">
@@ -181,7 +182,7 @@ export default function PersonPageClient({
           {details.profile_path ? (
             <Image
               draggable={false}
-              src={`https://image.tmdb.org/t/p/w500${details.profile_path}`}
+              src={tmdbImage(details.profile_path, "w500")!}
               alt={details.name}
               width={300}
               height={450}
@@ -261,7 +262,7 @@ export default function PersonPageClient({
               >
                 <Image
                   draggable={false}
-                  src={`https://image.tmdb.org/t/p/w300${image.file_path}`}
+                  src={tmdbImage(image.file_path, "w300")!}
                   alt={`${details.name} portrait`}
                   width={200}
                   height={250}

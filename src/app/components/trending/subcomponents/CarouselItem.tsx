@@ -4,6 +4,7 @@ import Link from "next/link";
 import { memo, useMemo } from "react";
 import { MediaItem } from "./types";
 import { trackClick } from "@/app/components/Recommendation/behaviourTracker";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 interface CarouselItemProps {
   item: MediaItem;
@@ -21,13 +22,13 @@ export const CarouselItem = memo(function CarouselItem({
   showSidebar,
 }: CarouselItemProps) {
   const { href, posterWidth, itemHeight } = useMemo(() => {
-    const mediaType  = item.title ? "movie" : "tv";
+    const mediaType = item.title ? "movie" : "tv";
     const mediaTitle = (item.title || item.name || "")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
     const posterWidth = showSidebar ? itemWidth - 44 : itemWidth;
-    const itemHeight  = (posterWidth * 3) / 2;
+    const itemHeight = (posterWidth * 3) / 2;
     return {
       href: `/${mediaType}/${mediaTitle}/${item.id}`,
       mediaTitle,
@@ -80,7 +81,7 @@ export const CarouselItem = memo(function CarouselItem({
           {item.poster_path ? (
             <Image
               draggable={false}
-              src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
+              src={tmdbImage(item.poster_path, "w500")!}
               alt={item.title || item.name || "Media poster"}
               fill
               className="object-cover"
@@ -89,7 +90,9 @@ export const CarouselItem = memo(function CarouselItem({
             />
           ) : (
             <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-              <span className="text-gray-500 dark:text-gray-400 text-sm">No image</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">
+                No image
+              </span>
             </div>
           )}
         </Link>

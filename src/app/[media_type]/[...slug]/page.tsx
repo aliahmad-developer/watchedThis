@@ -6,6 +6,7 @@ import CastScroll from "@/app/components/mediaCard/castScroll";
 import DetailsPage from "@/app/components/randomMedia/detailsPage";
 import DetailsClientShell from "./clientShell";
 import type { Metadata } from "next";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ function buildJsonLd(data: any, media_type: string) {
     name: mediaTitle,
     description: data.overview || "",
     image: data.poster_path
-      ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
+      ? tmdbImage(data.poster_path, "w500")! 
       : undefined,
     ...(data.release_date || data.first_air_date
       ? { datePublished: data.release_date || data.first_air_date }

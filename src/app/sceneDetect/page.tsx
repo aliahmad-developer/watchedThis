@@ -10,7 +10,7 @@ import { createSlug } from "../components/utilities/createSlug";
 import SceneCameraModal from "../components/sceneDetection/cameraModal";
 import { trackFindFilters } from "../components/Recommendation/behaviourTracker";
 import type { FindFilterSnapshot } from "../components/Recommendation/behaviourTracker";
-
+import { tmdbImage } from "@/lib/imageTmdb";
 type Movie = {
   id?: number;
   title: string;
@@ -154,9 +154,9 @@ function SceneResultCard({
   const badgeRef = useRef<HTMLSpanElement>(null);
 
   const imageUrl = movie.backdrop_path
-    ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`
+    ? tmdbImage(movie.backdrop_path, "w1280")
     : movie.poster_path
-      ? `https://image.tmdb.org/t/p/w780${movie.poster_path}`
+      ? tmdbImage(movie.poster_path, "w780")
       : null;
 
   const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
@@ -343,12 +343,14 @@ export default function SceneDetectPage() {
         const key = m.id ?? m.title;
         if (!seen.has(key) || seen.get(key).votes < m.votes) seen.set(key, m);
       }
-      const sorted = Array.from(seen.values()).sort((a, b) => b.votes - a.votes);
+      const sorted = Array.from(seen.values()).sort(
+        (a, b) => b.votes - a.votes,
+      );
       setMovies(sorted);
       setReady(true);
       // Track scene detection result usage
       if (sorted.length > 0) {
-        const topKeywords = sorted.slice(0, 3).flatMap(m => m.keywords || []);
+        const topKeywords = sorted.slice(0, 3).flatMap((m) => m.keywords || []);
         await trackFindFilters({
           mediaType: "both",
           genres: [],
@@ -357,8 +359,8 @@ export default function SceneDetectPage() {
           excludeKeywords: [],
           yearRange: [1950, new Date().getFullYear()],
           ratingRange: [0, 10],
-          sortBy: 'scene_votes',
-          ts: Date.now()
+          sortBy: "scene_votes",
+          ts: Date.now(),
         } as FindFilterSnapshot);
       }
       return true;

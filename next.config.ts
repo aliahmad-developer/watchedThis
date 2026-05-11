@@ -50,20 +50,28 @@ const nextConfig: NextConfig = {
     imageSizes: [64, 128, 256, 500],
     qualities: [55, 75],
     remotePatterns: [
-      { protocol: "https", hostname: "image.tmdb.org", pathname: "/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
       { protocol: "https", hostname: "fyp-movie-4d46d.firebasestorage.app" },
+      ...(process.env.NODE_ENV === "development"
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: "image.tmdb.org",
+              pathname: "/**",
+            },
+          ]
+        : []),
       {
         protocol: "http",
         hostname: "localhost",
         port: "3000",
-        pathname: "/api/image-proxy**",
+        pathname: "/api/image-proxy/**",
       },
       {
         protocol: "https",
         hostname: "watchedthis.com",
-        pathname: "/api/image-proxy**",
+        pathname: "/api/image-proxy/**",
       },
     ],
   },

@@ -3,6 +3,7 @@ import GradientOverlay from "./GradientOverlay";
 import MobileContent from "./MobileContent";
 import DesktopContent from "./DesktopContent";
 import Image from "next/image";
+import { tmdbImage } from "@/lib/imageTmdb"
 
 interface SlideItemProps {
   item: MediaItem;
@@ -41,7 +42,7 @@ const SlideItem = ({
             <>
               <Image
                 draggable={false}
-                src={`https://image.tmdb.org/t/p/${tmdbSize}${item.backdrop_path}`}
+              src={tmdbImage(item.backdrop_path, tmdbSize)!}
                 alt={item.title || item.name || "Media backdrop"}
                 fill
                 className="object-cover"

@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { memo, useState } from "react";
 import type { AmbientTextColors } from "./detailsPage";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 interface MediaPosterProps {
   data: {
@@ -43,9 +44,9 @@ const BADGE_MAP: Record<string, string> = {
 };
 
 const FALLBACK_AMBIENT: AmbientTextColors = {
-  primary:   "rgba(255,255,255,0.95)",
+  primary: "rgba(255,255,255,0.95)",
   secondary: "rgba(255,255,255,0.70)",
-  muted:     "rgba(255,255,255,0.40)",
+  muted: "rgba(255,255,255,0.40)",
 };
 
 const BLUR_DATA_URL =
@@ -63,8 +64,8 @@ function MediaPoster({
   const displayTitle = data.title || data.name || "Untitled";
   const hasPoster = !!data.poster_path && !hasError;
   const badgeText = BADGE_MAP[data.media_type ?? ""] ?? "MEDIA";
-  const posterSrc = `https://image.tmdb.org/t/p/w342${data.poster_path}`;
 
+  const posterSrc = tmdbImage(data.poster_path ?? null, "w342")!;
   return (
     <div
       className={`

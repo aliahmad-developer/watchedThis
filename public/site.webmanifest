@@ -47,7 +47,7 @@
       "name": "Random Movie",
       "short_name": "Random",
       "description": "Get a random movie recommendation",
-      "url": "/random/movie",
+      "url": "/random/",
       "icons": [{ "src": "/favicon-32x32.png", "sizes": "96x96" }]
     },
     {

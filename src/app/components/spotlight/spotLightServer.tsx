@@ -1,6 +1,7 @@
 import PopularSpotlightSliderClient from "./PopularSpotlightSliderClient";
 import { getSpotlightData } from "./spotlightHelper";
 import { headers } from "next/headers";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 export default async function PopularSpotlightSliderServer({
   slideDuration = 5000,
@@ -17,10 +18,10 @@ export default async function PopularSpotlightSliderServer({
     const isMobile = /mobile|android|iphone|ipad/i.test(ua);
     const firstBackdrop = results[0]?.backdrop_path;
 
-    // Must match the tmdbSize logic in SlideItem exactly
     const tmdbSize = isMobile ? "w780" : "w1280";
+    // ✅ use proxy URL instead of direct TMDB
     const preloadHref = firstBackdrop
-      ? `https://image.tmdb.org/t/p/${tmdbSize}${firstBackdrop}`
+      ? tmdbImage(firstBackdrop, tmdbSize)
       : null;
 
     return (

@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, memo } from "react";
 import { SpinnerItem } from "./types";
-
+import { tmdbImage } from "@/lib/imageTmdb";
 interface SpinWheelProps {
   slots: (SpinnerItem | null)[];
   rotation: number;
@@ -79,9 +79,9 @@ const toRad = (d: number) => d * (Math.PI / 180);
 
 function getImgUrl(item: SpinnerItem): string | null {
   if (item.backdrop_path)
-    return `https://image.tmdb.org/t/p/w780${item.backdrop_path}`;
+    return tmdbImage(item.backdrop_path, "w780");
   if (item.poster_path)
-    return `https://image.tmdb.org/t/p/w342${item.poster_path}`;
+    return tmdbImage(item.poster_path, "w342");
   return null;
 }
 

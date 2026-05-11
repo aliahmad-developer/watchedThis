@@ -557,9 +557,7 @@ export default function EchoClient() {
           type: item.type,
           title: item.title,
           year: item.year,
-          poster: item.poster
-            ? `https://image.tmdb.org/t/p/w92${item.poster}`
-            : null,
+          poster: item.poster ? proxyUrl(item.poster, "w92") : null,
           vote: item.vote,
         }));
       })

@@ -8,6 +8,7 @@ import IndicatorDots from "./clientSubCom/IndicatorDots";
 import TrailerModal from "../playTrailerModal/trailerModal";
 import { MediaItem } from "./types";
 
+
 interface Props {
   items: MediaItem[];
   isMobile: boolean;
@@ -107,8 +108,7 @@ export default function PopularSpotlightSliderClient({
       const next = prev + 1;
 
       if (next === items.length) {
-        // Slide to appended clone of first item (index items.length),
-        // then instantly snap back to real index 0
+        
         transitionTimeoutRef.current = setTimeout(() => {
           setIsTransitioning(false);
           setCurrentIndex(0);
@@ -131,8 +131,7 @@ export default function PopularSpotlightSliderClient({
 
     setCurrentIndex((prev) => {
       if (prev === 0) {
-        // Slide to prepended clone of last item (index -1),
-        // then instantly snap to real last index
+        
         transitionTimeoutRef.current = setTimeout(() => {
           setIsTransitioning(false);
           setCurrentIndex(items.length - 1);

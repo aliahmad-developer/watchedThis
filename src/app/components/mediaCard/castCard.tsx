@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 export default function CastCard({
   actor,
@@ -46,7 +47,7 @@ export default function CastCard({
             >
               <div className="relative w-full h-full">
                 <Image
-                  src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                  src={tmdbImage(actor.profile_path, "w185")!}
                   alt={actorName}
                   fill
                   className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.05] transform-gpu will-change-transform"

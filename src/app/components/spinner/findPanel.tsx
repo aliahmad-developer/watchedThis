@@ -14,6 +14,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { SpinnerItem } from "./types";
 import Image from "next/image";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 interface Filters {
   mediaType: "movie" | "tv";
@@ -407,7 +408,7 @@ export default function FindPanel({ isOpen, onClose, onAdd }: FindPanelProps) {
                     <div className="relative w-9 h-14 rounded-lg overflow-hidden shrink-0 bg-light-border dark:bg-dark-border">
                       {item.poster_path && (
                         <Image
-                          src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                          src={tmdbImage(item.poster_path, "w92")!}
                           alt={item.title}
                           fill
                           className="object-cover"

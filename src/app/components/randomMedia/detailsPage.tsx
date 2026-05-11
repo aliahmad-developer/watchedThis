@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
+import { tmdbImage } from "@/lib/imageTmdb"
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import KeywordsSection from "./MediaInfo/KeywordSection";
 import MediaPoster from "./mediaPoster";
@@ -45,7 +45,7 @@ const isValidBackdropUrl = (url: string): boolean =>
   Boolean(url?.trim() && url !== "undefined");
 
 const getTmdbSrc = (url: string, size: string): string =>
-  url.startsWith("http") ? url : `https://image.tmdb.org/t/p/${size}${url}`;
+  url.startsWith("http") ? url : tmdbImage(url, size)!
 
 interface AmbientColor {
   solid: string;

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import GradientOverlay from "./GradientOverlay";
 import { MediaItem } from "../types";
+import { tmdbImage } from "@/lib/imageTmdb";
 
 interface DesktopContentProps {
   item: MediaItem;
@@ -63,7 +64,9 @@ const DesktopContent = ({
             )}
             <div className="inline-flex items-center gap-2">
               <FontAwesomeIcon icon={faCalendar} className="w-4 h-4" />
-              <span>{formatDate(item.release_date || item.first_air_date)}</span>
+              <span>
+                {formatDate(item.release_date || item.first_air_date)}
+              </span>
             </div>
           </div>
           <p className="text-base line-clamp-2 opacity-90 text-light-body-text dark:text-dark-body-text leading-relaxed">
@@ -79,7 +82,7 @@ const DesktopContent = ({
             </button>
             <Link
               href={`/${item.media_type || "movie"}/${createSlug(
-                item.title || item.name || ""
+                item.title || item.name || "",
               )}/${item.id}`}
               className="px-4 py-2 text-base rounded-full font-medium transition bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.2)] text-light-body-text dark:text-dark-body-text flex items-center gap-2"
             >
@@ -95,7 +98,7 @@ const DesktopContent = ({
           <>
             <Image
               draggable={false}
-              src={`https://image.tmdb.org/t/p/w1280${item.backdrop_path}`}
+              src={tmdbImage(item.backdrop_path, "w1280")!}
               alt={item.title || item.name || "Media backdrop"}
               fill
               className="object-cover object-right"

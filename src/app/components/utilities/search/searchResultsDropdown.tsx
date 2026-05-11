@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useMemo } from "react";
 import { MediaResult } from "./searchInput";
-
+import { tmdbImage } from "@/lib/imageTmdb";
 interface SearchResultsDropdownProps {
   results: MediaResult[];
   searchQuery: string;
@@ -54,7 +54,10 @@ export default function SearchResultsDropdown({
           // ── Skeleton rows instead of plain text ──────────────────────────
           <div className="divide-y divide-light-border dark:divide-dark-border">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-start gap-2.5 px-3 sm:px-4 py-2 animate-pulse">
+              <div
+                key={i}
+                className="flex items-start gap-2.5 px-3 sm:px-4 py-2 animate-pulse"
+              >
                 <div className="w-8 h-12 rounded bg-light-disabled dark:bg-dark-disabled shrink-0 mt-0.5" />
                 <div className="flex-1 space-y-2 pt-1">
                   <div className="h-3 bg-light-disabled dark:bg-dark-disabled rounded w-2/5" />
@@ -76,7 +79,8 @@ export default function SearchResultsDropdown({
                 >
                   {item.poster ? (
                     <Image
-                      src={`https://image.tmdb.org/t/p/w92${item.poster}`}
+                      draggable={false}
+                      src={tmdbImage(item.poster, "w92")!}
                       alt={item.title}
                       width={36}
                       height={50}
@@ -91,11 +95,12 @@ export default function SearchResultsDropdown({
                       <div className="text-light-body-text dark:text-dark-body-text text-sm font-semibold line-clamp-1 leading-tight">
                         {item.title}
                       </div>
-                      {item.originalName && item.originalName !== item.title && (
-                        <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
-                          {item.originalName}
-                        </div>
-                      )}
+                      {item.originalName &&
+                        item.originalName !== item.title && (
+                          <div className="text-xs text-light-secondary-text dark:text-dark-secondary-text line-clamp-1">
+                            {item.originalName}
+                          </div>
+                        )}
                       <div className="flex flex-wrap items-center gap-1 mt-1">
                         <span className="text-xs px-1.5 py-0 rounded bg-light-card dark:bg-dark-card text-light-secondary-text dark:text-dark-secondary-text font-medium">
                           {formatMediaType(item.mediaType)}
@@ -105,7 +110,9 @@ export default function SearchResultsDropdown({
                         </span>
                         {item.runtime && (
                           <>
-                            <span className="text-light-disabled dark:text-dark-disabled text-xs">•</span>
+                            <span className="text-light-disabled dark:text-dark-disabled text-xs">
+                              •
+                            </span>
                             <span className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
                               {item.runtime}
                             </span>
@@ -152,10 +159,14 @@ export default function SearchResultsDropdown({
 
 function formatMediaType(type: string) {
   switch (type) {
-    case "tv":    return "TV";
-    case "movie": return "Movie";
-    case "ona":   return "ONA";
-    default:      return type.toUpperCase();
+    case "tv":
+      return "TV";
+    case "movie":
+      return "Movie";
+    case "ona":
+      return "ONA";
+    default:
+      return type.toUpperCase();
   }
 }
 

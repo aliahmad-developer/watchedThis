@@ -174,7 +174,7 @@ export default function PrivacyPolicyPage() {
 
         {/* Footer note */}
         <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-xs mt-8 pb-4">
-          Your data is yours. We're just borrowing it to make the app useful.
+          Your data is yours. We're just borrowing it to make the app useful to you.
           <br /> Now stop reading legal pages and go watch something.
         </p>
       </div>
