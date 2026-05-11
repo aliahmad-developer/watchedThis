@@ -310,7 +310,8 @@ function MediaCard({
   const textColor = getAmbientText(isLightMode, rawRgb, processedLum);
 
   const fullTint = `rgba(${rgbColor}, 0.45)`;
-  const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
+  // Reduce overlay darkness by lowering the mid/upper alpha stops.
+  const layerBottom = `linear-gradient(to top, rgba(${rgbColor},0.85) 0%, rgba(${rgbColor},0.55) 12%, rgba(${rgbColor},0.18) 26%, rgba(${rgbColor},0) 42%)`;
   const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
   const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
   const rating = item.vote ? item.vote.toFixed(1) : null;
