@@ -10,6 +10,7 @@ const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
+
   const mediaId = url.searchParams.get("mediaId");
   const mediaType = url.searchParams.get("mediaType");
   const title = url.searchParams.get("title");
@@ -31,39 +32,44 @@ export async function GET(req: NextRequest) {
 
   try {
     // =========================
-    // 1. TMDB FETCH
+    // 1. TMDB FETCH (IMPORTANT FIX)
     // =========================
-    const tmdbUrl = `${TMDB_BASE_URL}/${mediaType}/${mediaId}/videos?api_key=${TMDB_API_KEY}&language=en-US`;
+    const tmdbUrl = `${TMDB_BASE_URL}/${mediaType}/${mediaId}/videos?api_key=${TMDB_API_KEY}`;
+
     const tmdbRes = await fetch(tmdbUrl);
     const tmdbData = await tmdbRes.json();
 
     const videos = tmdbData.results || [];
 
-    // ✅ expanded filter (important fix)
-    const candidates = videos.filter((vid: any) => {
-      return (
-        vid.site === "YouTube" &&
-        ["Trailer", "Teaser", "Clip"].includes(vid.type)
-      );
-    });
+    // ✅ DO NOT over-filter like before
+    const youtubeVideos = videos.filter(
+      (v: any) => v.site === "YouTube" && v.key,
+    );
 
-    // sort by best quality signals
-    const sorted = candidates.sort((a: any, b: any) => {
-      const scoreA =
-        (a.official ? 2 : 0) +
-        (a.type === "Trailer" ? 2 : 0) +
-        (a.published_at ? new Date(a.published_at).getTime() : 0);
+    if (youtubeVideos.length > 0) {
+      const scored = youtubeVideos
+        .map((v: any) => {
+          let score = 0;
 
-      const scoreB =
-        (b.official ? 2 : 0) +
-        (b.type === "Trailer" ? 2 : 0) +
-        (b.published_at ? new Date(b.published_at).getTime() : 0);
+          // prioritize official content
+          if (v.official) score += 3;
 
-      return scoreB - scoreA;
-    });
+          // type importance (match TMDB behavior)
+          if (v.type === "Trailer") score += 3;
+          else if (v.type === "Teaser") score += 2;
+          else if (v.type === "Featurette") score += 2;
+          else if (v.type === "Clip") score += 1;
 
-    if (sorted.length > 0) {
-      const best = sorted[0];
+          // recency boost
+          if (v.published_at) {
+            score += new Date(v.published_at).getTime() / 1e12;
+          }
+
+          return { ...v, score };
+        })
+        .sort((a: any, b: any) => b.score - a.score);
+
+      const best = scored[0];
 
       return NextResponse.json(
         {
@@ -81,34 +87,33 @@ export async function GET(req: NextRequest) {
     }
 
     // =========================
-    // 2. YOUTUBE FALLBACK (IMPROVED)
+    // 2. YOUTUBE FALLBACK
     // =========================
     if (YOUTUBE_API_KEY && title) {
       const queries = [
         `${title} ${year || ""} official trailer`,
+        `${title} official trailer`,
         `${title} trailer`,
-        `${title} final trailer`,
         `${title} teaser`,
       ];
 
       for (const q of queries) {
-        const query = encodeURIComponent(q);
+        const ytUrl = `${YOUTUBE_SEARCH_URL}?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(
+          q,
+        )}&key=${YOUTUBE_API_KEY}`;
 
-        const ytUrl = `${YOUTUBE_SEARCH_URL}?part=snippet&type=video&maxResults=5&q=${query}&key=${YOUTUBE_API_KEY}`;
         const ytRes = await fetch(ytUrl);
         const ytData = await ytRes.json();
 
         if (ytData.items?.length) {
-          // pick best match (avoid random junk videos)
-          const bestMatch = ytData.items.find((item: any) =>
-            item.snippet?.title?.toLowerCase().includes("trailer"),
-          );
-
-          const final = bestMatch || ytData.items[0];
+          const bestMatch =
+            ytData.items.find((item: any) =>
+              item.snippet?.title?.toLowerCase().includes("trailer"),
+            ) || ytData.items[0];
 
           return NextResponse.json(
             {
-              key: final.id.videoId,
+              key: bestMatch.id.videoId,
               source: "youtube_fallback",
             },
             {
@@ -122,9 +127,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // =========================
-    // 3. NOTHING FOUND
-    // =========================
     return NextResponse.json({ error: "No trailer found" }, { status: 404 });
   } catch (err: any) {
     return NextResponse.json(
