@@ -139,7 +139,7 @@ export default function MediaCard({
                     <div className="mt-4 flex items-center justify-start gap-1.5">
                       <FontAwesomeIcon
                         icon={faStar}
-                        className="w-4 h-4 text-yellow-500 dark:text-yellow-400"
+                        className="w-4 h-4 text-light-secondary-text dark:text-white"
                       />
                       <span className="text-gray-900 dark:text-white text-sm font-semibold">
                         {rating}
