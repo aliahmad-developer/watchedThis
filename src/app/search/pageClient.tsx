@@ -35,26 +35,32 @@ function SearchSkeleton() {
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const query   = searchParams.get("q")       || "";
+  const query = searchParams.get("q") || "";
   const keyword = searchParams.get("keyword") || "";
   const activeTerm = query || keyword;
 
-  const [results, setResults]       = useState<MediaResult[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [results, setResults] = useState<MediaResult[]>([]);
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError]           = useState<string | null>(null);
-  const [page, setPage]             = useState(1);
-  const [hasMore, setHasMore]       = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const hasMoreRef      = useRef(true);
-  const loadingRef      = useRef(false);
-  const loadingMoreRef  = useRef(false);
-  const fetchId         = useRef(0);
-  const observer        = useRef<IntersectionObserver | null>(null);
+  const hasMoreRef = useRef(true);
+  const loadingRef = useRef(false);
+  const loadingMoreRef = useRef(false);
+  const fetchId = useRef(0);
+  const observer = useRef<IntersectionObserver | null>(null);
 
-  useEffect(() => { hasMoreRef.current     = hasMore;     }, [hasMore]);
-  useEffect(() => { loadingRef.current     = loading;     }, [loading]);
-  useEffect(() => { loadingMoreRef.current = loadingMore; }, [loadingMore]);
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
 
   const lastItemRef = useCallback((node: HTMLDivElement | null) => {
     if (observer.current) observer.current.disconnect();
@@ -113,19 +119,24 @@ function SearchContent() {
         if (id !== fetchId.current) return;
         setLoading(false);
         setLoadingMore(false);
-        loadingRef.current      = false;
-        loadingMoreRef.current  = false;
+        loadingRef.current = false;
+        loadingMoreRef.current = false;
       }
     };
 
-    const timer = setTimeout(fetchResults, page === 1 && results.length === 0 ? 0 : 300);
+    const timer = setTimeout(
+      fetchResults,
+      page === 1 && results.length === 0 ? 0 : 300,
+    );
     return () => clearTimeout(timer);
   }, [activeTerm, page]);
 
   useEffect(() => () => observer.current?.disconnect(), []);
 
-  if (!activeTerm) return <p className="text-center mt-8">No query provided.</p>;
-  if (error) return <div className="text-red-500 text-center mt-8">{error}</div>;
+  if (!activeTerm)
+    return <p className="text-center mt-8">No query provided.</p>;
+  if (error)
+    return <div className="text-red-500 text-center mt-8">{error}</div>;
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-180">
@@ -157,7 +168,9 @@ function SearchContent() {
       ) : (
         <div className="flex items-center justify-center min-h-[50vh]">
           <p className="text-lg text-gray-500">
-            {keyword ? `No results found for #${keyword}` : `No results found for "${query}"`}
+            {keyword
+              ? `No results found for #${keyword}`
+              : `No results found for "${query}"`}
           </p>
         </div>
       )}

@@ -135,7 +135,17 @@ html {
 /* ===================== */
 /*   WAVE BACKGROUND     */
 /* ===================== */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
 
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 body {
   position: relative;
   background-color: #eef0f2;
@@ -273,7 +283,7 @@ body::after {
 /*
   IMPORTANT: Any direct children of <body> that need to appear
   above the wave pseudo-elements must have position: relative and z-index >= 1.
-  Your navbar, page wrappers, etc. should already have this if they use
+  navbar, page wrappers, etc. should already have this if they use
   Tailwind's relative class. If anything disappears behind the wave,
   add  position: relative; z-index: 1;  to that element.
 */

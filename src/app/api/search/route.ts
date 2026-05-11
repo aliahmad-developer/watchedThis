@@ -42,16 +42,29 @@ interface TMDBResult {
 interface DetailedResult {
   id: number;
   media_type: "movie" | "tv";
+
   title: string;
   original_name?: string;
+
   poster_path?: string | null;
   backdrop_path?: string | null;
+
   release_date: string | null;
+
   runtime: number | null;
+
+  episode_run_time?: number[];
+
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+
   popularity: number;
+
   vote_average: number;
   vote_count: number;
+
   overview: string;
+
   genres: string[];
 }
 
@@ -68,7 +81,7 @@ function buildScore(item: TMDBResult, query: string): number {
 }
 
 function deduplicateByScore(
-  results: (TMDBResult & { _score: number })[]
+  results: (TMDBResult & { _score: number })[],
 ): (TMDBResult & { _score: number })[] {
   const seen = new Map<number, TMDBResult & { _score: number }>();
   for (const item of results) {
@@ -80,15 +93,15 @@ function deduplicateByScore(
 
 async function fetchSearchPage(
   url: string,
-  mediaType?: "movie" | "tv"
+  mediaType?: "movie" | "tv",
 ): Promise<TMDBResult[]> {
   try {
-    const data = await cachedFetch(url) as { results?: TMDBResult[] } | null;
+    const data = (await cachedFetch(url)) as { results?: TMDBResult[] } | null;
     if (!data) return [];
     const results: TMDBResult[] = data.results || [];
     if (mediaType) return results.map((r) => ({ ...r, media_type: mediaType }));
     return results.filter(
-      (r) => r.media_type === "movie" || r.media_type === "tv"
+      (r) => r.media_type === "movie" || r.media_type === "tv",
     );
   } catch {
     return [];
@@ -97,16 +110,23 @@ async function fetchSearchPage(
 
 async function fetchDetails(
   item: TMDBResult,
-  apiKey: string
+  apiKey: string,
 ): Promise<DetailedResult | null> {
   try {
     const url = `${TMDB_BASE}/${item.media_type}/${item.id}?api_key=${apiKey}&language=en-US`;
-    const detail = await cachedFetch(url) as {
+    const detail = (await cachedFetch(url)) as {
       runtime?: number;
+
       episode_run_time?: number[];
+
+      number_of_seasons?: number;
+      number_of_episodes?: number;
+
       vote_average?: number;
       vote_count?: number;
+
       overview?: string;
+
       genres?: { name: string }[];
     } | null;
 
@@ -114,22 +134,40 @@ async function fetchDetails(
 
     const runtime =
       item.media_type === "movie"
-        ? detail.runtime ?? null
-        : detail.episode_run_time?.[0] ?? detail.runtime ?? null;
+        ? (detail.runtime ?? null)
+        : (detail.episode_run_time?.find((v) => v > 0) ??
+          detail.runtime ??
+          null);
 
     return {
       id: item.id,
       media_type: item.media_type,
+
       title: item.title || item.name || item.original_name || "Untitled",
+
       original_name: item.original_name || item.original_title || undefined,
+
       poster_path: item.poster_path ?? null,
       backdrop_path: item.backdrop_path ?? null,
+
       release_date: item.release_date || item.first_air_date || null,
+
       runtime,
+
+      episode_run_time: detail.episode_run_time,
+
+      number_of_seasons: detail.number_of_seasons,
+
+      number_of_episodes: detail.number_of_episodes,
+
       popularity: item.popularity,
+
       vote_average: detail.vote_average ?? 0,
+
       vote_count: detail.vote_count ?? 0,
+
       overview: detail.overview || item.overview || "",
+
       genres: detail.genres?.map((g) => g.name) ?? [],
     };
   } catch {
@@ -148,7 +186,7 @@ export async function GET(req: NextRequest) {
   if (!query && !keyword) {
     return NextResponse.json(
       { error: "Missing query parameter" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -156,7 +194,7 @@ export async function GET(req: NextRequest) {
   if (!apiKey) {
     return NextResponse.json(
       { error: "TMDB API key missing" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -166,7 +204,9 @@ export async function GET(req: NextRequest) {
     // ── Keyword mode ──────────────────────────────────────────────────────────
     if (keyword) {
       const kwUrl = `${TMDB_BASE}/search/keyword?api_key=${apiKey}&query=${encodeURIComponent(keyword)}`;
-      const kwData = await cachedFetch(kwUrl) as { results?: { id: number }[] } | null;
+      const kwData = (await cachedFetch(kwUrl)) as {
+        results?: { id: number }[];
+      } | null;
       const kwId: number | undefined = kwData?.results?.[0]?.id;
 
       if (!kwId) {
@@ -178,12 +218,16 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      const [movieData, tvData] = await Promise.all([
-        cachedFetch(`${TMDB_BASE}/discover/movie?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
-        cachedFetch(`${TMDB_BASE}/discover/tv?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`),
-      ]) as [
+      const [movieData, tvData] = (await Promise.all([
+        cachedFetch(
+          `${TMDB_BASE}/discover/movie?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`,
+        ),
+        cachedFetch(
+          `${TMDB_BASE}/discover/tv?${base}&with_keywords=${kwId}&sort_by=popularity.desc&page=${currentPage}`,
+        ),
+      ])) as [
         { results?: TMDBResult[]; total_pages?: number } | null,
-        { results?: TMDBResult[]; total_pages?: number } | null
+        { results?: TMDBResult[]; total_pages?: number } | null,
       ];
 
       const movies: TMDBResult[] = (movieData?.results || []).map((r) => ({
@@ -196,12 +240,12 @@ export async function GET(req: NextRequest) {
       }));
 
       const combined = [...movies, ...shows].sort(
-        (a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)
+        (a, b) => (b.popularity ?? 0) - (a.popularity ?? 0),
       );
 
       const totalPages = Math.max(
         movieData?.total_pages ?? 1,
-        tvData?.total_pages ?? 1
+        tvData?.total_pages ?? 1,
       );
 
       const detailedResults: DetailedResult[] = combined.map((item) => ({
@@ -230,19 +274,38 @@ export async function GET(req: NextRequest) {
 
     // ── # mode ────────────────────────────────────────────────────────────────
     if (query === "#") {
-      const numWords = ["zero","one","two","three","four","five","six","seven","eight","nine"];
-      const digits = ["0","1","2","3","4","5","6","7","8","9"];
+      const numWords = [
+        "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+      ];
+      const digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
       const allVariants = [...digits, ...numWords];
 
       const batches = await Promise.all(
         allVariants.map((v) => {
           const e = encodeURIComponent(v);
           return Promise.all([
-            fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${e}&page=1`),
-            fetchSearchPage(`${TMDB_BASE}/search/movie?${base}&query=${e}&page=1`, "movie"),
-            fetchSearchPage(`${TMDB_BASE}/search/tv?${base}&query=${e}&page=1`, "tv"),
+            fetchSearchPage(
+              `${TMDB_BASE}/search/multi?${base}&query=${e}&page=1`,
+            ),
+            fetchSearchPage(
+              `${TMDB_BASE}/search/movie?${base}&query=${e}&page=1`,
+              "movie",
+            ),
+            fetchSearchPage(
+              `${TMDB_BASE}/search/tv?${base}&query=${e}&page=1`,
+              "tv",
+            ),
           ]);
-        })
+        }),
       );
 
       const allRaw = batches.flat(2);
@@ -258,14 +321,17 @@ export async function GET(req: NextRequest) {
       const deduped = deduplicateByScore(scored);
       const sorted = deduped.sort((a, b) => b._score - a._score);
 
-      const totalPages = Math.max(1, Math.ceil(sorted.length / RESULTS_PER_PAGE));
+      const totalPages = Math.max(
+        1,
+        Math.ceil(sorted.length / RESULTS_PER_PAGE),
+      );
       const pageSlice = sorted.slice(
         (currentPage - 1) * RESULTS_PER_PAGE,
-        currentPage * RESULTS_PER_PAGE
+        currentPage * RESULTS_PER_PAGE,
       );
 
       const detailedResults = await Promise.all(
-        pageSlice.map((item) => fetchDetails(item, apiKey))
+        pageSlice.map((item) => fetchDetails(item, apiKey)),
       );
 
       return NextResponse.json({
@@ -283,10 +349,22 @@ export async function GET(req: NextRequest) {
       fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${enc}&page=1`),
       fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${enc}&page=2`),
       fetchSearchPage(`${TMDB_BASE}/search/multi?${base}&query=${enc}&page=3`),
-      fetchSearchPage(`${TMDB_BASE}/search/movie?${base}&query=${enc}&page=1`, "movie"),
-      fetchSearchPage(`${TMDB_BASE}/search/movie?${base}&query=${enc}&page=2`, "movie"),
-      fetchSearchPage(`${TMDB_BASE}/search/tv?${base}&query=${enc}&page=1`, "tv"),
-      fetchSearchPage(`${TMDB_BASE}/search/tv?${base}&query=${enc}&page=2`, "tv"),
+      fetchSearchPage(
+        `${TMDB_BASE}/search/movie?${base}&query=${enc}&page=1`,
+        "movie",
+      ),
+      fetchSearchPage(
+        `${TMDB_BASE}/search/movie?${base}&query=${enc}&page=2`,
+        "movie",
+      ),
+      fetchSearchPage(
+        `${TMDB_BASE}/search/tv?${base}&query=${enc}&page=1`,
+        "tv",
+      ),
+      fetchSearchPage(
+        `${TMDB_BASE}/search/tv?${base}&query=${enc}&page=2`,
+        "tv",
+      ),
     ];
 
     const batches = await Promise.all(tasks);
@@ -302,11 +380,11 @@ export async function GET(req: NextRequest) {
     const totalPages = Math.max(1, Math.ceil(sorted.length / RESULTS_PER_PAGE));
     const pageSlice = sorted.slice(
       (currentPage - 1) * RESULTS_PER_PAGE,
-      currentPage * RESULTS_PER_PAGE
+      currentPage * RESULTS_PER_PAGE,
     );
 
     const detailedResults = await Promise.all(
-      pageSlice.map((item) => fetchDetails(item, apiKey))
+      pageSlice.map((item) => fetchDetails(item, apiKey)),
     );
 
     return NextResponse.json({
@@ -315,7 +393,6 @@ export async function GET(req: NextRequest) {
       total_pages: totalPages,
       has_more: currentPage < totalPages,
     });
-
   } catch {
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }

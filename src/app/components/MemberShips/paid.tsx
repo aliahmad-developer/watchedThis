@@ -110,7 +110,7 @@ export default function Membership() {
       </div>
 
       {/* Left content */}
-      <div className="flex-1 text-center md:text-left relative z-10">
+      <div id="membership" className="flex-1 text-center md:text-left relative z-10">
         <div className="flex items-center gap-2 mb-3 px-1">
           <FontAwesomeIcon
             icon={faHashtag}
