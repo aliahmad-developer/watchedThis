@@ -332,7 +332,7 @@ export default function MediaCard({
                     </p>
                   )}
 
-                  <div className="mt-4 flex items-center gap-4">
+                  <div className="mt-4 flex items-center gap-4 z-10">
                     {/* PLAY */}
                     <div className="relative group/play">
                       <button
