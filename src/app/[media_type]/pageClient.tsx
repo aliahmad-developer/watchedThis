@@ -129,7 +129,7 @@ function MediaTypeContent() {
                 key={`${item.media_type || mediaType}-${item.id}`}
                 item={item}
                 index={i}
-                hideMetaData
+              
               />
             ))}
             {loadingMore &&

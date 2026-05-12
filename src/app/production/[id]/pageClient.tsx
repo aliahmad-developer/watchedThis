@@ -242,7 +242,6 @@ export default function ProductionPageClient({ id }: { id: string }) {
             <MediaCard
               key={`${mediaType}-${item.id}-${index}`}
               item={{ ...item, media_type: mediaType }}
-              hideMetaData
             />
           ))}
         </div>

@@ -196,7 +196,7 @@ function ScoredCard({
       className="shrink-0 w-32 sm:w-40 md:w-44 lg:w-48 flex flex-col cursor-pointer"
       onClick={() => onCardClick?.(item)}
     >
-      <MediaCard item={item} hideMetaData />
+      <MediaCard item={item}  />
       <div
         className="flex items-center justify-center gap-1.5 mt-1 relative z-10"
         onClick={(e) => e.stopPropagation()}

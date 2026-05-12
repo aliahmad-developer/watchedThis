@@ -34,14 +34,12 @@ interface MediaCardProps {
     first_air_date?: string;
   };
   displayTitle?: string;
-  hideMetaData?: boolean;
   index?: number;
 }
 
 export default function MediaCard({
   item,
   displayTitle,
-  hideMetaData,
   index = 0,
 }: MediaCardProps) {
   const title = item.title || item.name || "Untitled";
@@ -361,12 +359,6 @@ export default function MediaCard({
           {displayTitle && (
             <div className="mt-1 text-xs text-center text-gray-500 dark:text-gray-400 line-clamp-1">
               {displayTitle}
-            </div>
-          )}
-
-          {!hideMetaData && (
-            <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2">
-              <span className="capitalize">{mediaType}</span>
             </div>
           )}
         </div>

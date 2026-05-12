@@ -110,7 +110,7 @@ export default function ListsPage() {
                   media_type: item.mediaType,
                   
                 }}
-                hideMetaData
+               
               />
               <button
                 onClick={(e) => handleRemove(e, item.mediaId)}
