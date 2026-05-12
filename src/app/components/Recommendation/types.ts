@@ -10,10 +10,12 @@ export interface MediaItem {
   genres?: Array<{ id: number; name: string }>;
   overview?: string;
   vote_average?: number;
+  vote_count?: number;
   release_date?: string;
   first_air_date?: string;
   popularity?: number;
-
+  number_of_seasons?: number;
+  number_of_episodes?: number;
   tags?: string[];
 }
 export interface FindFilterSnapshot {
@@ -45,6 +47,7 @@ export interface RecommendationProfile {
   searchHistory: string[];
   ratings: Record<number, number>;
   findFilters?: FindFilterSnapshot[];
+  savedAtMap?: Record<number, number>;
 }
 
 export interface ScoredItem extends MediaItem {

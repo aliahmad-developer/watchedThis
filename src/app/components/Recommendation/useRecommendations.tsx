@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-import { getRecommendations, deriveTasteProfile, deriveGenres } from "./Engine";
+import { getRecommendations, deriveTasteProfile } from "./scorer";
 import { loadBehaviour } from "./behaviourTracker";
 import type {
   MediaItem,
@@ -78,9 +78,48 @@ async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
   });
 }
 
+/**
+ * Enrich scored items with detail fields (runtime, episode_run_time,
+ * number_of_episodes, number_of_seasons, genres) that list/discover
+ * endpoints do not return.
+ *
+ * Only enriches the top `batchSize` items to keep request count low.
+ */
+async function enrichWithDetails(
+  items: ScoredItem[],
+  batchSize = 12,
+): Promise<ScoredItem[]> {
+  const toEnrich = items.slice(0, batchSize);
+  const rest = items.slice(batchSize);
+
+  const enriched = await Promise.all(
+    toEnrich.map(async (item) => {
+      const path =
+        item.media_type === "movie" ? `/movie/${item.id}` : `/tv/${item.id}`;
+
+      const detail = await tmdbGet<MediaItem>(path);
+      if (!detail) return item;
+
+      return {
+        ...item,
+        // Movie runtime (minutes)
+        runtime: detail.runtime ?? item.runtime,
+        // TV runtime array e.g. [42]
+        episode_run_time: detail.episode_run_time ?? item.episode_run_time,
+        // TV episode / season counts
+        number_of_episodes:
+          detail.number_of_episodes ?? item.number_of_episodes,
+        number_of_seasons: detail.number_of_seasons ?? item.number_of_seasons,
+        // Full genre objects (list endpoints only return genre_ids)
+        genres: detail.genres ?? item.genres,
+      } as ScoredItem;
+    }),
+  );
+
+  return [...enriched, ...rest];
+}
+
 // ── Read user list from Firestore ─────────────────────────────
-// Your existing useUserList writes to users/{uid}/lists
-// We read the same collection here — no duplication.
 
 interface ListDoc {
   mediaId: number;
@@ -111,6 +150,12 @@ interface UseRecommendationsOptions {
   excludeWatched?: boolean;
   /** IDs to always hide (e.g. currently displayed hero item) */
   excludeIds?: number[];
+  /**
+   * How many of the top recommendations to enrich with full detail data
+   * (runtime, episode count, etc.).  Defaults to 12.
+   * Set to 0 to disable enrichment entirely.
+   */
+  enrichBatchSize?: number;
 }
 
 interface UseRecommendationsReturn {
@@ -125,7 +170,12 @@ interface UseRecommendationsReturn {
 export function useRecommendations(
   opts: UseRecommendationsOptions = {},
 ): UseRecommendationsReturn {
-  const { limit = 20, excludeWatched = true, excludeIds = [] } = opts;
+  const {
+    limit = 20,
+    excludeWatched = true,
+    excludeIds = [],
+    enrichBatchSize = 12,
+  } = opts;
 
   const [recommendations, setRecommendations] = useState<ScoredItem[]>([]);
   const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null);
@@ -134,7 +184,7 @@ export function useRecommendations(
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
-
+  const excludeIdsKey = excludeIds.join(",");
   // Prevent stale async updates if uid changes mid-flight
   const abortRef = useRef(false);
 
@@ -144,6 +194,7 @@ export function useRecommendations(
       const firebaseAuth = await import("firebase/auth");
       const firebaseConfig = await import("../../firebase/firebaseConfig");
       const auth = await firebaseConfig.getFirebaseAuth();
+
       unsub = firebaseAuth.onAuthStateChanged(auth, (user) => {
         const uid = user?.uid;
 
@@ -165,7 +216,6 @@ export function useRecommendations(
               loadBehaviour(uid),
             ]);
 
-            // ADD these two lines — guard against missing fields
             const clickLog = behaviour.clickLog ?? [];
             const searchHistory = behaviour.searchHistory ?? [];
             const findFilters = behaviour.findFilters ?? [];
@@ -198,14 +248,17 @@ export function useRecommendations(
               findFilters,
               ratings: {},
             };
-            
+
             const taste = deriveTasteProfile(tempProfile);
             const topGenreNames = taste.topGenres.map((g) => g.genre);
 
             // Map genre names back to TMDB IDs for the discover API
             const { TMDB_GENRES } = await import("./types");
             const nameToId = Object.fromEntries(
-              Object.entries(TMDB_GENRES).map(([id, name]) => [name, Number(id)]),
+              Object.entries(TMDB_GENRES).map(([id, name]) => [
+                name,
+                Number(id),
+              ]),
             );
             const topGenreIds = topGenreNames
               .map((n) => nameToId[n])
@@ -234,7 +287,17 @@ export function useRecommendations(
             });
             const taste2 = deriveTasteProfile(profile);
 
-            setRecommendations(recs);
+            // 5. Enrich top N recommendations with detail fields
+            //    (runtime, episode_run_time, number_of_episodes, number_of_seasons)
+            //    Discover/trending endpoints omit these — detail endpoint is required.
+            const enriched =
+              enrichBatchSize > 0
+                ? await enrichWithDetails(recs, enrichBatchSize)
+                : recs;
+
+            if (abortRef.current) return;
+
+            setRecommendations(enriched);
             setTasteProfile(taste2);
           } catch {
             if (!abortRef.current) setError("Could not load recommendations.");
@@ -250,7 +313,7 @@ export function useRecommendations(
       unsub?.();
       abortRef.current = true;
     };
-  }, [tick, limit, excludeWatched, excludeIds.join(",")]); // eslint-disable-line
+  }, [tick, limit, excludeWatched, excludeIdsKey, enrichBatchSize]); // eslint-disable-line
 
   return { recommendations, tasteProfile, isLoading, error, refresh };
 }

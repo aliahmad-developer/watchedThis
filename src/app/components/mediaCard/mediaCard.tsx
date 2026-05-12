@@ -147,7 +147,7 @@ export default function MediaCard({
                   absolute inset-0 z-10
                   bg-gradient-to-t
                   from-white/90 via-white/75 to-white/60
-                  dark:from-black/90 dark:via-black/75 dark:to-black/60
+                  dark:from-black/90 dark:via-black/85 dark:to-black/40
                   backdrop-blur-[2px]
                   transition-all duration-300
 
@@ -174,12 +174,12 @@ export default function MediaCard({
               >
                 {/* TOP */}
                 <div className="w-full shrink min-h-0 overflow-hidden">
-                  <h3 className="text-gray-900 dark:text-white text-[1.05rem] font-bold leading-tight line-clamp-1 md:line-clamp-2">
+                  <h3 className="text-gray-900 dark:text-white text-[1.05rem] font-bold leading-tight line-clamp-1">
                     {title}
                   </h3>
 
                   {hasRating && (
-                    <div className="mt-4 flex items-center gap-1.5">
+                    <div className="mt-2 flex items-center gap-1.5">
                       <FontAwesomeIcon
                         icon={faStar}
                         className="w-4 h-4 text-light-secondary-text dark:text-white"
@@ -198,7 +198,7 @@ export default function MediaCard({
                   )}
 
                   {hasMeta && (
-                    <div className="mt-4 flex flex-col items-start gap-1 text-left">
+                    <div className="mt-2 flex flex-col items-start gap-1 text-left">
                       {mediaType === "tv" && item.number_of_seasons ? (
                         <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">
                           {item.number_of_seasons}{" "}
@@ -225,24 +225,23 @@ export default function MediaCard({
                 {/* BOTTOM */}
                 <div className="w-full flex flex-col justify-end flex-1 min-h-0">
                   {hasOverview && (
-                    <p
-                      className="
-                      hidden md:block
-                      text-left
-                      text-gray-800 dark:text-gray-200
-                      text-sm leading-relaxed
-                      overflow-hidden
-                      break-words
-                      line-clamp-3
-                      lg:line-clamp-4
-                      mb-auto
-                    "
-                    >
+                   <p
+  className={`
+  hidden md:block
+  text-left
+  text-gray-800 dark:text-gray-200
+  text-sm leading-relaxed
+  overflow-hidden
+  break-words
+  mb-auto
+  ${mediaType === "tv" ? "line-clamp-3 lg:line-clamp-4" : "line-clamp-4 lg:line-clamp-5"}
+`}
+>
                       {item.overview}
                     </p>
                   )}
 
-                  <div className="mt-4 flex items-center gap-4 z-10">
+                  <div className="mt-2 flex items-center gap-4 z-10">
                     {/* PLAY */}
                     <div className="relative group/play">
                       <button
