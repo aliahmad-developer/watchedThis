@@ -7,6 +7,7 @@ import DetailsPage from "@/app/components/randomMedia/detailsPage";
 import DetailsClientShell from "./clientShell";
 import type { Metadata } from "next";
 import { tmdbImage } from "@/lib/imageTmdb";
+import { cache } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,24 +37,25 @@ const fetchMediaById = (media_type: string, id: string) =>
     { revalidate: 3600 },
   )();
 
-const fetchMediaDetails = (
-  media_type: string,
-  media_name_slug: string,
-  id: string,
-) =>
-  unstable_cache(
-    async () => {
-      console.log("FETCHING:", media_type, media_name_slug, id); // ← add this
-      const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-      const url = `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`;
-      const res = await fetch(url, { next: { revalidate: 3600 } });
-      if (!res.ok) return null;
-      return res.json();
-    },
-    [`media-details-${media_type}-${media_name_slug}-${id}`],
-    { revalidate: 3600 },
-  )();
+const fetchMediaDetails = cache(
+  (media_type: string, media_name_slug: string, id: string) =>
+    unstable_cache(
+      async () => {
+        const baseUrl =
+          process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+        const res = await fetch(
+          `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
+          {
+            next: { revalidate: 3600 },
+          },
+        );
+        if (!res.ok) return null;
+        return res.json();
+      },
+      [`media-details-${media_type}-${media_name_slug}-${id}`],
+      { revalidate: 3600 },
+    )(),
+);
 
 // ─── Structured Data ──────────────────────────────────────────────────────────
 
@@ -66,9 +68,7 @@ function buildJsonLd(data: any, media_type: string) {
     "@type": isMovie ? "Movie" : "TVSeries",
     name: mediaTitle,
     description: data.overview || "",
-    image: data.poster_path
-      ? tmdbImage(data.poster_path, "w500")! 
-      : undefined,
+    image: data.poster_path ? tmdbImage(data.poster_path, "w500")! : undefined,
     ...(data.release_date || data.first_air_date
       ? { datePublished: data.release_date || data.first_air_date }
       : {}),

@@ -6,9 +6,13 @@ export interface Credit {
   poster_path: string | null;
   media_type: string;
   release_date: string | null;
-  vote_average?: number;
+  vote_average?: number | null;
+  overview?: string | null;
   runtime?: number | null;
   episode_run_time?: number[] | null;
+  number_of_seasons?: number | null;
+  number_of_episodes?: number | null;
+  vote_count?: number | null;
 }
 
 export interface PersonDetails {

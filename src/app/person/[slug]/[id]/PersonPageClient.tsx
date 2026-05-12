@@ -88,8 +88,19 @@ function CreditGrid({
               name: credit.title,
               poster_path: credit.poster_path || undefined,
               media_type: credit.media_type,
+
               runtime: credit.runtime || undefined,
               episode_run_time: credit.episode_run_time || undefined,
+
+              number_of_seasons: credit.number_of_seasons || undefined,
+              number_of_episodes: credit.number_of_episodes || undefined,
+
+              vote_average: credit.vote_average || undefined,
+              vote_count: credit.vote_count || undefined,
+              overview: credit.overview || undefined,
+
+              release_date: credit.release_date || undefined,
+             
             }}
             displayTitle={
               displayTitleKey ? credit[displayTitleKey] || "" : undefined
@@ -207,11 +218,11 @@ export default function PersonPageClient({
               alt={details.name}
               width={300}
               height={450}
-              className="rounded-xl object-cover shadow-lg w-75 h-112.5"
+              className="rounded-xl object-cover shadow-lg w-32 h-48 sm:w-48 sm:h-72 md:w-75 md:h-112.5"
               priority
             />
           ) : (
-            <div className="w-75 h-112.5 flex items-center justify-center bg-light-border dark:bg-dark-border rounded-xl shadow-lg">
+            <div className="w-32 h-48 sm:w-48 sm:h-72 md:w-75 md:h-112.5 flex items-center justify-center bg-light-border dark:bg-dark-border rounded-xl shadow-lg">
               <span className="text-gray-500">No Image Available</span>
             </div>
           )}

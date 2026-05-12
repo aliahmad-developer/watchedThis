@@ -9,16 +9,26 @@ export const revalidate = 86400;
 async function fetchRuntime(id: number, media_type: string) {
   try {
     const res = await fetch(
-      `${BASE_URL}/${media_type}/${id}?api_key=${API_KEY}&language=en-US`
+      `${BASE_URL}/${media_type}/${id}?api_key=${API_KEY}&language=en-US`,
     );
     if (!res.ok) return {};
     const data = await res.json();
 
     if (media_type === "movie") {
-      return { runtime: data.runtime ?? null };
+      return {
+        runtime: data.runtime ?? null,
+        vote_average: data.vote_average ?? null,
+        overview: data.overview ?? null,
+      };
     }
     if (media_type === "tv") {
-      return { episode_run_time: data.episode_run_time ?? [] };
+      return {
+        episode_run_time: data.episode_run_time ?? [],
+        number_of_seasons: data.number_of_seasons ?? null,
+        number_of_episodes: data.number_of_episodes ?? null,
+        vote_average: data.vote_average ?? null,
+        overview: data.overview ?? null,
+      };
     }
     return {};
   } catch {
@@ -28,7 +38,7 @@ async function fetchRuntime(id: number, media_type: string) {
 
 export async function GET(
   req: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
 
@@ -41,7 +51,7 @@ export async function GET(
     const [detailsRes, creditsRes, imagesRes] = await Promise.all([
       fetch(`${BASE_URL}/person/${id}?api_key=${API_KEY}&language=en-US`),
       fetch(
-        `${BASE_URL}/person/${id}/combined_credits?api_key=${API_KEY}&language=en-US`
+        `${BASE_URL}/person/${id}/combined_credits?api_key=${API_KEY}&language=en-US`,
       ),
       fetch(`${BASE_URL}/person/${id}/images?api_key=${API_KEY}`),
     ]);
@@ -50,7 +60,7 @@ export async function GET(
       if (detailsRes.status === 404) {
         return NextResponse.json(
           { error: "Person not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       throw new Error(`TMDB API error: ${detailsRes.status}`);
@@ -69,41 +79,40 @@ export async function GET(
       const cast = (credits.cast as TMDBPersonCredit[]).sort(
         (a, b) =>
           new Date(b.release_date || b.first_air_date || "9999").getTime() -
-          new Date(a.release_date || a.first_air_date || "9999").getTime()
+          new Date(a.release_date || a.first_air_date || "9999").getTime(),
       );
       const crew = (credits.crew as TMDBPersonCredit[]).filter(
-        (item) => item.job === "Director" || item.job === "Producer"
+        (item) => item.job === "Director" || item.job === "Producer",
       );
       // Fetch runtimes in parallel for cast + crew
       const allCredits = [...cast, ...crew];
       const runtimeData = await Promise.all(
-        allCredits.map((c) => fetchRuntime(c.id, c.media_type))
+        allCredits.map((c) => fetchRuntime(c.id, c.media_type)),
       );
 
       // Merge runtime info back into cast/crew
       const enrichedCast = cast.map((c, i) => ({
+        ...runtimeData[i],
         id: c.id,
         title: c.title || c.name,
         character: c.character,
         poster_path: c.poster_path,
         media_type: c.media_type,
         release_date: c.release_date || c.first_air_date,
-        vote_average: c.vote_average,
-        ...runtimeData[i], // runtime or episode_run_time
+        vote_average: runtimeData[i]?.vote_average ?? c.vote_average,
       }));
 
-      const enrichedCrew = crew.map((c, i) => {
-        const offset = cast.length; // shift index
-        return {
-          id: c.id,
-          title: c.title || c.name,
-          job: c.job,
-          poster_path: c.poster_path,
-          media_type: c.media_type,
-          release_date: c.release_date || c.first_air_date,
-          ...runtimeData[offset + i],
-        };
-      });
+      const enrichedCrew = crew.map((c, i) => ({
+        ...runtimeData[cast.length + i], 
+        id: c.id,
+        title: c.title || c.name,
+        job: c.job,
+        poster_path: c.poster_path,
+        media_type: c.media_type,
+        release_date: c.release_date || c.first_air_date,
+        vote_average:
+          runtimeData[cast.length + i]?.vote_average ?? c.vote_average,
+      }));
 
       filteredCredits = { cast: enrichedCast, crew: enrichedCrew };
     }
@@ -128,10 +137,14 @@ export async function GET(
       images: filteredImages,
     });
   } catch (error: unknown) {
-    console.error({ level: 'error', endpoint: '/api/person/[id]', message: (error as Error).message });
+    console.error({
+      level: "error",
+      endpoint: "/api/person/[id]",
+      message: (error as Error).message,
+    });
     return NextResponse.json(
       { error: "Failed to fetch person data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -13,6 +13,18 @@ import {
   MediaResult,
 } from "../components/utilities/search/searchFuse";
 
+// ─── Module-level cache (survives navigation within session) ──────────────────
+
+interface CacheEntry {
+  results: MediaResult[];
+  page: number;
+  hasMore: boolean;
+}
+
+const searchCache = new Map<string, CacheEntry>();
+
+// ─── Skeletons ────────────────────────────────────────────────────────────────
+
 function SkeletonCard() {
   return (
     <div className="p-2 animate-pulse">
@@ -33,21 +45,26 @@ function SearchSkeleton() {
   );
 }
 
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
   const keyword = searchParams.get("keyword") || "";
   const activeTerm = query || keyword;
 
-  const [results, setResults] = useState<MediaResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed state from cache if available
+  const cached = activeTerm ? searchCache.get(activeTerm) : undefined;
+
+  const [results, setResults] = useState<MediaResult[]>(cached?.results ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(cached?.page ?? 1);
+  const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
 
-  const hasMoreRef = useRef(true);
-  const loadingRef = useRef(false);
+  const hasMoreRef = useRef(cached?.hasMore ?? true);
+  const loadingRef = useRef(!cached);
   const loadingMoreRef = useRef(false);
   const fetchId = useRef(0);
   const observer = useRef<IntersectionObserver | null>(null);
@@ -80,16 +97,26 @@ function SearchContent() {
 
   // Reset on term change
   useEffect(() => {
+    const nextCached = activeTerm ? searchCache.get(activeTerm) : undefined;
+
     fetchId.current += 1;
-    setPage(1);
-    setResults([]);
-    setHasMore(true);
-    hasMoreRef.current = true;
+    setResults(nextCached?.results ?? []);
+    setPage(nextCached?.page ?? 1);
+    setHasMore(nextCached?.hasMore ?? true);
+    hasMoreRef.current = nextCached?.hasMore ?? true;
+    setLoading(!nextCached);
+    loadingRef.current = !nextCached;
+    setError(null);
   }, [activeTerm]);
 
-  // Fetch
+  // Fetch — skip if this page is already in cache
   useEffect(() => {
     if (!activeTerm) return;
+
+    const cached = searchCache.get(activeTerm);
+    // If cache covers this page already, don't refetch
+    if (cached && page <= cached.page) return;
+
     const id = fetchId.current;
 
     const fetchResults = async () => {
@@ -107,9 +134,18 @@ function SearchContent() {
           : await smartSearch(query, page);
 
         if (id !== fetchId.current) return;
-        setResults((prev) =>
-          page === 1 ? data.results : [...prev, ...data.results],
-        );
+
+        setResults((prev) => {
+          const next = page === 1 ? data.results : [...prev, ...data.results];
+          // Write to cache
+          searchCache.set(activeTerm, {
+            results: next,
+            page,
+            hasMore: data.has_more,
+          });
+          return next;
+        });
+
         setHasMore(data.has_more);
         hasMoreRef.current = data.has_more;
       } catch (err) {
@@ -124,10 +160,7 @@ function SearchContent() {
       }
     };
 
-    const timer = setTimeout(
-      fetchResults,
-      page === 1 && results.length === 0 ? 0 : 300,
-    );
+    const timer = setTimeout(fetchResults, page === 1 ? 0 : 300);
     return () => clearTimeout(timer);
   }, [activeTerm, page]);
 

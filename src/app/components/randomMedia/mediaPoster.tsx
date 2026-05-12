@@ -14,6 +14,8 @@ interface MediaPosterProps {
   textScheme?: "light" | "dark";
   ambientText?: AmbientTextColors;
   priority?: boolean;
+  /** Pass "absolute inset-0 overflow-hidden" when used inside a card so it fills the container */
+  containerClassName?: string;
 }
 
 const FilmIcon = () => (
@@ -57,6 +59,7 @@ function MediaPoster({
   textScheme = "light",
   ambientText = FALLBACK_AMBIENT,
   priority = false,
+  containerClassName,
 }: MediaPosterProps) {
   const [hasError, setHasError] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -66,15 +69,12 @@ function MediaPoster({
   const badgeText = BADGE_MAP[data.media_type ?? ""] ?? "MEDIA";
 
   const posterSrc = tmdbImage(data.poster_path ?? null, "w342")!;
+
+  const defaultContainerClass =
+    "relative aspect-2/3 mx-auto rounded-2xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-xl bg-light-border dark:bg-dark-border w-32 sm:w-48 md:w-56 lg:w-full lg:max-w-60 xl:max-w-xs";
+
   return (
-    <div
-      className={`
-        relative aspect-2/3 mx-auto rounded-2xl overflow-hidden shadow-lg
-        transition-all duration-300 hover:shadow-xl
-        bg-light-border dark:bg-dark-border
-        w-32 sm:w-48 md:w-56 lg:w-full lg:max-w-60 xl:max-w-xs
-      `}
-    >
+    <div className={containerClassName ?? defaultContainerClass}>
       {hasPoster ? (
         <>
           {!loaded && (
@@ -86,7 +86,7 @@ function MediaPoster({
             alt={`Poster for ${displayTitle}`}
             fill
             onContextMenu={(e) => e.preventDefault()}
-            className={`object-contain object-center select-none transition-opacity duration-300 ${
+            className={`object-cover object-center select-none transition-opacity duration-300 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
             priority={priority}

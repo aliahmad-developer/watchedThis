@@ -39,7 +39,7 @@ export function useGenreData({
     (name: string, targetType: "movie" | "tv"): GenreInfo | undefined => {
       const exactMatch = Object.values(genreMappings).find(
         (g) =>
-          g.name.toLowerCase() === name.toLowerCase() && g[`${targetType}Id`]
+          g.name.toLowerCase() === name.toLowerCase() && g[`${targetType}Id`],
       );
       if (exactMatch) return exactMatch;
 
@@ -47,7 +47,7 @@ export function useGenreData({
         (g) =>
           (g.name.toLowerCase().includes(name.toLowerCase()) ||
             name.toLowerCase().includes(g.name.toLowerCase())) &&
-          g[`${targetType}Id`]
+          g[`${targetType}Id`],
       );
       if (partialMatch) return partialMatch;
 
@@ -56,7 +56,7 @@ export function useGenreData({
         undefined
       );
     },
-    [genreMappings]
+    [genreMappings],
   );
 
   const currentGenreId = useMemo(() => {
@@ -68,7 +68,7 @@ export function useGenreData({
     const genreInfo =
       genreMappings[currentSlugPart] ||
       Object.values(genreMappings).find(
-        (g) => (mediaType === "movie" ? g.movieId : g.tvId) === genreIdFromSlug
+        (g) => (mediaType === "movie" ? g.movieId : g.tvId) === genreIdFromSlug,
       );
 
     return genreInfo
@@ -92,13 +92,13 @@ export function useGenreData({
         if (!genreInfo) {
           const genreIdFromSlug = parseInt(genreSlug.split("-")[0], 10);
           genreInfo = Object.values(genreMappings).find(
-            (g) => g.movieId === genreIdFromSlug || g.tvId === genreIdFromSlug
+            (g) => g.movieId === genreIdFromSlug || g.tvId === genreIdFromSlug,
           );
         }
 
         if (!genreInfo) {
           throw new Error(
-            `Genre "${currentSlugPart.replace(/-/g, " ")}" not found`
+            `Genre "${currentSlugPart.replace(/-/g, " ")}" not found`,
           );
         }
 
@@ -124,14 +124,14 @@ export function useGenreData({
 
         if (!genreId) {
           throw new Error(
-            `No ${mediaType} content available for ${genreInfo.name} genre`
+            `No ${mediaType} content available for ${genreInfo.name} genre`,
           );
         }
 
         const response = await fetch(
-          `/api/genre/${genreId}?media_type=${mediaType}&page=${pageNum}`
+          `/api/genre/${genreId}?media_type=${mediaType}&page=${pageNum}`,
         );
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch ${mediaType} data`);
         }
@@ -174,7 +174,7 @@ export function useGenreData({
       normalizeSlug,
       findBestMatchingGenre,
       router,
-    ]
+    ],
   );
 
   const fetchMore = useCallback(async () => {

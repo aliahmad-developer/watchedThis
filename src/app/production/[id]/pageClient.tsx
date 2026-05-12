@@ -5,7 +5,9 @@ import MediaCard from "@/app/components/mediaCard/mediaCard";
 import Image from "next/image";
 import { tmdbImage } from "@/lib/imageTmdb";
 
-// ── Skeleton card — mirrors MediaCard exactly ─────────────────
+// ── In-memory cache (lives for the lifetime of the browser tab) ───────────────
+// Keyed by `${id}-${type}-${page}` → { company, results, total_pages }
+const pageCache = new Map<string, any>();
 
 function SkeletonCard() {
   return (
@@ -19,7 +21,6 @@ function SkeletonCard() {
 
 const ProductionPageSkeleton = () => (
   <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen animate-pulse">
-    {/* Banner */}
     <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl border border-light-border dark:border-dark-border shadow-md">
       <div className="w-35 h-35 rounded-xl bg-light-border dark:bg-dark-border shrink-0" />
       <div className="flex-1 space-y-3 w-full">
@@ -32,12 +33,10 @@ const ProductionPageSkeleton = () => (
         </div>
       </div>
     </div>
-    {/* Toggles */}
     <div className="flex gap-3">
       <div className="h-10 w-28 bg-light-border dark:bg-dark-border rounded-full" />
       <div className="h-10 w-28 bg-light-border dark:bg-dark-border rounded-full" />
     </div>
-    {/* Grid */}
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       {Array.from({ length: 10 }).map((_, i) => (
         <SkeletonCard key={i} />
@@ -52,20 +51,50 @@ export default function ProductionPageClient({ id }: { id: string }) {
   const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true); // true only on the very first fetch
+  const [switching, setSwitching] = useState(false); // true when toggling movie/tv
   const [loadingMore, setLoadingMore] = useState(false);
 
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
   const fetchData = useCallback(
-    async (pageNum: number, type: string) => {
-      if (pageNum === 1) setLoading(true);
-      else setLoadingMore(true);
+    async (pageNum: number, type: string, isSwitch = false) => {
+      const cacheKey = `${id}-${type}-${pageNum}`;
+      const cached = pageCache.get(cacheKey);
+
+      if (cached) {
+        // Instant restore from cache — no loading state needed
+        if (pageNum === 1) {
+          setCompany(cached.company || null);
+          setItems(cached.results || []);
+        } else {
+          setItems((prev) => [...prev, ...(cached.results || [])]);
+        }
+        setTotalPages(cached.total_pages || 1);
+        setInitialLoad(false);
+        setSwitching(false);
+        setLoadingMore(false);
+        return;
+      }
+
+      // Cache miss — show appropriate loading state then fetch
+      if (pageNum === 1) {
+        isSwitch ? setSwitching(true) : setInitialLoad(true);
+      } else {
+        setLoadingMore(true);
+      }
 
       const res = await fetch(
         `/api/production/${id}?mediaType=${type}&page=${pageNum}`,
       );
       const data = await res.json();
+
+      // Store in cache before updating state
+      pageCache.set(cacheKey, {
+        company: data.company,
+        results: data.results,
+        total_pages: data.total_pages,
+      });
 
       if (pageNum === 1) {
         setCompany(data.company || null);
@@ -75,24 +104,39 @@ export default function ProductionPageClient({ id }: { id: string }) {
       }
 
       setTotalPages(data.total_pages || 1);
-      setLoading(false);
+      setInitialLoad(false);
+      setSwitching(false);
       setLoadingMore(false);
     },
     [id],
   );
 
+  // On first mount: initial load
   useEffect(() => {
+    fetchData(1, mediaType, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On media type change (skip the very first render)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setPage(1);
-    fetchData(1, mediaType);
+    fetchData(1, mediaType, true);
   }, [mediaType, fetchData]);
 
+  // Infinite scroll
   useEffect(() => {
     if (!loaderRef.current) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (
           entries[0].isIntersecting &&
-          !loading &&
+          !initialLoad &&
+          !switching &&
           !loadingMore &&
           page < totalPages
         )
@@ -102,13 +146,14 @@ export default function ProductionPageClient({ id }: { id: string }) {
     );
     observer.observe(loaderRef.current);
     return () => observer.disconnect();
-  }, [loading, loadingMore, page, totalPages]);
+  }, [initialLoad, switching, loadingMore, page, totalPages]);
 
   useEffect(() => {
-    if (page > 1) fetchData(page, mediaType);
+    if (page > 1) fetchData(page, mediaType, false);
   }, [page, mediaType, fetchData]);
 
-  if (loading) return <ProductionPageSkeleton />;
+  // Full-page skeleton only on the very first load
+  if (initialLoad) return <ProductionPageSkeleton />;
 
   if (!company)
     return (
@@ -171,6 +216,7 @@ export default function ProductionPageClient({ id }: { id: string }) {
           <button
             key={type}
             onClick={() => setMediaType(type)}
+            disabled={switching}
             className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
               mediaType === type
                 ? "bg-light-accent dark:bg-dark-accent text-white border-transparent shadow-sm"
@@ -183,12 +229,20 @@ export default function ProductionPageClient({ id }: { id: string }) {
       </div>
 
       {/* ── Media Grid ─────────────────────────────────────────────────── */}
-      {items.length > 0 ? (
+      {switching ? (
+        // Grid-only skeleton while switching tabs — banner stays put
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : items.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {items.map((item, index) => (
             <MediaCard
               key={`${mediaType}-${item.id}-${index}`}
               item={{ ...item, media_type: mediaType }}
+              hideMetaData
             />
           ))}
         </div>

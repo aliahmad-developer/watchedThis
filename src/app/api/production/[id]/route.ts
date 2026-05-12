@@ -46,12 +46,16 @@ interface TMDBCompany {
 interface TMDBDetail {
   runtime?: number;
   episode_run_time?: number[];
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  vote_average?: number;
+  overview?: string;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function GET(
   req: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
   const { searchParams } = new URL(req.url);
@@ -61,7 +65,7 @@ export async function GET(
   try {
     const [media, company] = await Promise.all([
       fetchFromTMDB<TMDBDiscoverResponse>(
-        `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`
+        `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`,
       ),
       page === "1"
         ? fetchFromTMDB<TMDBCompany>(`/company/${id}`)
@@ -72,16 +76,26 @@ export async function GET(
     const resultsWithRuntime = await Promise.all(
       media.results.map(async (item) => {
         try {
-          const detail = await fetchFromTMDB<TMDBDetail>(`/${mediaType}/${item.id}`);
-          const runtime =
-            mediaType === "movie"
-              ? detail.runtime ?? null
-              : detail.episode_run_time?.[0] ?? null;
-          return { ...item, runtime };
+          const detail = await fetchFromTMDB<TMDBDetail>(
+            `/${mediaType}/${item.id}`,
+          );
+          return {
+            ...item,
+            runtime:
+              mediaType === "movie"
+                ? (detail.runtime ?? null)
+                : (detail.episode_run_time?.[0] ?? null),
+            number_of_seasons:
+              detail.number_of_seasons ?? item.number_of_seasons ?? null,
+            number_of_episodes:
+              detail.number_of_episodes ?? item.number_of_episodes ?? null,
+            vote_average: detail.vote_average ?? item.vote_average ?? null,
+            overview: detail.overview ?? item.overview ?? null,
+          };
         } catch {
           return { ...item, runtime: null };
         }
-      })
+      }),
     );
 
     return NextResponse.json({

@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import MediaPoster from "../randomMedia/mediaPoster";
-import TrailerModal from "../playTrailerModal/trailerModal"; // ← adjust path
+import TrailerModal from "../playTrailerModal/trailerModal";
 import { trackClick } from "../Recommendation/behaviourTracker";
 import { createSlug } from "../utilities/createSlug";
-import { useUserList } from "../../components/hooks/useUserList"; // ← adjust path
+import { useUserList } from "../../components/hooks/useUserList";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlay,
-  faPlus,
   faLock,
   faHeart,
   faStar,
@@ -47,6 +46,7 @@ export default function MediaCard({
 }: MediaCardProps) {
   const title = item.title || item.name || "Untitled";
   const mediaType = item.media_type || "movie";
+
   const duration =
     item.runtime || item.episode_run_time?.find((v) => v > 0) || null;
 
@@ -55,10 +55,12 @@ export default function MediaCard({
 
   const year = (item.release_date || item.first_air_date)?.slice(0, 4);
 
-  // ── Trailer state ──────────────────────────────────────────
   const [showTrailer, setShowTrailer] = useState(false);
 
-  // ── Favourites ─────────────────────────────────────────────
+  const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false);
+
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
   const { currentStatus, saveToList, loading, isAuthenticated } = useUserList({
     mediaId: item.id,
     mediaType: mediaType as "movie" | "tv",
@@ -70,20 +72,31 @@ export default function MediaCard({
 
   const handleFavourite = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!isAuthenticated) return; // guarded by lock UI anyway
+    e.stopPropagation();
+
+    if (!isAuthenticated) return;
+
     try {
       await saveToList("favourite");
-      toast[isFavourited ? "success" : "success"](
+
+      toast.success(
         isFavourited ? "Removed from Favourites" : "Added to Favourites",
-        { icon: isFavourited ? "🗑️" : "❤️" },
+        {
+          icon: isFavourited ? "🗑️" : "❤️",
+        },
       );
     } catch {
       toast.error("Something went wrong, please try again");
     }
   };
 
-  const handleClick = () => trackClick(item.id, mediaType as "movie" | "tv");
+  const handleClick = () => {
+    if (mobileOverlayOpen) return;
+    trackClick(item.id, mediaType as "movie" | "tv");
+  };
+
   const delay = `${Math.min(index * 40, 300)}ms`;
+
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
 
   const hasOverview = Boolean(item.overview?.trim());
@@ -92,11 +105,35 @@ export default function MediaCard({
     mediaType === "tv"
       ? Boolean(item.number_of_seasons || item.number_of_episodes)
       : Boolean(duration);
+
   const hasHoverContent = hasOverview || hasRating || hasMeta;
+
+  const startLongPress = () => {
+    if (window.innerWidth >= 768) return;
+    longPressTimer.current = setTimeout(() => {
+      setMobileOverlayOpen(true);
+    }, 450);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const closeMobileOverlay = () => {
+    setMobileOverlayOpen(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      cancelLongPress();
+    };
+  }, []);
 
   return (
     <>
-      {/* ── Trailer Modal ───────────────────────────────────── */}
       {showTrailer && (
         <TrailerModal
           mediaId={item.id}
@@ -110,33 +147,74 @@ export default function MediaCard({
       <Link
         prefetch={false}
         href={href}
-        draggable
+        draggable={false}
         onClick={handleClick}
-        className="group block cursor-pointer rounded-2xl opacity-0 animate-[fadeUp_0.45s_ease_forwards] text-left"
+        onTouchStart={startLongPress}
+        onTouchEnd={cancelLongPress}
+        onTouchCancel={cancelLongPress}
+        className="
+          group block cursor-pointer rounded-2xl text-left
+          opacity-0 animate-[fadeUp_0.45s_ease_forwards]
+          transition-transform duration-300
+          [@media(hover:hover)]:hover:-translate-y-1
+        "
         style={{ animationDelay: delay }}
       >
         {/* CARD */}
-        <div className="relative aspect-2/3 overflow-hidden rounded-2xl bg-black group">
+        <div className="relative aspect-2/3 overflow-hidden rounded-2xl bg-black">
           {/* IMAGE */}
-          <div className="absolute inset-0 transition-transform duration-100 ease-out group-hover:scale-[1.04]">
-            <MediaPoster data={item} />
+          <div className="absolute inset-0 transition-transform duration-300 ease-out [@media(hover:hover)]:group-hover:scale-[1.04]">
+            <MediaPoster
+              data={item}
+              containerClassName="absolute inset-0 overflow-hidden"
+            />
           </div>
 
           {hasHoverContent && (
             <>
               {/* OVERLAY */}
-              <div className="absolute inset-0 z-10 bg-white/75 dark:bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out backdrop-blur-[2px]" />
+              <div
+                className={`
+                  absolute inset-0 z-10
+                  bg-gradient-to-t
+                  from-white/90 via-white/75 to-white/60
+                  dark:from-black/90 dark:via-black/75 dark:to-black/60
+                  backdrop-blur-[2px]
+                  transition-all duration-300
+
+                  opacity-0 pointer-events-none
+
+                  [@media(hover:hover)]:group-hover:opacity-100
+                  [@media(hover:hover)]:group-hover:pointer-events-auto
+
+                  ${mobileOverlayOpen ? "opacity-100 pointer-events-auto" : ""}
+                `}
+              />
 
               {/* CONTENT */}
-              <div className="absolute inset-0 z-20 flex flex-col justify-between p-5 text-left items-start opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
+              <div
+                className={`
+                  absolute inset-0 z-20
+                  flex flex-col justify-between min-h-0
+                  p-5 text-left items-start
+                  transition-all duration-300
+
+                  opacity-0 pointer-events-none
+
+                  [@media(hover:hover)]:group-hover:opacity-100
+                  [@media(hover:hover)]:group-hover:pointer-events-auto
+
+                  ${mobileOverlayOpen ? "opacity-100 pointer-events-auto" : ""}
+                `}
+              >
                 {/* TOP */}
-                <div className="w-full">
-                  <h3 className="text-gray-900 dark:text-white text-[1.1rem] font-bold leading-tight line-clamp-2">
+                <div className="w-full overflow-hidden">
+                  <h3 className="text-gray-900 dark:text-white text-[1.05rem] font-bold leading-tight line-clamp-1 md:line-clamp-2">
                     {title}
                   </h3>
 
                   {hasRating && (
-                    <div className="mt-4 flex items-center justify-start gap-1.5">
+                    <div className="mt-4 flex items-center gap-1.5">
                       <FontAwesomeIcon
                         icon={faStar}
                         className="w-4 h-4 text-light-secondary-text dark:text-white"
@@ -160,11 +238,13 @@ export default function MediaCard({
                           {item.number_of_seasons === 1 ? "Season" : "Seasons"}
                         </span>
                       ) : null}
+
                       {mediaType === "tv" && item.number_of_episodes ? (
                         <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">
                           {item.number_of_episodes} Episodes
                         </span>
                       ) : null}
+
                       {duration ? (
                         <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">
                           {duration} min
@@ -177,30 +257,53 @@ export default function MediaCard({
                 {/* BOTTOM */}
                 <div className="w-full">
                   {hasOverview && (
-                    <p className="text-left text-gray-800 dark:text-gray-200 text-sm leading-relaxed line-clamp-5">
+                    <p className="text-left text-gray-800 dark:text-gray-200 text-sm leading-relaxed line-clamp-2 md:line-clamp-4">
                       {item.overview}
                     </p>
                   )}
 
-                  {/* ACTIONS */}
-                  <div className="mt-5 flex items-center gap-5">
-                    {/* ── 1. PLAY TRAILER ───────────────────── */}
+                  <div className="mt-4 flex items-center gap-4">
+                    {/* PLAY */}
                     <div className="relative group/play">
                       <button
                         onClick={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           setShowTrailer(true);
+                          closeMobileOverlay();
                         }}
-                        className="bg-transparent text-light-accent dark:text-white hover:scale-110 transition-all duration-200"
+                        className="
+                          bg-transparent
+                          text-light-accent dark:text-white
+                          hover:scale-110
+                          transition-all duration-200
+                        "
                       >
                         <FontAwesomeIcon icon={faPlay} className="w-5 h-5" />
                       </button>
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-[10px] text-white opacity-0 group-hover/play:opacity-100 transition-opacity duration-200">
+
+                      <span
+                        className="
+                          pointer-events-none
+                          absolute -top-8 left-1/2
+                          -translate-x-1/2
+                          whitespace-nowrap
+                          rounded-md
+                          bg-black/80
+                          px-2 py-1
+                          text-[10px]
+                          text-white
+                          opacity-0
+                          transition-opacity duration-200
+                          group-hover/play:opacity-100
+                          hidden md:block
+                        "
+                      >
                         Play Trailer
                       </span>
                     </div>
 
-                    {/* ── 2. FAVOURITE ──────────────────────── */}
+                    {/* FAV */}
                     <div className="relative group/fav">
                       <button
                         onClick={
@@ -209,19 +312,41 @@ export default function MediaCard({
                             : (e) => e.preventDefault()
                         }
                         disabled={loading}
-                        className={`bg-transparent transition-all duration-200 hover:scale-110 disabled:opacity-50
+                        className={`
+                          bg-transparent
+                          transition-all duration-200
+                          hover:scale-110
+                          disabled:opacity-50
                           ${
                             isFavourited
                               ? "text-red-500 dark:text-red-400"
                               : "text-light-accent dark:text-white"
-                          }`}
+                          }
+                        `}
                       >
                         <FontAwesomeIcon
                           icon={isAuthenticated ? faHeart : faLock}
                           className="w-5 h-5"
                         />
                       </button>
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-[10px] text-white opacity-0 group-hover/fav:opacity-100 transition-opacity duration-200">
+
+                      <span
+                        className="
+                          pointer-events-none
+                          absolute -top-8 left-1/2
+                          -translate-x-1/2
+                          whitespace-nowrap
+                          rounded-md
+                          bg-black/80
+                          px-2 py-1
+                          text-[10px]
+                          text-white
+                          opacity-0
+                          transition-opacity duration-200
+                          group-hover/fav:opacity-100
+                          hidden md:block
+                        "
+                      >
                         {isAuthenticated
                           ? isFavourited
                             ? "Remove Favourite"
@@ -236,25 +361,39 @@ export default function MediaCard({
           )}
 
           {/* BORDER */}
-          <div className="absolute inset-0 z-30 rounded-2xl ring-1 ring-black/5 dark:ring-white/0 group-hover:ring-black/10 dark:group-hover:ring-white/15 transition-all duration-500 pointer-events-none" />
+          <div className="absolute inset-0 z-30 rounded-2xl ring-1 ring-black/5 dark:ring-white/5 transition-all duration-300 pointer-events-none" />
         </div>
 
-        {/* TITLE BELOW — fades out on hover */}
-        <div className="mt-3 px-1">
-          <div className="text-sm font-semibold text-center line-clamp-2 transition-all duration-500 group-hover:opacity-0 group-hover:text-light-accent dark:group-hover:text-dark-accent">
+        {/* LOWER INFO */}
+        <div
+          className={`
+            mt-3 px-1
+            transition-all duration-300
+
+            [@media(hover:hover)]:group-hover:opacity-0
+            [@media(hover:hover)]:group-hover:translate-y-2
+            [@media(hover:hover)]:group-hover:pointer-events-none
+
+            ${
+              mobileOverlayOpen
+                ? "opacity-0 translate-y-2 pointer-events-none"
+                : "opacity-100 translate-y-0"
+            }
+          `}
+        >
+          <div className="text-sm font-semibold text-center line-clamp-2 text-light-header dark:text-dark-header">
             {title}
           </div>
 
           {displayTitle && (
-            <div className="mt-1 text-xs text-center text-gray-500 dark:text-gray-400 line-clamp-1 transition-all duration-500 group-hover:opacity-0">
+            <div className="mt-1 text-xs text-center text-gray-500 dark:text-gray-400 line-clamp-1">
               {displayTitle}
             </div>
           )}
 
           {!hideMetaData && (
-            <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2 transition-all duration-500 group-hover:opacity-0">
+            <div className="mt-1 text-xs text-center text-light-accent dark:text-dark-accent flex justify-center gap-2">
               <span className="capitalize">{mediaType}</span>
-              {duration ? <span>{duration}m</span> : null}
             </div>
           )}
         </div>
