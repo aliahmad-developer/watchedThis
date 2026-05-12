@@ -82,7 +82,10 @@ export default function MediaCard({
   };
 
   const toggleMobileOverlay = () => {
-    if (window.innerWidth >= 768) return;
+    const isTouchDevice =
+      "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+    if (!isTouchDevice) return;
 
     // If this is already the open card, close on “second tap”
     if (mobileOverlayOpen) {
@@ -142,15 +145,30 @@ export default function MediaCard({
       : Boolean(duration);
   const hasHoverContent = hasOverview || hasRating || hasMeta;
 
-  const startLongPress = () => {
-    if (window.innerWidth >= 768) return;
+  const startLongPress = (e?: React.TouchEvent) => {
+    // Allow long press on ALL touch devices,
+    // including landscape tablets/phones.
+    const isTouchDevice =
+      "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+    if (!isTouchDevice) return;
+
+    // If a drag is happening or we’re already waiting, ignore.
+    if (longPressTimer.current) return;
+
+    // Prevent accidental navigation before overlay opens.
+    if (e?.cancelable) e.preventDefault();
+
     longPressTimer.current = setTimeout(() => {
-      // Close whatever card is currently open before opening this one
+      // Close any already-open card
       if (activeCloser && activeCloser !== closeMobileOverlay) {
         activeCloser();
       }
+
       activeCloser = closeMobileOverlay;
       setMobileOverlayOpen(true);
+
+      longPressTimer.current = null;
     }, 450);
   };
 
@@ -179,7 +197,10 @@ export default function MediaCard({
         draggable={false}
         onClick={(e) => {
           // On mobile: second tap closes instead of navigating
-          if (window.innerWidth < 768 && mobileOverlayOpen) {
+          const isTouchDevice =
+            "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+          if (isTouchDevice && mobileOverlayOpen) {
             e.preventDefault();
             e.stopPropagation();
             toggleMobileOverlay();
@@ -246,7 +267,7 @@ export default function MediaCard({
                 `}
               >
                 {/* TOP */}
-                <div className="w-full overflow-hidden">
+                <div className="w-full shrink min-h-0 overflow-hidden">
                   <h3 className="text-gray-900 dark:text-white text-[1.05rem] font-bold leading-tight line-clamp-1 md:line-clamp-2">
                     {title}
                   </h3>
@@ -293,10 +314,19 @@ export default function MediaCard({
                 </div>
 
                 {/* BOTTOM */}
-                <div className="w-full">
+                <div className="w-full min-h-0 flex-1 overflow-hidden">
                   {hasOverview && (
                     <p
-                      className="hidden md:block text-left text-gray-800 dark:text-gray-200 text-sm leading-relaxed line-clamp-2 md:line-clamp-4"
+                      className="
+    hidden md:block
+    text-left
+    text-gray-800 dark:text-gray-200
+    text-sm leading-relaxed
+    overflow-hidden
+    wrap-break-word
+    line-clamp-3
+    lg:line-clamp-4
+  "
                     >
                       {item.overview}
                     </p>
