@@ -16,6 +16,12 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 
+// ── Single-overlay enforcement ────────────────────────────────────────────────
+// Holds a reference to the currently-open card's close function.
+// When a new long-press fires it calls this first, ensuring only one overlay
+// can be open at a time across all mounted MediaCard instances.
+let activeCloser: (() => void) | null = null;
+
 interface MediaCardProps {
   item: {
     id: number;
@@ -56,7 +62,6 @@ export default function MediaCard({
   const year = (item.release_date || item.first_air_date)?.slice(0, 4);
 
   const [showTrailer, setShowTrailer] = useState(false);
-
   const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false);
 
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -70,6 +75,40 @@ export default function MediaCard({
 
   const isFavourited = currentStatus === "favourite";
 
+  const closeMobileOverlay = () => {
+    setMobileOverlayOpen(false);
+    // Unregister ourselves if we're still the active card
+    if (activeCloser === closeMobileOverlay) activeCloser = null;
+  };
+
+  const toggleMobileOverlay = () => {
+    if (window.innerWidth >= 768) return;
+
+    // If this is already the open card, close on “second tap”
+    if (mobileOverlayOpen) {
+      closeMobileOverlay();
+      return;
+    }
+
+    // Otherwise open this card (closing any other open one)
+    if (activeCloser && activeCloser !== closeMobileOverlay) {
+      activeCloser();
+    }
+
+    activeCloser = closeMobileOverlay;
+    setMobileOverlayOpen(true);
+  };
+
+  // Clean up when unmounting so the stale ref doesn't linger
+  useEffect(() => {
+    return () => {
+      cancelLongPress();
+      if (activeCloser === closeMobileOverlay) activeCloser = null;
+    };
+    // closeMobileOverlay is stable — defined in render scope, captured once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleFavourite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -78,12 +117,9 @@ export default function MediaCard({
 
     try {
       await saveToList("favourite");
-
       toast.success(
         isFavourited ? "Removed from Favourites" : "Added to Favourites",
-        {
-          icon: isFavourited ? "🗑️" : "❤️",
-        },
+        { icon: isFavourited ? "🗑️" : "❤️" },
       );
     } catch {
       toast.error("Something went wrong, please try again");
@@ -96,7 +132,6 @@ export default function MediaCard({
   };
 
   const delay = `${Math.min(index * 40, 300)}ms`;
-
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
 
   const hasOverview = Boolean(item.overview?.trim());
@@ -105,12 +140,16 @@ export default function MediaCard({
     mediaType === "tv"
       ? Boolean(item.number_of_seasons || item.number_of_episodes)
       : Boolean(duration);
-
   const hasHoverContent = hasOverview || hasRating || hasMeta;
 
   const startLongPress = () => {
     if (window.innerWidth >= 768) return;
     longPressTimer.current = setTimeout(() => {
+      // Close whatever card is currently open before opening this one
+      if (activeCloser && activeCloser !== closeMobileOverlay) {
+        activeCloser();
+      }
+      activeCloser = closeMobileOverlay;
       setMobileOverlayOpen(true);
     }, 450);
   };
@@ -121,16 +160,6 @@ export default function MediaCard({
       longPressTimer.current = null;
     }
   };
-
-  const closeMobileOverlay = () => {
-    setMobileOverlayOpen(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      cancelLongPress();
-    };
-  }, []);
 
   return (
     <>
@@ -148,7 +177,16 @@ export default function MediaCard({
         prefetch={false}
         href={href}
         draggable={false}
-        onClick={handleClick}
+        onClick={(e) => {
+          // On mobile: second tap closes instead of navigating
+          if (window.innerWidth < 768 && mobileOverlayOpen) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMobileOverlay();
+            return;
+          }
+          handleClick();
+        }}
         onTouchStart={startLongPress}
         onTouchEnd={cancelLongPress}
         onTouchCancel={cancelLongPress}
@@ -257,7 +295,9 @@ export default function MediaCard({
                 {/* BOTTOM */}
                 <div className="w-full">
                   {hasOverview && (
-                    <p className="text-left text-gray-800 dark:text-gray-200 text-sm leading-relaxed line-clamp-2 md:line-clamp-4">
+                    <p
+                      className="hidden md:block text-left text-gray-800 dark:text-gray-200 text-sm leading-relaxed line-clamp-2 md:line-clamp-4"
+                    >
                       {item.overview}
                     </p>
                   )}
