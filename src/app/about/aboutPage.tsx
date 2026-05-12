@@ -40,7 +40,7 @@ export default function AboutPage() {
                 <div className="w-11 h-11 sm:w-20 sm:h-20 rounded-full bg-accent shadow-md ring-2 ring-light-card dark:ring-dark-card overflow-hidden transition-transform duration-300 group-hover/tiba:scale-105">
                   <img
                     draggable="false"
-                    src="/tiba.jpeg"
+                    src="/tiba.png"
                     alt="Tiba"
                     className="w-full h-full object-cover"
                   />
