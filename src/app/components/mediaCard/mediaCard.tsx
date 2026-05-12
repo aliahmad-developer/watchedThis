@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import MediaPoster from "../randomMedia/mediaPoster";
 import TrailerModal from "../playTrailerModal/trailerModal";
@@ -15,12 +15,6 @@ import {
   faStar,
 } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
-
-// ── Single-overlay enforcement ────────────────────────────────────────────────
-// Holds a reference to the currently-open card's close function.
-// When a new long-press fires it calls this first, ensuring only one overlay
-// can be open at a time across all mounted MediaCard instances.
-let activeCloser: (() => void) | null = null;
 
 interface MediaCardProps {
   item: {
@@ -62,9 +56,6 @@ export default function MediaCard({
   const year = (item.release_date || item.first_air_date)?.slice(0, 4);
 
   const [showTrailer, setShowTrailer] = useState(false);
-  const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false);
-
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const { currentStatus, saveToList, loading, isAuthenticated } = useUserList({
     mediaId: item.id,
@@ -75,43 +66,6 @@ export default function MediaCard({
 
   const isFavourited = currentStatus === "favourite";
 
-  const closeMobileOverlay = () => {
-    setMobileOverlayOpen(false);
-    // Unregister ourselves if we're still the active card
-    if (activeCloser === closeMobileOverlay) activeCloser = null;
-  };
-
-  const toggleMobileOverlay = () => {
-    const isTouchDevice =
-      "ontouchstart" in window || navigator.maxTouchPoints > 0;
-
-    if (!isTouchDevice) return;
-
-    // If this is already the open card, close on “second tap”
-    if (mobileOverlayOpen) {
-      closeMobileOverlay();
-      return;
-    }
-
-    // Otherwise open this card (closing any other open one)
-    if (activeCloser && activeCloser !== closeMobileOverlay) {
-      activeCloser();
-    }
-
-    activeCloser = closeMobileOverlay;
-    setMobileOverlayOpen(true);
-  };
-
-  // Clean up when unmounting so the stale ref doesn't linger
-  useEffect(() => {
-    return () => {
-      cancelLongPress();
-      if (activeCloser === closeMobileOverlay) activeCloser = null;
-    };
-    // closeMobileOverlay is stable — defined in render scope, captured once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleFavourite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -120,9 +74,12 @@ export default function MediaCard({
 
     try {
       await saveToList("favourite");
+
       toast.success(
         isFavourited ? "Removed from Favourites" : "Added to Favourites",
-        { icon: isFavourited ? "🗑️" : "❤️" },
+        {
+          icon: isFavourited ? "🗑️" : "❤️",
+        },
       );
     } catch {
       toast.error("Something went wrong, please try again");
@@ -130,54 +87,22 @@ export default function MediaCard({
   };
 
   const handleClick = () => {
-    if (mobileOverlayOpen) return;
     trackClick(item.id, mediaType as "movie" | "tv");
   };
 
   const delay = `${Math.min(index * 40, 300)}ms`;
+
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
 
   const hasOverview = Boolean(item.overview?.trim());
   const hasRating = Boolean(item.vote_average);
+
   const hasMeta =
     mediaType === "tv"
       ? Boolean(item.number_of_seasons || item.number_of_episodes)
       : Boolean(duration);
+
   const hasHoverContent = hasOverview || hasRating || hasMeta;
-
-  const startLongPress = (e?: React.TouchEvent) => {
-    // Allow long press on ALL touch devices,
-    // including landscape tablets/phones.
-    const isTouchDevice =
-      "ontouchstart" in window || navigator.maxTouchPoints > 0;
-
-    if (!isTouchDevice) return;
-
-    // If a drag is happening or we’re already waiting, ignore.
-    if (longPressTimer.current) return;
-
-    // Prevent accidental navigation before overlay opens.
-    if (e?.cancelable) e.preventDefault();
-
-    longPressTimer.current = setTimeout(() => {
-      // Close any already-open card
-      if (activeCloser && activeCloser !== closeMobileOverlay) {
-        activeCloser();
-      }
-
-      activeCloser = closeMobileOverlay;
-      setMobileOverlayOpen(true);
-
-      longPressTimer.current = null;
-    }, 450);
-  };
-
-  const cancelLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
 
   return (
     <>
@@ -195,22 +120,7 @@ export default function MediaCard({
         prefetch={false}
         href={href}
         draggable={false}
-        onClick={(e) => {
-          // On mobile: second tap closes instead of navigating
-          const isTouchDevice =
-            "ontouchstart" in window || navigator.maxTouchPoints > 0;
-
-          if (isTouchDevice && mobileOverlayOpen) {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleMobileOverlay();
-            return;
-          }
-          handleClick();
-        }}
-        onTouchStart={startLongPress}
-        onTouchEnd={cancelLongPress}
-        onTouchCancel={cancelLongPress}
+        onClick={handleClick}
         className="
           group block cursor-pointer rounded-2xl text-left
           opacity-0 animate-[fadeUp_0.45s_ease_forwards]
@@ -233,7 +143,7 @@ export default function MediaCard({
             <>
               {/* OVERLAY */}
               <div
-                className={`
+                className="
                   absolute inset-0 z-10
                   bg-gradient-to-t
                   from-white/90 via-white/75 to-white/60
@@ -245,14 +155,12 @@ export default function MediaCard({
 
                   [@media(hover:hover)]:group-hover:opacity-100
                   [@media(hover:hover)]:group-hover:pointer-events-auto
-
-                  ${mobileOverlayOpen ? "opacity-100 pointer-events-auto" : ""}
-                `}
+                "
               />
 
               {/* CONTENT */}
               <div
-                className={`
+                className="
                   absolute inset-0 z-20
                   flex flex-col justify-between min-h-0
                   p-5 text-left items-start
@@ -262,9 +170,7 @@ export default function MediaCard({
 
                   [@media(hover:hover)]:group-hover:opacity-100
                   [@media(hover:hover)]:group-hover:pointer-events-auto
-
-                  ${mobileOverlayOpen ? "opacity-100 pointer-events-auto" : ""}
-                `}
+                "
               >
                 {/* TOP */}
                 <div className="w-full shrink min-h-0 overflow-hidden">
@@ -278,9 +184,11 @@ export default function MediaCard({
                         icon={faStar}
                         className="w-4 h-4 text-light-secondary-text dark:text-white"
                       />
+
                       <span className="text-gray-900 dark:text-white text-sm font-semibold">
                         {rating}
                       </span>
+
                       {item.vote_count && (
                         <span className="text-gray-700 dark:text-gray-300 text-sm">
                           ({(item.vote_count / 1000).toFixed(1)}K)
@@ -314,19 +222,21 @@ export default function MediaCard({
                 </div>
 
                 {/* BOTTOM */}
-                <div className="w-full min-h-0 flex-1 overflow-hidden">
+                {/* BOTTOM */}
+                <div className="w-full flex flex-col justify-end flex-1 min-h-0">
                   {hasOverview && (
                     <p
                       className="
-    hidden md:block
-    text-left
-    text-gray-800 dark:text-gray-200
-    text-sm leading-relaxed
-    overflow-hidden
-    wrap-break-word
-    line-clamp-3
-    lg:line-clamp-4
-  "
+                      hidden md:block
+                      text-left
+                      text-gray-800 dark:text-gray-200
+                      text-sm leading-relaxed
+                      overflow-hidden
+                      break-words
+                      line-clamp-3
+                      lg:line-clamp-4
+                      mb-auto
+                    "
                     >
                       {item.overview}
                     </p>
@@ -339,8 +249,8 @@ export default function MediaCard({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+
                           setShowTrailer(true);
-                          closeMobileOverlay();
                         }}
                         className="
                           bg-transparent
@@ -436,20 +346,14 @@ export default function MediaCard({
 
         {/* LOWER INFO */}
         <div
-          className={`
+          className="
             mt-3 px-1
             transition-all duration-300
 
             [@media(hover:hover)]:group-hover:opacity-0
             [@media(hover:hover)]:group-hover:translate-y-2
             [@media(hover:hover)]:group-hover:pointer-events-none
-
-            ${
-              mobileOverlayOpen
-                ? "opacity-0 translate-y-2 pointer-events-none"
-                : "opacity-100 translate-y-0"
-            }
-          `}
+          "
         >
           <div className="text-sm font-semibold text-center line-clamp-2 text-light-header dark:text-dark-header">
             {title}
