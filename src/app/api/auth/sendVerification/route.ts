@@ -7,7 +7,6 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
-  // ✅ Guard: catch missing env vars before doing anything
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
     return NextResponse.json(
       { error: "Email service not configured" },
@@ -61,7 +60,6 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("[send-verification]", error?.code, error?.message);
 
-    // ✅ Map known Firebase codes to proper HTTP status codes
     const STATUS_MAP: Record<string, number> = {
       "auth/user-not-found": 404,
       "auth/invalid-email": 400,

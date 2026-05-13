@@ -15,7 +15,7 @@ const ALLOWED_SIZES = new Set([
   "w342",
   "w500",
   "w780",
-  "w1280", 
+  "w1280",
   "h632",
   "original",
 ]);

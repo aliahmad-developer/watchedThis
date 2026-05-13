@@ -103,7 +103,7 @@ export async function GET(
       }));
 
       const enrichedCrew = crew.map((c, i) => ({
-        ...runtimeData[cast.length + i], 
+        ...runtimeData[cast.length + i],
         id: c.id,
         title: c.title || c.name,
         job: c.job,

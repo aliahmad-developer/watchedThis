@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "firebase-admin/auth";
-import { adminApp } from "@/lib/firebaseAdmin";
-import { getPasswordResetTemplate } from "@/lib/emailTemplates";
+import { adminDb } from "@/lib/firebaseAdmin";
+import crypto from "crypto";
 import { Resend } from "resend";
+import { getPasswordResetTemplate } from "@/lib/emailTemplates";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+function hashToken(token: string): string {
+  return crypto
+    .createHmac("sha256", process.env.RANDOM_HMAC_SECRET!)
+    .update(token)
+    .digest("hex");
+}
+// Add to BOTH routes temporarily
+console.log("[debug] HMAC secret value:", process.env.RANDOM_HMAC_SECRET);
 export async function POST(req: NextRequest) {
-  // ✅ Guard: catch missing env vars before doing anything
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
     return NextResponse.json(
       { error: "Email service not configured" },
@@ -15,60 +22,48 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let email: string;
-  try {
-    const body = await req.json();
-    email = body?.email;
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid request body" },
-      { status: 400 },
-    );
-  }
+  const { email } = await req.json();
 
   if (!email) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
 
   try {
-    const auth = getAuth(adminApp);
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+
+    await adminDb.collection("passwordResetTokens").doc(email).set({
+      token: hashedToken, // only the hash is stored
+      email,
+      expiresAt,
+      used: false,
+    });
+
     const baseUrl =
       process.env.NODE_ENV === "development"
         ? "http://localhost:3000"
-        : process.env.NEXT_PUBLIC_BASE_URL || "https://watchedthis.com";
+        : process.env.NEXT_PUBLIC_BASE_URL;
 
-    const resetLink = await auth.generatePasswordResetLink(email, {
-      url: `${baseUrl}/reset-password`,
-      handleCodeInApp: true,
-    });
+    const resetLink = `${baseUrl}/reset-password?token=${rawToken}`; // raw in the link
 
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM!,
       to: email,
       subject: "Reset your password",
       html: getPasswordResetTemplate(resetLink),
     });
 
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to send email" },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[reset-password]", error?.code, error?.message);
-
-    // ✅ Map known Firebase codes to proper HTTP status codes
-    const STATUS_MAP: Record<string, number> = {
-      "auth/user-not-found": 404,
-      "auth/invalid-email": 400,
-      "auth/invalid-api-key": 503,
-      "app/no-app": 503,
-    };
-
-    const status = STATUS_MAP[error?.code] ?? 500;
-    const message =
-      error?.code === "auth/user-not-found"
-        ? "No account found with this email address."
-        : error?.code === "auth/invalid-email"
-          ? "Invalid email address."
-          : "Something went wrong. Please try again.";
-
-    return NextResponse.json({ error: message }, { status });
+  } catch (err: any) {
+    console.error("[resetPassword]", err?.message);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

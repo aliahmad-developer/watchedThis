@@ -11,7 +11,7 @@ import UsernameUpdate from "./authComponent/userNameUpdate";
 import PasswordUpdate from "./authComponent/passwordUpdate";
 import Message from "./authComponent/message";
 import type { AuthError, FirebaseUser } from "@/types/auth";
-import { User } from 'firebase/auth';
+import { User } from "firebase/auth";
 
 // Module-level cache — persists across re-renders, cleared on logout
 const userInfoCache = new Map<
@@ -163,18 +163,24 @@ export default function AuthPage() {
         authRef.current = authInstance;
         dbRef.current = dbInstance;
 
-        unsubscribe = authInstance.onAuthStateChanged((u: FirebaseUser | null) => {
-          setUser(u ?? null);
-          if (u) {
-            fetchUserInfo();
-          } else {
-            hasFetchedRef.current = false;
-            setIsLoading(false);
-          }
-        });
+        unsubscribe = authInstance.onAuthStateChanged(
+          (u: FirebaseUser | null) => {
+            setUser(u ?? null);
+            if (u) {
+              fetchUserInfo();
+            } else {
+              hasFetchedRef.current = false;
+              setIsLoading(false);
+            }
+          },
+        );
       } catch (err: unknown) {
         const authError = err as AuthError;
-        console.error({ level: 'error', component: 'authPage', message: authError.message });
+        console.error({
+          level: "error",
+          component: "authPage",
+          message: authError.message,
+        });
         showMessage("Failed to initialize authentication", true);
       }
     };
@@ -289,30 +295,30 @@ export default function AuthPage() {
         resetFields();
         showMessage("Password updated successfully!");
       } catch (err: any) {
-        showMessage(err.message || "Failed to update password", true);
+        throw err;
       }
     },
     [showMessage],
   );
 
-const handleSendVerification = useCallback(async () => {
-  const currentUser = authRef.current?.currentUser;
-  if (!currentUser?.email) return;
+  const handleSendVerification = useCallback(async () => {
+    const currentUser = authRef.current?.currentUser;
+    if (!currentUser?.email) return;
 
-  setIsSendingVerification(true);
-  try {
-    const res = await fetch("/api/auth/sendVerification", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: currentUser.email }),
-    });
+    setIsSendingVerification(true);
+    try {
+      const res = await fetch("/api/auth/sendVerification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUser.email }),
+      });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-  } finally {
-    setIsSendingVerification(false);
-  }
-}, []);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+    } finally {
+      setIsSendingVerification(false);
+    }
+  }, []);
 
   const profileCard = useMemo(() => {
     if (!user) return null;

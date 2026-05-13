@@ -108,7 +108,7 @@ function MediaTypeContent() {
 
   if (loading) return <MediaTypeSkeleton />;
   if (error)
-    return <div className="text-center mt-8 text-red-500">{error}</div>;
+    return <div className="text-center mt-8 text-accent">{error}</div>;
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">

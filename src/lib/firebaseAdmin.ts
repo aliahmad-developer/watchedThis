@@ -1,12 +1,13 @@
 import { getApps, initializeApp, cert, App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth"; 
 
-let adminApp: App;
+export let adminApp: App;
+
 function getServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   }
-
   return {
     projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
     clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
@@ -28,4 +29,4 @@ try {
 }
 
 export const adminDb = getFirestore(adminApp);
-export { adminApp };
+export const adminAuth = getAuth(adminApp);

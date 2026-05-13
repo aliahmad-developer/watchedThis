@@ -32,7 +32,6 @@ async function getOrCreateDailyMedia(today) {
             const newItems = await (0, randomMedia_1.getRandomMedia)(seenIds, needed);
             const updated = dedupe([...newItems, ...existing]).slice(0, 3);
             await docRef.set({ date: today, items: updated });
-            console.log(`[dailyMedia] Generated ${newItems.length} new item(s) for ${today}, total: ${updated.length}`);
             return updated;
         }
         // Case 3: new day — carry 2 newest, fetch 1 new → [newItem, old1, old2]
@@ -43,7 +42,6 @@ async function getOrCreateDailyMedia(today) {
             const newItems = await (0, randomMedia_1.getRandomMedia)(seenIds, 1);
             const updated = dedupe([...newItems, ...carryover]).slice(0, 3);
             await docRef.set({ date: today, items: updated });
-            console.log(`[dailyMedia] Rotated 1 new item for ${today}, total: ${updated.length}`);
             return updated;
         }
     }
@@ -51,7 +49,6 @@ async function getOrCreateDailyMedia(today) {
     const newItems = await (0, randomMedia_1.getRandomMedia)(new Set(), 3);
     const items = dedupe(newItems).slice(0, 3);
     await docRef.set({ date: today, items });
-    console.log(`[dailyMedia] First run, generated ${items.length} item(s)`);
     return items;
 }
 //# sourceMappingURL=dailyMedia.js.map

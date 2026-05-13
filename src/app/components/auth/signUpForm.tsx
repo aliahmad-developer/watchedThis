@@ -360,13 +360,13 @@ export default function SignupForm({
                   key={key}
                   className={`flex items-center gap-1 text-xs ${
                     reqs[key]
-                      ? "text-green-600 dark:text-green-400"
+                      ? "text-accent dark:text-dark-accent-muted"
                       : "text-light-secondary-text dark:text-dark-secondary-text"
                   }`}
                 >
                   <FontAwesomeIcon
                     icon={reqs[key] ? faCheckCircle : faTimesCircle}
-                    className={`w-2.5 h-2.5 ${reqs[key] ? "text-green-500" : "text-red-400"}`}
+                    className={`w-2.5 h-2.5 ${reqs[key] ? "text-accent dark:text-dark-accent-muted" : "text-light-secondary-text dark:text-dark-secondary-text"}`}
                   />
                   {label}
                 </span>
@@ -414,7 +414,7 @@ export default function SignupForm({
             >
               <FontAwesomeIcon
                 icon={showConfirmPassword ? faEyeSlash : faEye}
-                className="w-3 h-3"
+                size="2xs"
               />
             </button>
           </div>

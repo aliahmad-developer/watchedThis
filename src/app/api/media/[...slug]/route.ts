@@ -2,19 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ slug?: string[] }> }
+  { params }: { params: Promise<{ slug?: string[] }> },
 ) {
   const { slug = [] } = await params;
 
   if (!Array.isArray(slug) || slug.length < 3) {
-    return NextResponse.json({ error: "Invalid route parameters" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid route parameters" },
+      { status: 400 },
+    );
   }
 
   const media_type = slug[0];
   const id = slug[slug.length - 1];
 
   if (!media_type || !id) {
-    return NextResponse.json({ error: "Missing media type or ID" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing media type or ID" },
+      { status: 400 },
+    );
   }
 
   if (!["movie", "tv"].includes(media_type)) {
@@ -27,7 +33,10 @@ export async function GET(
 
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "TMDB API key not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "TMDB API key not configured" },
+      { status: 500 },
+    );
   }
 
   const detailsUrl = `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${apiKey}&language=en-US&append_to_response=videos,images,release_dates,content_ratings,keywords`;
@@ -54,7 +63,7 @@ export async function GET(
           }`,
           code: detailsRes.status,
         },
-        { status: detailsRes.status }
+        { status: detailsRes.status },
       );
     }
 
@@ -62,7 +71,7 @@ export async function GET(
 
     if (media_type === "movie" && data.release_dates?.results) {
       const usRelease = data.release_dates.results.find(
-        (r: any) => r.iso_3166_1 === "US"
+        (r: any) => r.iso_3166_1 === "US",
       );
       if (usRelease?.release_dates?.length) {
         const theatrical =
@@ -72,7 +81,7 @@ export async function GET(
       }
     } else if (media_type === "tv" && data.content_ratings?.results) {
       const usRating = data.content_ratings.results.find(
-        (r: any) => r.iso_3166_1 === "US"
+        (r: any) => r.iso_3166_1 === "US",
       );
       certification = usRating?.rating?.trim() || null;
     }
@@ -103,7 +112,7 @@ export async function GET(
     console.error("TMDB API request failed:", error);
     return NextResponse.json(
       { error: "Failed to fetch media data from TMDB" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

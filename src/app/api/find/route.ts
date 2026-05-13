@@ -35,14 +35,11 @@ interface TMDBDiscoverResponse {
 /* ────────────────────────────────────────────────────────────── */
 /* Helpers */
 /* ────────────────────────────────────────────────────────────── */
-async function fetchKeywords(
-  id: number,
-  mediaType: string
-): Promise<string[]> {
+async function fetchKeywords(id: number, mediaType: string): Promise<string[]> {
   try {
     const res = await fetch(
       `${TMDB_BASE}/${mediaType}/${id}/keywords?api_key=${TMDB_KEY}`,
-      { next: { revalidate: 86400 } }
+      { next: { revalidate: 86400 } },
     );
 
     if (!res.ok) return [];
@@ -58,7 +55,7 @@ async function fetchKeywords(
 
 async function resolveKeywordIds(
   terms: string[],
-  separator: "|" | ","
+  separator: "|" | ",",
 ): Promise<string> {
   if (!terms.length) return "";
 
@@ -67,21 +64,19 @@ async function resolveKeywordIds(
       try {
         const res = await fetch(
           `${TMDB_BASE}/search/keyword?api_key=${TMDB_KEY}&query=${encodeURIComponent(
-            term.trim()
+            term.trim(),
           )}`,
-          { next: { revalidate: 86400 } }
+          { next: { revalidate: 86400 } },
         );
 
         if (!res.ok) return [];
 
         const data = await res.json();
-        return (data.results || [])
-          .slice(0, 1)
-          .map((k: TMDBKeyword) => k.id);
+        return (data.results || []).slice(0, 1).map((k: TMDBKeyword) => k.id);
       } catch {
         return [];
       }
-    })
+    }),
   );
 
   const ids = results.flat();
@@ -130,7 +125,7 @@ async function discoverMedia(
   mediaType: "movie" | "tv",
   searchParams: URLSearchParams,
   includeIds: string,
-  excludeIds: string
+  excludeIds: string,
 ): Promise<TMDBDiscoverResponse> {
   const genres = searchParams.get("genres") || "";
   const excludeGenres = searchParams.get("excludeGenres") || "";
@@ -176,20 +171,14 @@ async function discoverMedia(
 
   /* TV */
   if (mediaType === "tv") {
-    if (minYear)
-      params.set("first_air_date.gte", `${minYear}-01-01`);
-    if (maxYear)
-      params.set("first_air_date.lte", `${maxYear}-12-31`);
+    if (minYear) params.set("first_air_date.gte", `${minYear}-01-01`);
+    if (maxYear) params.set("first_air_date.lte", `${maxYear}-12-31`);
 
-    if (minSeasons)
-      params.set("with_number_of_seasons.gte", minSeasons);
-    if (maxSeasons)
-      params.set("with_number_of_seasons.lte", maxSeasons);
+    if (minSeasons) params.set("with_number_of_seasons.gte", minSeasons);
+    if (maxSeasons) params.set("with_number_of_seasons.lte", maxSeasons);
 
-    if (minEpisodes)
-      params.set("with_number_of_episodes.gte", minEpisodes);
-    if (maxEpisodes)
-      params.set("with_number_of_episodes.lte", maxEpisodes);
+    if (minEpisodes) params.set("with_number_of_episodes.gte", minEpisodes);
+    if (maxEpisodes) params.set("with_number_of_episodes.lte", maxEpisodes);
 
     if (tvStatus) {
       // TMDB expects OR pipe for statuses
@@ -204,20 +193,16 @@ async function discoverMedia(
 
   /* Movies */
   if (mediaType === "movie") {
-    if (minYear)
-      params.set("primary_release_date.gte", `${minYear}-01-01`);
-    if (maxYear)
-      params.set("primary_release_date.lte", `${maxYear}-12-31`);
+    if (minYear) params.set("primary_release_date.gte", `${minYear}-01-01`);
+    if (maxYear) params.set("primary_release_date.lte", `${maxYear}-12-31`);
 
-    if (minRuntime)
-      params.set("with_runtime.gte", minRuntime);
-    if (maxRuntime)
-      params.set("with_runtime.lte", maxRuntime);
+    if (minRuntime) params.set("with_runtime.gte", minRuntime);
+    if (maxRuntime) params.set("with_runtime.lte", maxRuntime);
   }
 
   const res = await fetch(
     `${TMDB_BASE}/discover/${mediaType}?${params.toString()}`,
-    { next: { revalidate: 3600 } }
+    { next: { revalidate: 3600 } },
   );
 
   if (!res.ok) {
@@ -235,21 +220,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     const mediaTypes = parseMediaTypes(
-      searchParams.get("mediaType") || "movie"
+      searchParams.get("mediaType") || "movie",
     );
 
     const strict = searchParams.get("strict") === "true";
 
-    const includeTerms = (
-      searchParams.get("keywords") || ""
-    )
+    const includeTerms = (searchParams.get("keywords") || "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const excludeTerms = (
-      searchParams.get("excludeKeywords") || ""
-    )
+    const excludeTerms = (searchParams.get("excludeKeywords") || "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
@@ -262,8 +243,8 @@ export async function GET(req: NextRequest) {
     /* Query all requested media types */
     const discovered = await Promise.all(
       mediaTypes.map((type) =>
-        discoverMedia(type, searchParams, includeIds, excludeIds)
-      )
+        discoverMedia(type, searchParams, includeIds, excludeIds),
+      ),
     );
 
     /* Merge all results */
@@ -271,7 +252,7 @@ export async function GET(req: NextRequest) {
       block.results.map((item) => ({
         ...item,
         media_type: mediaTypes[index],
-      }))
+      })),
     );
 
     /* Sort merged results globally if mixed movie+tv */
@@ -280,22 +261,16 @@ export async function GET(req: NextRequest) {
     if (mediaTypes.length > 1) {
       if (sortBy.includes("vote_average")) {
         mergedResults.sort(
-          (a, b) =>
-            (b.vote_average || 0) - (a.vote_average || 0)
+          (a, b) => (b.vote_average || 0) - (a.vote_average || 0),
         );
       } else if (sortBy.includes("vote_count")) {
-        mergedResults.sort(
-          (a, b) =>
-            (b.vote_count || 0) - (a.vote_count || 0)
-        );
+        mergedResults.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
       }
     }
 
     /* Fetch keywords per item */
     const keywordsPerItem = await Promise.all(
-      mergedResults.map((item) =>
-        fetchKeywords(item.id, item.media_type)
-      )
+      mergedResults.map((item) => fetchKeywords(item.id, item.media_type)),
     );
 
     const results = mergedResults.map((item, i) => ({
@@ -305,8 +280,7 @@ export async function GET(req: NextRequest) {
       poster_path: item.poster_path,
       vote_average: item.vote_average,
       vote_count: item.vote_count,
-      release_date:
-        item.release_date || item.first_air_date || "",
+      release_date: item.release_date || item.first_air_date || "",
       genre_ids: item.genre_ids || [],
       overview: item.overview || "",
       media_type: item.media_type,
@@ -315,12 +289,12 @@ export async function GET(req: NextRequest) {
 
     const totalPages = Math.min(
       Math.max(...discovered.map((x) => x.total_pages), 1),
-      500
+      500,
     );
 
     const totalResults = discovered.reduce(
       (sum, x) => sum + x.total_results,
-      0
+      0,
     );
 
     return NextResponse.json({
@@ -332,9 +306,6 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("Find API error:", err);
 
-    return NextResponse.json(
-      { error: "Failed to fetch" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }
 }

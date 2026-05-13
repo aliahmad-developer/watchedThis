@@ -89,15 +89,8 @@ export default function proxy(request: NextRequest) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // 3. Firebase auth action redirects
   const mode = searchParams.get("mode");
   const oobCode = searchParams.get("oobCode");
-
-  if (oobCode && mode === "resetPassword") {
-    const url = new URL("/reset-password", request.url);
-    url.searchParams.set("oobCode", oobCode);
-    return NextResponse.redirect(url);
-  }
 
   if (oobCode && mode === "verifyEmail") {
     const url = new URL("/verify-email", request.url);

@@ -49,7 +49,8 @@ export default function LoginForm({
       }
     } catch (error: unknown) {
       const authError = error as AuthError;
-      const errorMessage = authError.message || "Login failed. Please try again.";
+      const errorMessage =
+        authError.message || "Login failed. Please try again.";
       setMessage(errorMessage);
       if (onError) onError(errorMessage);
     } finally {

@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { signToken } from "@/app/components/utilities/signId";
 
 export async function POST(req: Request) {
-  
   try {
-    const body = await req.json().catch(() => null);    if (!body) {
+    const body = await req.json().catch(() => null);
+    if (!body) {
       return NextResponse.json({ error: "Empty body" }, { status: 400 });
     }
 
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     if (typeof id !== "number" || !media_type) {
       return NextResponse.json(
         { error: "Invalid id or media_type" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { error: "Failed to sign", detail: String(err) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

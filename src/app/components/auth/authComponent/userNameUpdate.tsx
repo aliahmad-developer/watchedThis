@@ -19,8 +19,8 @@ export default function UsernameUpdate({
 }: Props) {
   // Always compare against live user prop (updated from parent useAuth)
   const savedUsername = user?.displayName || "";
-  const isUnchanged = newUsername === savedUsername || newUsername.trim() === "";
-
+  const isUnchanged =
+    newUsername === savedUsername || newUsername.trim() === "";
 
   const handleSave = async () => {
     try {
@@ -52,16 +52,19 @@ export default function UsernameUpdate({
           onClick={handleSave}
           disabled={isUpdatingUsername || isUnchanged}
           className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-            ${isUpdatingUsername || isUnchanged
-              ? "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-              : "bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg"
+            ${
+              isUpdatingUsername || isUnchanged
+                ? "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                : "bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg"
             }`}
         >
           {isUpdatingUsername ? "Saving..." : "Save"}
         </button>
       </div>
       {newUsername.length >= 20 && (
-        <p className="text-xs text-red-500">Maximum character limit reached (20).</p>
+        <p className="text-xs text-red-500">
+          Maximum character limit reached (20).
+        </p>
       )}
     </div>
   );

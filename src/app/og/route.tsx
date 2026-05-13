@@ -154,7 +154,6 @@ export async function GET(req: NextRequest) {
           flexDirection: "column",
           justifyContent: "center",
           paddingLeft: "76px",
-          // Pull content away from poster when present
           paddingRight: hasPoster ? "450px" : "56px",
           flex: 1,
           zIndex: 2,

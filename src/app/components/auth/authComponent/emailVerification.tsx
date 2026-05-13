@@ -2,7 +2,11 @@
 import { useState, useEffect } from "react";
 import { User } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheckCircle, faEnvelope, faClock } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheckCircle,
+  faEnvelope,
+  faClock,
+} from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 
 type Props = {
@@ -75,9 +79,10 @@ export default function EmailVerification({
           onClick={handleClick}
           disabled={isDisabled}
           className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm transition-colors
-            ${isDisabled
-              ? "opacity-50 cursor-not-allowed bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text"
-              : "bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg"
+            ${
+              isDisabled
+                ? "opacity-50 cursor-not-allowed bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text"
+                : "bg-light-btn-bg dark:bg-dark-btn-bg text-light-btn-text dark:text-dark-btn-text hover:bg-light-btn-hover-bg dark:hover:bg-dark-btn-hover-bg"
             }`}
         >
           {cooldown > 0 ? (

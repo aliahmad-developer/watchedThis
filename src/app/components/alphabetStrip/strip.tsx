@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHashtag } from "@fortawesome/free-solid-svg-icons";
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-const DIGITS  = "0123456789".split("");
+const DIGITS = "0123456789".split("");
 
 export default function AlphabetStrip() {
   const router = useRouter();
@@ -22,21 +22,26 @@ export default function AlphabetStrip() {
         hover:bg-light-card dark:hover:bg-dark-card
         hover:text-color-accent transition-all duration-150 select-none"
     >
-      {label === "#"
-        ? <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 md:w-5 md:h-5" />
-        : label
-      }
+      {label === "#" ? (
+        <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 md:w-5 md:h-5" />
+      ) : (
+        label
+      )}
     </button>
   );
 
- return (
+  return (
     <div className="mb-5 w-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl px-3 py-2.5">
       <div className="flex flex-wrap gap-0.5 justify-center">
-        {LETTERS.map((l) => <Chip key={l} label={l} />)}
+        {LETTERS.map((l) => (
+          <Chip key={l} label={l} />
+        ))}
       </div>
       <div className="border-t border-light-border dark:border-dark-border my-2 mx-1" />
       <div className="flex flex-wrap gap-0.5 justify-center">
-        {DIGITS.map((d) => <Chip key={d} label={d} />)}
+        {DIGITS.map((d) => (
+          <Chip key={d} label={d} />
+        ))}
         <Chip label="#" />
       </div>
     </div>

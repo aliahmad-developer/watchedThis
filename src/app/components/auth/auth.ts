@@ -175,14 +175,18 @@ export async function checkRedirectResult() {
 // ─── Forgot password ──────────────────────────────────────────────────────
 export async function forgotPassword(email: string) {
   try {
-    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
-    const auth = await getFirebaseAuth();
+    const res = await fetch("/api/auth/resetPassword", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
 
-    await sendPasswordResetEmail(auth, email);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || "Something went wrong.");
 
     return { success: true, message: "Password reset email sent!" };
   } catch (error: any) {
-    const { message } = friendlyAuthError(error.code);
-    return { success: false, message };
+    return { success: false, message: error.message };
   }
 }

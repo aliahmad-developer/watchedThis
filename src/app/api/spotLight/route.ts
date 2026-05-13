@@ -17,15 +17,15 @@ export async function GET() {
     const [movieRes, tvRes] = await Promise.all([
       fetch(
         `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&sort_by=popularity.desc&with_watch_providers=${STREAMING_PROVIDERS.join(
-          "|"
+          "|",
         )}&watch_region=US`,
-        { next: { revalidate: 3600 } } // 1 hour
+        { next: { revalidate: 3600 } }, // 1 hour
       ),
       fetch(
         `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&sort_by=popularity.desc&with_watch_providers=${STREAMING_PROVIDERS.join(
-          "|"
+          "|",
         )}&watch_region=US`,
-        { next: { revalidate: 3600 } }
+        { next: { revalidate: 3600 } },
       ),
     ]);
 
@@ -69,11 +69,11 @@ export async function GET() {
           const [providersRes, detailRes] = await Promise.all([
             fetch(
               `https://api.themoviedb.org/3/${media_type}/${id}/watch/providers?api_key=${API_KEY}`,
-              { next: { revalidate: 86400 } } // 24h (providers rarely change)
+              { next: { revalidate: 86400 } }, // 24h (providers rarely change)
             ),
             fetch(
               `https://api.themoviedb.org/3/${media_type}/${id}?api_key=${API_KEY}&append_to_response=credits`,
-              { next: { revalidate: 86400 } }
+              { next: { revalidate: 86400 } },
             ),
           ]);
 
@@ -98,7 +98,7 @@ export async function GET() {
           console.error(`Error enriching ${media_type}/${id}`, err);
           return item;
         }
-      })
+      }),
     );
 
     const response = {
@@ -118,7 +118,7 @@ export async function GET() {
         message: "Error fetching streaming content",
         error: String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -98,7 +98,7 @@ export default function TrailerModal({
     <Portal>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center px-4"
+        className="fixed inset-0 z-9999 flex items-center justify-center px-4 backdrop-blur-md"
         style={{
           background: "rgba(0, 0, 0, 0.7)",
           backdropFilter: "blur(12px)",

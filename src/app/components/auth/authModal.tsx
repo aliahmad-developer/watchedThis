@@ -52,7 +52,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     };
 
     init();
-    return () => { unsubscribe?.(); };
+    return () => {
+      unsubscribe?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -101,7 +103,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -153,8 +157,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => onDragStart(e.touches[0].clientY);
-  const handleTouchMove = (e: React.TouchEvent) => onDragMove(e.touches[0].clientY);
+  const handleTouchStart = (e: React.TouchEvent) =>
+    onDragStart(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) =>
+    onDragMove(e.touches[0].clientY);
   const handleTouchEnd = () => onDragEnd();
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -179,9 +185,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={() => setMode(tab)}
               className={`
                 flex-1 py-2 text-sm font-medium transition-colors border-b-2 -mb-px bg-transparent rounded-none
-                ${mode === tab
-                  ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent shadow-sm"
-                  : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text hover:border-light-border/50 dark:hover:border-dark-border/50"
+                ${
+                  mode === tab
+                    ? "border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent shadow-sm"
+                    : "border-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-body-text dark:hover:text-dark-body-text hover:border-light-border/50 dark:hover:border-dark-border/50"
                 }
               `}
             >
@@ -207,8 +214,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {isSendingVerification
               ? "Sending..."
               : cooldown > 0
-              ? `Wait ${cooldown}s`
-              : "Resend Verification Email"}
+                ? `Wait ${cooldown}s`
+                : "Resend Verification Email"}
           </button>
         </div>
       )}
@@ -229,7 +236,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       {mode === "forgot" && (
         <ForgotPasswordForm
           onBack={() => setMode("login")}
-          onSuccess={() => toast.success("Password reset email sent! Check your inbox.")}
+          onSuccess={() =>
+            toast.success("Password reset email sent! Check your inbox.")
+          }
         />
       )}
     </div>
@@ -281,7 +290,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       </div>
 
       {/* Desktop: Centered dialog */}
-      <div className="fixed inset-0 z-50 hidden sm:flex items-center justify-center p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-50 hidden sm:flex items-center justify-center p-4 overflow-y-auto backdrop-blur-md">
         <div
           className="w-full max-w-md bg-light-card dark:bg-dark-card rounded-2xl shadow-2xl border border-light-border dark:border-dark-border p-6 relative transition-all duration-300"
           style={{

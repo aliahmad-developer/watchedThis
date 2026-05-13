@@ -36,7 +36,7 @@
     "src/app/api/randomCall/route.ts",
     "src/types",
     ".next/dev/types/**/*.ts"
-, "src/app/api/auth/resetPassword"  ],
+, "src/app/api/auth/resetPassword", "src/app/api/auth/confirmReset"  ],
   "exclude": [
     "node_modules",
     "functions"

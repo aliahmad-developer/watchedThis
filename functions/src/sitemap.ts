@@ -76,7 +76,6 @@ export async function generateSitemap() {
   };
 
   await db.collection(COLLECTION).doc(DOC).set(sitemapData);
-  console.log(`Sitemap cached: ${movies.length} movies, ${tvShows.length} tv, ${persons.length} persons`);
 }
 
 export { tmdbApiKey };

@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     const res = await fetch(
-      `https://api.themoviedb.org/3/trending/all/week?api_key=${API_KEY}`
+      `https://api.themoviedb.org/3/trending/all/week?api_key=${API_KEY}`,
     );
 
     if (!res.ok) {
@@ -30,10 +30,14 @@ export async function GET() {
 
     return NextResponse.json(result, { headers: { "X-Cache": "MISS" } });
   } catch (error: unknown) {
-    console.error({ level: 'error', endpoint: '/api/trending', message: (error as Error).message });
+    console.error({
+      level: "error",
+      endpoint: "/api/trending",
+      message: (error as Error).message,
+    });
     return NextResponse.json(
       { message: "Error fetching trending media" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

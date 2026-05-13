@@ -4,7 +4,6 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const KEY = process.env.TMDB_API_KEY!;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// ── In-memory cache ───────────────────────────────────────────────────────────
 const cache = new Map<string, { data: unknown; expires: number }>();
 
 async function cachedFetch(url: string): Promise<unknown> {

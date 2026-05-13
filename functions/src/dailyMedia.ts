@@ -49,9 +49,6 @@ export async function getOrCreateDailyMedia(
       const newItems = await getRandomMedia(seenIds, needed);
       const updated = dedupe([...newItems, ...existing]).slice(0, 3);
       await docRef.set({ date: today, items: updated });
-      console.log(
-        `[dailyMedia] Generated ${newItems.length} new item(s) for ${today}, total: ${updated.length}`,
-      );
       return updated;
     }
 
@@ -62,9 +59,6 @@ export async function getOrCreateDailyMedia(
       const newItems = await getRandomMedia(seenIds, 1);
       const updated = dedupe([...newItems, ...carryover]).slice(0, 3);
       await docRef.set({ date: today, items: updated });
-      console.log(
-        `[dailyMedia] Rotated 1 new item for ${today}, total: ${updated.length}`,
-      );
       return updated;
     }
   }
@@ -73,6 +67,5 @@ export async function getOrCreateDailyMedia(
   const newItems = await getRandomMedia(new Set(), 3);
   const items = dedupe(newItems).slice(0, 3);
   await docRef.set({ date: today, items });
-  console.log(`[dailyMedia] First run, generated ${items.length} item(s)`);
   return items;
 }
