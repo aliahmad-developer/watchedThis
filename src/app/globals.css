@@ -684,3 +684,15 @@ body::after {
     transition-duration: 500ms; /* smooth fade on mouse */
   }
 }
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  60%  { opacity: 0.9; transform: translateY(-36px) scale(1.3); }
+  100% { opacity: 0; transform: translateY(-64px) scale(0.9); }
+}
+
+.float-particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+  animation: floatUp 0.8s ease-out forwards;
+}

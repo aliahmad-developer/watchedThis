@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import MediaPoster from "../randomMedia/mediaPoster";
 import TrailerModal from "../playTrailerModal/trailerModal";
@@ -55,6 +55,8 @@ export default function MediaCard({
 
   const [showTrailer, setShowTrailer] = useState(false);
 
+  const particleContainerRef = useRef<HTMLDivElement>(null);
+
   const { currentStatus, saveToList, loading, isAuthenticated } = useUserList({
     mediaId: item.id,
     mediaType: mediaType as "movie" | "tv",
@@ -64,6 +66,36 @@ export default function MediaCard({
 
   const isFavourited = currentStatus === "favourite";
 
+  // Spawns floating emoji/text particles that float upward and fade out
+  const spawnParticles = (emoji: string, count = 2) => {
+    const container = particleContainerRef.current;
+    if (!container) return;
+
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const el = document.createElement("span");
+
+        // Inline all styles so no global CSS is needed
+        el.style.cssText = `
+          position: absolute;
+          pointer-events: none;
+          z-index: 50;
+          font-size: ${16 + Math.random() * 8}px;
+          left: ${38 + (Math.random() - 0.5) * 28}%;
+          bottom: 48px;
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          animation: mcFloatUp 0.8s ease-out forwards;
+          user-select: none;
+        `;
+        el.textContent = emoji;
+
+        container.appendChild(el);
+        el.addEventListener("animationend", () => el.remove());
+      }, i * 130);
+    }
+  };
+
   const handleFavourite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -72,6 +104,11 @@ export default function MediaCard({
 
     try {
       await saveToList("favourite");
+
+      // Only spawn hearts when adding (not removing)
+      if (!isFavourited) {
+        spawnParticles("❤️", 3);
+      }
 
       toast.success(
         isFavourited ? "Removed from Favourites" : "Added to Favourites",
@@ -104,6 +141,15 @@ export default function MediaCard({
 
   return (
     <>
+      {/* Keyframe injected once via a style tag — safe and scoped */}
+      <style>{`
+        @keyframes mcFloatUp {
+          0%   { opacity: 1; transform: translateY(0) scale(1); }
+          55%  { opacity: 0.9; transform: translateY(-38px) scale(1.35); }
+          100% { opacity: 0; transform: translateY(-68px) scale(0.85); }
+        }
+      `}</style>
+
       {showTrailer && (
         <TrailerModal
           mediaId={item.id}
@@ -128,7 +174,10 @@ export default function MediaCard({
         style={{ animationDelay: delay }}
       >
         {/* CARD */}
-        <div className="relative aspect-2/3 overflow-hidden rounded-2xl bg-black">
+        <div
+          ref={particleContainerRef}
+          className="relative aspect-2/3 overflow-hidden rounded-2xl bg-black"
+        >
           {/* IMAGE */}
           <div className="absolute inset-0 transition-transform duration-300 ease-out [@media(hover:hover)]:group-hover:scale-[1.04]">
             <MediaPoster
@@ -220,21 +269,20 @@ export default function MediaCard({
                 </div>
 
                 {/* BOTTOM */}
-                {/* BOTTOM */}
                 <div className="w-full flex flex-col justify-end flex-1 min-h-0">
                   {hasOverview && (
-                   <p
-  className={`
-  hidden md:block
-  text-left
-  text-gray-800 dark:text-gray-200
-  text-sm leading-relaxed
-  overflow-hidden
-  break-words
-  mb-auto
-  ${mediaType === "tv" ? "line-clamp-3 lg:line-clamp-4" : "line-clamp-4 lg:line-clamp-5"}
-`}
->
+                    <p
+                      className={`
+                        hidden md:block
+                        text-left
+                        text-gray-800 dark:text-gray-200
+                        text-sm leading-relaxed
+                        overflow-hidden
+                        break-words
+                        mb-auto
+                        ${mediaType === "tv" ? "line-clamp-3 lg:line-clamp-4" : "line-clamp-4 lg:line-clamp-5"}
+                      `}
+                    >
                       {item.overview}
                     </p>
                   )}
@@ -246,7 +294,7 @@ export default function MediaCard({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-
+                          spawnParticles("▶", 2);
                           setShowTrailer(true);
                         }}
                         className="

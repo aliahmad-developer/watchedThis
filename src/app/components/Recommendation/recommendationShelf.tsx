@@ -220,7 +220,7 @@ function GuestCTA() {
           className="text-light-accent dark:text-dark-accent ml-1"
           style={{ width: "1.5rem", height: "1.5rem" }}
         />
-        <h2>Tailored For You</h2>
+        <h2>Top Picks For You</h2>
       </div>
 
       <div className="mx-5 mb-5 relative overflow-hidden rounded-2xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-card p-6 flex flex-col sm:flex-row items-center gap-5">
