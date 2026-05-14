@@ -2,6 +2,13 @@
   "name": "WatchedThis - Movie & TV Discovery",
   "short_name": "WatchedThis",
   "description": "AI-powered movie and TV show discovery. Random picks, scene detection, personalized recs. Works offline!",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://watchedthis.com/site.webmanifest"
+    }
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/favicon-16x16.png",

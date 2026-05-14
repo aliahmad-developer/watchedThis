@@ -65,7 +65,7 @@ export const metadata: Metadata = {
   ],
   apple: "/apple-touch-icon.png?v=2",
 },
-  manifest: "/site.webmanifest?v=2",
+  manifest: "/site.webmanifest",
 };
 
 export const viewport = {

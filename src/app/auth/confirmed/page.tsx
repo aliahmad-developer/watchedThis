@@ -7,6 +7,7 @@ import {
   faCheckCircle,
   faTriangleExclamation,
   faEnvelopeCircleCheck,
+  faMobileScreenButton,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import toast from "react-hot-toast";
@@ -19,6 +20,23 @@ function ConfirmedContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading",
   );
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+
+  // Detect if PWA is installed
+  useEffect(() => {
+    const checkPwa = async () => {
+      if (!("getInstalledRelatedApps" in navigator)) return;
+      try {
+        // @ts-ignore — not yet in all TS lib types
+        const apps = await navigator.getInstalledRelatedApps();
+        if (apps.length > 0) setIsPwaInstalled(true);
+      } catch {
+        // not supported or no permission — ignore
+      }
+    };
+    checkPwa();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,10 +57,8 @@ function ConfirmedContent() {
       if (!customToken) {
         if (!cancelled) {
           const message = "This link is invalid or has expired.";
-
           setError(message);
           setStatus("error");
-
           toast.error(message, {
             id: toastId,
             style: {
@@ -53,18 +69,19 @@ function ConfirmedContent() {
             },
           });
         }
-
         return;
       }
 
       try {
         const firebaseConfig = await import("../../firebase/firebaseConfig");
-
         const auth = await firebaseConfig.getFirebaseAuth();
-
         await signInWithCustomToken(auth, customToken);
 
         if (!cancelled) {
+          const finalUrl =
+            redirect + (redirect.includes("?") ? "&" : "?") + "verified=true";
+
+          setRedirectUrl(finalUrl);
           setStatus("success");
 
           toast.success("Verified!", {
@@ -77,10 +94,9 @@ function ConfirmedContent() {
             },
           });
 
+          // Auto-redirect after short delay — PWA button gives user control if installed
           setTimeout(() => {
-            router.replace(
-              redirect + (redirect.includes("?") ? "&" : "?") + "verified=true",
-            );
+            if (!cancelled) router.replace(finalUrl);
           }, 1800);
         }
       } catch (e: any) {
@@ -88,10 +104,8 @@ function ConfirmedContent() {
           const message =
             e?.message ??
             "Something went wrong. Try again or request a new link.";
-
           setError(message);
           setStatus("error");
-
           toast.error(message, {
             id: toastId,
             style: {
@@ -113,8 +127,9 @@ function ConfirmedContent() {
 
   return (
     <div className="flex flex-col items-center text-center">
+      {/* Icon — smaller on mobile */}
       <div
-        className={`mb-6 flex h-24 w-24 items-center justify-center rounded-full border text-4xl shadow-lg transition-all duration-500 ${
+        className={`mb-4 sm:mb-6 flex h-16 w-16 sm:h-24 sm:w-24 items-center justify-center rounded-full border text-3xl sm:text-4xl shadow-lg transition-all duration-500 ${
           status === "loading"
             ? "border-(--color-accent) bg-(--color-accent-muted) text-(--color-accent)"
             : status === "success"
@@ -137,13 +152,13 @@ function ConfirmedContent() {
         {status === "error" && <FontAwesomeIcon icon={faTriangleExclamation} />}
       </div>
 
-      <h1 className="mb-3 text-3xl font-bold tracking-tight text-light-header dark:text-dark-header">
+      <h1 className="mb-2 sm:mb-3 text-2xl sm:text-3xl font-bold tracking-tight text-light-header dark:text-dark-header">
         {status === "loading" && "One moment..."}
         {status === "success" && "You're in!"}
         {status === "error" && "That didn't work"}
       </h1>
 
-      <p className="mb-8 max-w-sm text-sm leading-relaxed text-light-secondary-text dark:text-dark-secondary-text">
+      <p className="mb-5 sm:mb-8 max-w-sm text-sm leading-relaxed text-light-secondary-text dark:text-dark-secondary-text">
         {status === "loading" && "Verifying your email."}
         {status === "success" && "Taking you to your profile."}
         {status === "error" &&
@@ -159,8 +174,24 @@ function ConfirmedContent() {
       )}
 
       {status === "success" && (
-        <div className="rounded-2xl border border-color-accent bg-(--color-accent-muted) px-5 py-3 text-sm text-color-accent">
-          ✓ Done
+        <div className="flex flex-col items-center gap-3">
+          <div className="rounded-2xl border border-color-accent bg-(--color-accent-muted) px-5 py-3 text-sm text-color-accent">
+            ✓ Done
+          </div>
+
+          {/* Show "Open in App" only if PWA is detected as installed */}
+          {isPwaInstalled && redirectUrl && (
+            <button
+              onClick={() => window.location.assign(redirectUrl)}
+              className="flex items-center gap-2 rounded-2xl bg-light-btn-bg px-5 py-2.5 text-sm font-semibold text-light-btn-text transition-all duration-200 hover:bg-light-btn-hover-bg dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg"
+            >
+              <FontAwesomeIcon
+                icon={faMobileScreenButton}
+                className="text-xs"
+              />
+              Open in App
+            </button>
+          )}
         </div>
       )}
 
@@ -178,17 +209,16 @@ function ConfirmedContent() {
 
 export default function ConfirmedPage() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-light-bg px-4 py-10 transition-colors duration-300 dark:bg-dark-bg">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-light-bg px-4 py-6 sm:py-10 transition-colors duration-300 dark:bg-dark-bg">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 -top-30 h-80 w-[320px] -translate-x-1/2 rounded-full bg-(--color-accent-muted) blur-3xl" />
         <div className="absolute -bottom-30 -right-15 h-65 w-65 rounded-full bg-(--color-accent-muted) blur-3xl" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-4xl border border-light-border bg-light-card/80 shadow-[0_10px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-300 dark:border-dark-border dark:bg-dark-card/70 dark:shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl sm:rounded-4xl border border-light-border bg-light-card/80 shadow-[0_10px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-300 dark:border-dark-border dark:bg-dark-card/70 dark:shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
         <div className="h-1.5 w-full bg-(--color-accent)" />
 
-        <div className="p-8 sm:p-10">
-          {/* useSearchParams() must live inside Suspense — required by Next.js for static builds */}
+        <div className="p-6 sm:p-10">
           <Suspense fallback={null}>
             <ConfirmedContent />
           </Suspense>
