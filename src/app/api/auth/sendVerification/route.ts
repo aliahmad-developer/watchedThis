@@ -29,10 +29,7 @@ function encrypt(text: string): string {
   return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
 }
 
-const baseUrl =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : (process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com");
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 export async function POST(req: NextRequest) {
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {

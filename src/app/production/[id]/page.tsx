@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import ProductionPageClient from "./pageClient";
 
 const fetchCompany = async (id: string) => {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
   const res = await fetch(
     `${baseUrl}/api/company/${id}?mediaType=movie&page=1`,
     {

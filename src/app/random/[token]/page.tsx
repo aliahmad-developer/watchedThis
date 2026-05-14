@@ -12,10 +12,7 @@ interface PageParams {
 }
 
 const baseUrl =
-  process.env.NEXT_PUBLIC_BASE_URL ||
-  (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000");
+  process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 // Single fetch — gets everything
 const fetchMediaDetails = cache(async (media_type: string, id: number) => {

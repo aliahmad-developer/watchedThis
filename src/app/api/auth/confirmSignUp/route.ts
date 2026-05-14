@@ -34,9 +34,7 @@ function decrypt(text: string): string {
 }
 
 const baseUrl =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : (process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com");
+  process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 export async function GET(req: NextRequest) {
   const rawToken = new URL(req.url).searchParams.get("token");
@@ -45,7 +43,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
 
-  // token = "<id>.<hmac-sig>"  — split on the LAST dot so the id hex is safe
   const lastDot = rawToken.lastIndexOf(".");
   const id = rawToken.slice(0, lastDot);
   const sig = rawToken.slice(lastDot + 1);

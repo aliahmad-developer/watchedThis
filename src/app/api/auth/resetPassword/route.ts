@@ -41,9 +41,7 @@ export async function POST(req: NextRequest) {
     });
 
     const baseUrl =
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : process.env.NEXT_PUBLIC_BASE_URL;
+      process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
     const resetLink = `${baseUrl}/reset-password?token=${rawToken}`; // raw in the link
 

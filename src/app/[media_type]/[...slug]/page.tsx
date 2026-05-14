@@ -26,7 +26,7 @@ const fetchMediaById = (media_type: string, id: string) =>
   unstable_cache(
     async () => {
       const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+        process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
       const res = await fetch(`${baseUrl}/api/media/${media_type}/_/${id}`, {
         next: { revalidate: 3600 },
       });
@@ -42,7 +42,7 @@ const fetchMediaDetails = cache(
     unstable_cache(
       async () => {
         const baseUrl =
-          process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+          process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
         const res = await fetch(
           `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
           {
