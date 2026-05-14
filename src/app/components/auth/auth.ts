@@ -1,19 +1,14 @@
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  updateProfile,
   signInWithPopup,
-  sendEmailVerification,
   sendPasswordResetEmail,
   GoogleAuthProvider,
   OAuthProvider,
   User,
 } from "firebase/auth";
 
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-
-// ─── Providers (safe at top level) ─────────────────────────────────────────
+// ─── Providers ─────────────────────────────────────────────────────────────
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
@@ -39,12 +34,13 @@ function clearSessionCookie() {
 
 // ─── Friendly error messages ───────────────────────────────────────────────
 const friendlyAuthError = (
-  code: string
+  code: string,
 ): { message: string; accountExists?: boolean; noAccount?: boolean } => {
   switch (code) {
     case "auth/email-already-in-use":
       return {
-        message: "An account with this email already exists. Try logging in instead.",
+        message:
+          "An account with this email already exists. Try logging in instead.",
         accountExists: true,
       };
     case "auth/invalid-email":
@@ -78,38 +74,48 @@ const friendlyAuthError = (
   }
 };
 
-// ─── Signup ────────────────────────────────────────────────────────────────
-export async function signup(email: string, password: string, username: string) {
+export async function signup(
+  email: string,
+  password: string,
+  username: string,
+) {
   try {
-    const { getFirebaseAuth, getFirebaseDB } = await import("../../firebase/firebaseConfig");
-
-    const auth = await getFirebaseAuth();
-    const db = getFirebaseDB();
-
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      displayName: username,
-      createdAt: serverTimestamp(),
+    const res = await fetch("/api/auth/sendVerification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, username }),
     });
 
-    await updateProfile(user, { displayName: username });
-    await user.getIdToken(true);
-    await sendEmailVerification(user);
-    await setSessionCookie(user);
+    const data = await res.json();
+
+    if (!res.ok) {
+      const accountExists = res.status === 409;
+      return {
+        success: false,
+        message: data.error || "Failed to send verification email.",
+        accountExists,
+      };
+    }
 
     return {
       success: true,
-      message: `Signup successful! Verification email sent to ${email}.`,
-      user,
+      message: `Verification email sent to ${email}. Please check your inbox.`,
+      // No user object — account doesn't exist yet
+      user: null,
       username,
     };
   } catch (error: any) {
-    const { message, accountExists } = friendlyAuthError(error.code);
-    return { success: false, message, accountExists };
+    return { success: false, message: "Sign up failed. Please try again." };
   }
+}
+
+// ─── Resend verification email ────────────────────────────────────────────
+export async function resendVerificationEmail(
+  email: string,
+  password: string,
+  username: string,
+) {
+  return signup(email, password, username);
 }
 
 // ─── Login ─────────────────────────────────────────────────────────────────
@@ -118,7 +124,11 @@ export const login = async (email: string, password: string) => {
     const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
     const auth = await getFirebaseAuth();
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
     await setSessionCookie(userCredential.user);
 
     return { success: true, message: "Login successful!" };
@@ -143,7 +153,7 @@ export const logout = async () => {
   }
 };
 
-// ─── OAuth ────────────────────────────────────────────────────────────────
+// ─── OAuth ─────────────────────────────────────────────────────────────────
 async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
   try {
     const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
@@ -167,12 +177,11 @@ export async function signInWithApple() {
   return oauthSignIn(appleProvider);
 }
 
-// ─── Redirect check (no-op) ───────────────────────────────────────────────
 export async function checkRedirectResult() {
   return { success: false, redirect: false, user: null };
 }
 
-// ─── Forgot password ──────────────────────────────────────────────────────
+// ─── Forgot password ───────────────────────────────────────────────────────
 export async function forgotPassword(email: string) {
   try {
     const res = await fetch("/api/auth/resetPassword", {
@@ -182,7 +191,6 @@ export async function forgotPassword(email: string) {
     });
 
     const data = await res.json();
-
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
 
     return { success: true, message: "Password reset email sent!" };

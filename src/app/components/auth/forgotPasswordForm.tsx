@@ -248,7 +248,7 @@ export default function ForgotPasswordForm({
           disabled={loading}
           className="text-xs text-light-accent dark:text-dark-accent hover:underline bg-transparent text-left disabled:opacity-50"
         >
-          ← Back to login
+           Back to login
         </button>
       )}
     </form>

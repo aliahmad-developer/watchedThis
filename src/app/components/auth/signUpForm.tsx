@@ -1,12 +1,6 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import {
-  signup,
-  signInWithGoogle,
-  signInWithApple,
-  checkRedirectResult,
-} from "./auth";
-import type { User } from "firebase/auth";
+import { useState, useRef } from "react";
+import { signup, signInWithGoogle, signInWithApple } from "./auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEye,
@@ -15,7 +9,9 @@ import {
   faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
-import toast from "react-hot-toast";
+import type { User } from "firebase/auth";
+import VerifyEmailModal from "./verifyEmailModal";
+import { useId } from "react";
 
 type SignupFormProps = {
   onSuccess?: (newUser: User, username: string) => void;
@@ -81,12 +77,20 @@ export default function SignupForm({
     Record<string, string>
   >({});
   const [shakeTerms, setShakeTerms] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+
   const termsRef = useRef<HTMLDivElement>(null);
 
   const reqs = validatePassword(password);
   const allReqsMet = Object.values(reqs).every(Boolean);
   const passwordsMatch = password === confirmPassword;
   const anyLoading = loading || oauthLoading !== null;
+
+ const emailId = useId();
+  const passwordId = useId();
+  const confirmPasswordId = useId();
+  const usernameId = useId();
+  const termsId = useId();
 
   const triggerTermsError = () => {
     setValidationErrors((prev) => ({
@@ -130,11 +134,10 @@ export default function SignupForm({
         sanitizeInput(username),
       );
 
-      if (result.success && result.user && onSuccess) {
-        toast.success("Account created successfully! Welcome aboard!");
-        setMessage(result.message);
-        onSuccess(result.user, result.username);
-        window.dispatchEvent(new CustomEvent("signup-username-ready"));
+      if (result.success) {
+        // Don't call onSuccess yet — account doesn't exist yet.
+        // Show the verify email modal instead.
+        setShowVerifyModal(true);
       } else {
         setMessage(result.message);
         if (result.accountExists) setAccountExists(true);
@@ -162,10 +165,7 @@ export default function SignupForm({
         provider === "google"
           ? await signInWithGoogle()
           : await signInWithApple();
-      if (result.redirect) {
-        // Mobile redirect — page will reload, nothing more to do here
-        return;
-      }
+      if (result.redirect) return;
       if (result.success && result.user && onSuccess) {
         onSuccess(result.user, result.user.displayName ?? "");
       } else {
@@ -203,7 +203,7 @@ export default function SignupForm({
       >
         <h2 className="text-base">Create Account</h2>
 
-        {/* OAuth Buttons — side by side on all sizes */}
+        {/* OAuth Buttons */}
         <div className="flex gap-2">
           {(["google", "apple"] as const).map((provider) => (
             <button
@@ -225,13 +225,10 @@ export default function SignupForm({
               ) : (
                 <FontAwesomeIcon
                   icon={provider === "google" ? faGoogle : faApple}
-                  className="w-3 h-3"
+                  size="sm"
                 />
               )}
-              <span className="hidden sm:inline">
-                {provider === "google" ? "Google" : "Apple"}
-              </span>
-              <span className="sm:hidden">
+              <span className="m-0">
                 {provider === "google" ? "Google" : "Apple"}
               </span>
             </button>
@@ -247,14 +244,14 @@ export default function SignupForm({
           <div className="flex-1 h-px bg-light-border dark:bg-dark-border" />
         </div>
 
-        {/* Username + Email side by side on sm+ */}
+        {/* Username + Email */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {/* Username */}
           <div>
-            <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+            <label htmlFor={usernameId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
               Username
             </label>
             <input
+              id={usernameId}
               type="text"
               placeholder="Choose username"
               value={username}
@@ -278,12 +275,12 @@ export default function SignupForm({
             )}
           </div>
 
-          {/* Email */}
           <div>
-            <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+            <label htmlFor={emailId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
               Email
             </label>
             <input
+              id={emailId}
               type="email"
               placeholder="Your email"
               value={email}
@@ -312,11 +309,12 @@ export default function SignupForm({
 
         {/* Password */}
         <div>
-          <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+          <label htmlFor={passwordId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
             Password
           </label>
           <div className="relative mt-1">
             <input
+              id={passwordId}
               type={showPassword ? "text" : "password"}
               placeholder="Create password"
               value={password}
@@ -337,17 +335,16 @@ export default function SignupForm({
             <button
               type="button"
               onClick={() => setShowPassword((p) => !p)}
-              className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
               disabled={anyLoading}
+              className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
             >
               <FontAwesomeIcon
                 icon={showPassword ? faEyeSlash : faEye}
-                className="w-3 h-3"
+                size="2xs"
               />
             </button>
           </div>
 
-          {/* Compact inline requirements — only shown while typing */}
           {password.length > 0 && (
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
               {[
@@ -360,13 +357,13 @@ export default function SignupForm({
                   key={key}
                   className={`flex items-center gap-1 text-xs ${
                     reqs[key]
-                      ? "text-accent dark:text-dark-accent-muted"
+                      ? "text-accent dark:text-dark-accent"
                       : "text-light-secondary-text dark:text-dark-secondary-text"
                   }`}
                 >
                   <FontAwesomeIcon
                     icon={reqs[key] ? faCheckCircle : faTimesCircle}
-                    className={`w-2.5 h-2.5 ${reqs[key] ? "text-accent dark:text-dark-accent-muted" : "text-light-secondary-text dark:text-dark-secondary-text"}`}
+                    className={`w-2.5 h-2.5 ${reqs[key] ? "text-accent dark:text-dark-accent" : "text-light-secondary-text dark:text-dark-secondary-text"}`}
                   />
                   {label}
                 </span>
@@ -382,11 +379,12 @@ export default function SignupForm({
 
         {/* Confirm Password */}
         <div>
-          <label className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+          <label htmlFor={confirmPasswordId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
             Confirm Password
           </label>
           <div className="relative mt-1">
             <input
+              id={confirmPasswordId}
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Confirm password"
               value={confirmPassword}
@@ -409,8 +407,8 @@ export default function SignupForm({
             <button
               type="button"
               onClick={() => setShowConfirmPassword((p) => !p)}
-              className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
               disabled={anyLoading}
+              className="bg-transparent absolute inset-y-0 right-2 flex items-center text-light-secondary-text dark:text-dark-secondary-text hover:text-light-accent dark:hover:text-dark-accent"
             >
               <FontAwesomeIcon
                 icon={showConfirmPassword ? faEyeSlash : faEye}
@@ -431,7 +429,7 @@ export default function SignupForm({
           className={`flex items-start ${shakeTerms ? "shake" : ""}`}
         >
           <input
-            id="terms"
+            id={termsId}
             type="checkbox"
             checked={acceptedTerms}
             onChange={(e) => {
@@ -439,13 +437,30 @@ export default function SignupForm({
               if (validationErrors.terms)
                 setValidationErrors({ ...validationErrors, terms: "" });
             }}
-            className={`mt-0.5 w-3 h-3 rounded text-light-accent dark:text-dark-accent bg-light-bg border-light-border
-                       focus:ring-1 focus:ring-light-accent dark:focus:ring-dark-accent dark:bg-dark-bg dark:border-dark-border transition-all
-                       ${validationErrors.terms ? "ring-1 ring-red-500 border-red-500" : ""}`}
+            className="
+            mt-0.5 w-3 h-3
+            appearance-none
+            border border-light-border dark:border-dark-border
+            bg-light-bg dark:bg-dark-bg
+            rounded
+            checked:bg-light-accent dark:checked:bg-dark-accent
+            checked:border-light-accent dark:checked:border-dark-accent
+            relative
+            checked:after:content-['✔']
+            checked:after:absolute
+            checked:after:text-white
+            checked:after:text-[10px]
+            checked:after:left-0.5
+            checked:after:-top-px
+            cursor-pointer
+            transition-all duration-150 ease-out
+            hover:brightness-110 hover:border-light-accent hover:dark:border-dark-accent
+    
+  "
           />
           <label
-            htmlFor="terms"
-            className="ml-2 text-xs text-light-secondary-text dark:text-dark-secondary-text leading-tight"
+            htmlFor={termsId}
+            className="cursor-pointer ml-2 text-xs text-light-secondary-text dark:text-dark-secondary-text leading-tight"
           >
             I agree to the{" "}
             <a
@@ -459,7 +474,7 @@ export default function SignupForm({
               href="/privacy"
               className="text-light-accent dark:text-dark-accent hover:underline"
             >
-              Privacy Policy
+              Privacy Policy.
             </a>
           </label>
         </div>
@@ -482,14 +497,14 @@ export default function SignupForm({
         >
           {loading ? (
             <>
-              <Spinner /> Creating...
+              <Spinner /> Sending...
             </>
           ) : (
-            "Create Account"
+            "Continue"
           )}
         </button>
 
-        {/* Message */}
+        {/* Error Message */}
         {message && (
           <div
             className={`p-2 rounded-md text-xs ${
@@ -503,14 +518,25 @@ export default function SignupForm({
               <button
                 type="button"
                 onClick={onSwitchToLogin}
-                className="block mt-1 underline font-medium bg-transparent text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors"
+                className="block mt-1 font-medium bg-transparent text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors hover:underline"
               >
-                Go to login →
+                Go to login
               </button>
             )}
           </div>
         )}
       </form>
+
+      {/* Verify Email Modal */}
+      {showVerifyModal && (
+        <VerifyEmailModal
+          email={sanitizeInput(email)}
+          password={password}
+          username={sanitizeInput(username)}
+          onClose={() => setShowVerifyModal(false)}
+          onSwitchToLogin={onSwitchToLogin}
+        />
+      )}
     </>
   );
 }

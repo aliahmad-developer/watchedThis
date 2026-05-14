@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
 import type { AuthError } from "@/types/auth";
+import { useId } from "react";
 
 type LoginFormProps = {
   onSuccess?: () => void;
@@ -30,6 +31,8 @@ export default function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
 
   const anyLoading = loading || oauthLoading !== null;
+  const emailId = useId();
+  const passwordId = useId();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,11 +188,14 @@ export default function LoginForm({
       </div>
 
       {/* Email */}
-      <label className="text-xs text-light-secondary-text dark:text-dark-secondary-text">
+      <label
+        htmlFor={emailId}
+        className="text-xs text-light-secondary-text dark:text-dark-secondary-text"
+      >
         Email
         <input
           type="email"
-          id="email"
+          id={emailId}
           placeholder="Email"
           value={email}
           onChange={(e) => {
@@ -209,7 +215,10 @@ export default function LoginForm({
       </label>
 
       {/* Password */}
-      <label className="text-xs text-light-secondary-text dark:text-dark-secondary-text relative">
+      <label
+        htmlFor={passwordId}
+        className="text-xs text-light-secondary-text dark:text-dark-secondary-text relative"
+      >
         <div className="flex justify-between items-center mb-1">
           <span>Password</span>
           {onForgotPassword && (
@@ -225,7 +234,7 @@ export default function LoginForm({
         </div>
         <div className="relative">
           <input
-            id="password"
+            id={passwordId}
             type={showPassword ? "text" : "password"}
             placeholder="Password"
             value={password}
@@ -247,7 +256,7 @@ export default function LoginForm({
           >
             <FontAwesomeIcon
               icon={showPassword ? faEyeSlash : faEye}
-              className="w-3 h-3"
+              size="xs"
             />
           </button>
         </div>

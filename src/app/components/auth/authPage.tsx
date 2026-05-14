@@ -13,7 +13,6 @@ import Message from "./authComponent/message";
 import type { AuthError, FirebaseUser } from "@/types/auth";
 import { User } from "firebase/auth";
 
-// Module-level cache — persists across re-renders, cleared on logout
 const userInfoCache = new Map<
   string,
   {
@@ -389,10 +388,8 @@ export default function AuthPage() {
         <button
           onClick={async () => {
             try {
-              // Clear cache for this user on logout
               const uid = authRef.current?.currentUser?.uid;
               if (uid) userInfoCache.delete(uid);
-
               await logout();
               setUser(null);
               setIsVerified(false);
@@ -400,7 +397,7 @@ export default function AuthPage() {
               setNewUsername("");
               setDisplayPhotoURL(null);
               hasFetchedRef.current = false;
-              router.push("/user/profile");
+              router.push("/");
             } catch (err: any) {
               showMessage(err.message || "Failed to logout", true);
             }

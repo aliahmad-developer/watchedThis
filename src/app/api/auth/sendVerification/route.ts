@@ -1,10 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import { adminApp } from "@/lib/firebaseAdmin";
 import { getEmailVerificationTemplate } from "@/lib/emailTemplates";
 import { Resend } from "resend";
+import * as crypto from "crypto";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+const HMAC_SECRET = process.env.RANDOM_HMAC_SECRET!;
+
+// Derive a 32-byte AES key from the HMAC secret (one env var, two uses)
+function deriveKey(): Buffer {
+  return crypto.scryptSync(HMAC_SECRET, "pendingSignup", 32);
+}
+
+function signToken(id: string): string {
+  return crypto.createHmac("sha256", HMAC_SECRET).update(id).digest("hex");
+}
+
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", deriveKey(), iv);
+  const encrypted = Buffer.concat([
+    cipher.update(text, "utf8"),
+    cipher.final(),
+  ]);
+  return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+const baseUrl =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : (process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com");
 
 export async function POST(req: NextRequest) {
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
@@ -13,11 +41,17 @@ export async function POST(req: NextRequest) {
       { status: 503 },
     );
   }
+  if (!HMAC_SECRET) {
+    return NextResponse.json(
+      { error: "Server misconfigured" },
+      { status: 503 },
+    );
+  }
 
-  let email: string;
+  let email: string, password: string, username: string;
   try {
     const body = await req.json();
-    email = body?.email;
+    ({ email, password, username } = body ?? {});
   } catch {
     return NextResponse.json(
       { error: "Invalid request body" },
@@ -25,58 +59,58 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!email) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  if (!email || !password || !username) {
+    return NextResponse.json(
+      { error: "email, password, and username are required" },
+      { status: 400 },
+    );
   }
 
   try {
     const auth = getAuth(adminApp);
-    const baseUrl =
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : process.env.NEXT_PUBLIC_BASE_URL || "https://watchedthis.com";
+    const db = getFirestore(adminApp);
 
-    const user = await auth.getUserByEmail(email);
-    if (user.emailVerified) {
+    try {
+      await auth.getUserByEmail(email);
       return NextResponse.json(
-        { error: "Email is already verified" },
-        { status: 400 },
+        { error: "An account with this email already exists." },
+        { status: 409 },
       );
+    } catch (e: any) {
+      if (e.code !== "auth/user-not-found") throw e;
     }
 
-    const verifyLink = await auth.generateEmailVerificationLink(email, {
-      url: `${baseUrl}/user/profile`,
-      handleCodeInApp: false,
-    });
+    // id goes in Firestore; sig goes in the URL — neither alone is valid
+    const id = crypto.randomBytes(32).toString("hex");
+    const sig = signToken(id);
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+
+    await db
+      .collection("pendingSignups")
+      .doc(id)
+      .set({
+        email,
+        username,
+        passwordEncrypted: encrypt(password),
+        expiresAt,
+        createdAt: Date.now(),
+      });
+
+    const confirmUrl = `${baseUrl}/api/auth/confirmSignUp?token=${id}.${sig}`;
 
     await resend.emails.send({
       from: process.env.EMAIL_FROM!,
       to: email,
       subject: "Verify your email address",
-      html: getEmailVerificationTemplate(verifyLink),
+      html: getEmailVerificationTemplate(confirmUrl),
     });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("[send-verification]", error?.code, error?.message);
-
-    const STATUS_MAP: Record<string, number> = {
-      "auth/user-not-found": 404,
-      "auth/invalid-email": 400,
-      "auth/email-not-found": 404,
-      "auth/invalid-api-key": 503,
-      "app/no-app": 503,
-    };
-
-    const status = STATUS_MAP[error?.code] ?? 500;
-    const message =
-      error?.code === "auth/user-not-found" ||
-      error?.code === "auth/email-not-found"
-        ? "No account found with this email address."
-        : error?.code === "auth/invalid-email"
-          ? "Invalid email address."
-          : "Failed to send verification email.";
-
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json(
+      { error: "Failed to send verification email." },
+      { status: 500 },
+    );
   }
 }
