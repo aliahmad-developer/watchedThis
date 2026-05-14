@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef,useEffect } from "react";
 import { signup, signInWithGoogle, signInWithApple } from "./auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -77,7 +77,9 @@ export default function SignupForm({
     Record<string, string>
   >({});
   const [shakeTerms, setShakeTerms] = useState(false);
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [showVerifyModal, 
+    
+    setShowVerifyModal] = useState(false);
 
   const termsRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +93,7 @@ export default function SignupForm({
   const confirmPasswordId = useId();
   const usernameId = useId();
   const termsId = useId();
+  
 
   const triggerTermsError = () => {
     setValidationErrors((prev) => ({
@@ -138,6 +141,7 @@ export default function SignupForm({
         // Don't call onSuccess yet — account doesn't exist yet.
         // Show the verify email modal instead.
         setShowVerifyModal(true);
+         
       } else {
         setMessage(result.message);
         if (result.accountExists) setAccountExists(true);
@@ -533,7 +537,7 @@ export default function SignupForm({
           email={sanitizeInput(email)}
           password={password}
           username={sanitizeInput(username)}
-          onClose={() => setShowVerifyModal(false)}
+          onClose={() => setShowVerifyModal(false) }
           onSwitchToLogin={onSwitchToLogin}
         />
       )}
