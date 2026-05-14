@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   const rawToken = new URL(req.url).searchParams.get("token");
 
   if (!rawToken || !rawToken.includes(".")) {
-    return NextResponse.redirect(`${baseUrl}/signup?error=invalid_token`);
+    return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
 
   // token = "<id>.<hmac-sig>"  — split on the LAST dot so the id hex is safe
@@ -52,16 +52,16 @@ export async function GET(req: NextRequest) {
 
   // Reject immediately if the signature doesn't match — no DB call needed
   if (!id || !sig || sig.length !== 64) {
-    return NextResponse.redirect(`${baseUrl}/signup?error=invalid_token`);
+    return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
 
   try {
     if (!verifyToken(id, sig)) {
-      return NextResponse.redirect(`${baseUrl}/signup?error=invalid_token`);
+      return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
     }
   } catch {
     // timingSafeEqual throws if buffers differ in length
-    return NextResponse.redirect(`${baseUrl}/signup?error=invalid_token`);
+    return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
 
   try {
@@ -72,14 +72,14 @@ export async function GET(req: NextRequest) {
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
-      return NextResponse.redirect(`${baseUrl}/signup?error=invalid_token`);
+      return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
     }
 
     const data = docSnap.data()!;
 
     if (Date.now() > data.expiresAt) {
       await docRef.delete();
-      return NextResponse.redirect(`${baseUrl}/signup?error=expired_token`);
+      return NextResponse.redirect(`${baseUrl}/user/profile?error=expired_token`);
     }
 
     const { email, username, passwordEncrypted } = data;
@@ -112,6 +112,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
   } catch (error: any) {
     console.error("[confirmSignup]", error?.code, error?.message);
-    return NextResponse.redirect(`${baseUrl}/signup?error=server_error`);
+    return NextResponse.redirect(`${baseUrl}/user/profile?error=server_error`);
   }
 }
