@@ -360,6 +360,7 @@ export default function AuthPage() {
           isVerified={isVerified}
           handleSendVerification={handleSendVerification}
           isSendingVerification={isSendingVerification}
+          onVerified={() => router.replace("/")}
         />
 
         <UsernameUpdate

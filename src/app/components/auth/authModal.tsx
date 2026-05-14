@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import LoginForm from "./loginForm";
 import SignupForm from "./signUpForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { checkRedirectResult } from "./auth";

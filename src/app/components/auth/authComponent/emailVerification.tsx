@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { User } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -14,18 +14,51 @@ type Props = {
   isVerified: boolean;
   handleSendVerification: () => Promise<void>;
   isSendingVerification: boolean;
+  onVerified?: () => void; // callback so parent can react too
 };
 
 const COOLDOWN_SECONDS = 30;
+const POLL_INTERVAL_MS = 3000;
 
 export default function EmailVerification({
   user,
-  isVerified,
+  isVerified: isVerifiedProp,
   handleSendVerification,
   isSendingVerification,
+  onVerified,
 }: Props) {
   const [cooldown, setCooldown] = useState(0);
+  const [verified, setVerified] = useState(isVerifiedProp);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Keep in sync if parent prop changes
+  useEffect(() => {
+    if (isVerifiedProp) setVerified(true);
+  }, [isVerifiedProp]);
+
+  // Poll Firebase for verification — runs as long as unverified
+  useEffect(() => {
+    if (verified) return;
+
+    pollRef.current = setInterval(async () => {
+      try {
+        await user.reload();
+        if (user.emailVerified) {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setVerified(true);
+          toast.success("Email verified! You're all set.");
+          onVerified?.();
+        }
+      } catch {}
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [verified, user, onVerified]);
+
+  // Countdown timer
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
@@ -51,7 +84,7 @@ export default function EmailVerification({
 
   const isDisabled = isSendingVerification || cooldown > 0;
 
-  if (isVerified) {
+  if (verified) {
     return (
       <div className="flex items-start">
         <span className="inline items-center gap-2 px-3 py-1 rounded-full border border-light-accent text-light-accent dark:text-dark-accent dark:border-dark-accent text-sm font-medium cursor-default">
