@@ -109,7 +109,14 @@ export async function GET(req: NextRequest) {
 
     await docRef.delete();
 
-    return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
+    // Create a custom token so the user is automatically signed in after clicking the confirmation link.
+    const customToken = await auth.createCustomToken(userRecord.uid);
+    const redirectTo = encodeURIComponent(`${baseUrl}/user/profile`);
+
+    return NextResponse.redirect(
+      `${baseUrl}/auth/confirmed?token=${encodeURIComponent(customToken)}&redirect=${redirectTo}`,
+    );
+
   } catch (error: any) {
     console.error("[confirmSignup]", error?.code, error?.message);
     return NextResponse.redirect(`${baseUrl}/user/profile?error=server_error`);
