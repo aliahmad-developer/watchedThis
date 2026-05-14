@@ -1,7 +1,7 @@
 // WatchedThis PWA Service Worker
 // Caches static assets for offline use
 
-const CACHE_NAME = 'watchedthis-v1';
+const CACHE_NAME = 'watchedthis-2';
 const STATIC_ASSETS = [
   '/',
   '/og',
