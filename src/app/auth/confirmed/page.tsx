@@ -12,6 +12,12 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import toast from "react-hot-toast";
 
+// Detect if the current session is inside the installed PWA
+function isInPwa(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(display-mode: standalone)").matches;
+}
+
 function ConfirmedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -20,23 +26,7 @@ function ConfirmedContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading",
   );
-  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
-  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
-
-  // Detect if PWA is installed
-  useEffect(() => {
-    const checkPwa = async () => {
-      if (!("getInstalledRelatedApps" in navigator)) return;
-      try {
-        // @ts-ignore — not yet in all TS lib types
-        const apps = await navigator.getInstalledRelatedApps();
-        if (apps.length > 0) setIsPwaInstalled(true);
-      } catch {
-        // not supported or no permission — ignore
-      }
-    };
-    checkPwa();
-  }, []);
+  const [finalUrl, setFinalUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +43,8 @@ function ConfirmedContent() {
     (async () => {
       const customToken = searchParams.get("token");
       const redirect = searchParams.get("redirect") ?? "/user/profile";
+      const url =
+        redirect + (redirect.includes("?") ? "&" : "?") + "verified=true";
 
       if (!customToken) {
         if (!cancelled) {
@@ -78,10 +70,7 @@ function ConfirmedContent() {
         await signInWithCustomToken(auth, customToken);
 
         if (!cancelled) {
-          const finalUrl =
-            redirect + (redirect.includes("?") ? "&" : "?") + "verified=true";
-
-          setRedirectUrl(finalUrl);
+          setFinalUrl(url);
           setStatus("success");
 
           toast.success("Verified!", {
@@ -94,9 +83,10 @@ function ConfirmedContent() {
             },
           });
 
-          // Auto-redirect after short delay — PWA button gives user control if installed
           setTimeout(() => {
-            if (!cancelled) router.replace(finalUrl);
+            if (cancelled) return;
+            // Always use window.location so the PWA scope can intercept it
+            window.location.href = url;
           }, 1800);
         }
       } catch (e: any) {
@@ -127,7 +117,7 @@ function ConfirmedContent() {
 
   return (
     <div className="flex flex-col items-center text-center">
-      {/* Icon — smaller on mobile */}
+      {/* Icon */}
       <div
         className={`mb-4 sm:mb-6 flex h-16 w-16 sm:h-24 sm:w-24 items-center justify-center rounded-full border text-3xl sm:text-4xl shadow-lg transition-all duration-500 ${
           status === "loading"
@@ -173,16 +163,16 @@ function ConfirmedContent() {
         </div>
       )}
 
-      {status === "success" && (
+      {status === "success" && finalUrl && (
         <div className="flex flex-col items-center gap-3">
           <div className="rounded-2xl border border-color-accent bg-(--color-accent-muted) px-5 py-3 text-sm text-color-accent">
             ✓ Done
           </div>
 
-          {/* Show "Open in App" only if PWA is detected as installed */}
-          {isPwaInstalled && redirectUrl && (
+         
+          {!isInPwa() && (
             <button
-              onClick={() => window.location.assign(redirectUrl)}
+              onClick={() => (window.location.href = finalUrl)}
               className="flex items-center gap-2 rounded-2xl bg-light-btn-bg px-5 py-2.5 text-sm font-semibold text-light-btn-text transition-all duration-200 hover:bg-light-btn-hover-bg dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg"
             >
               <FontAwesomeIcon
@@ -217,7 +207,6 @@ export default function ConfirmedPage() {
 
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl sm:rounded-4xl border border-light-border bg-light-card/80 shadow-[0_10px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-300 dark:border-dark-border dark:bg-dark-card/70 dark:shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
         <div className="h-1.5 w-full bg-(--color-accent)" />
-
         <div className="p-6 sm:p-10">
           <Suspense fallback={null}>
             <ConfirmedContent />
