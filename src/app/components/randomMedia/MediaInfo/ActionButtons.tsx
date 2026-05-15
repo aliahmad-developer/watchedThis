@@ -60,10 +60,8 @@ export default function ActionButtons({
 
   const handleSelect = async (status: ListStatus) => {
     if (!isAuthenticated) return;
-
     const option = LIST_OPTIONS.find((o) => o.value === status);
     const isRemoving = currentStatus === status;
-
     try {
       await saveToList(status);
       if (isRemoving) {
@@ -74,64 +72,173 @@ export default function ActionButtons({
     } catch {
       toast.error("Something went wrong, please try again");
     }
-
     setOpen(false);
   };
 
   return (
-    <div className="flex flex-wrap gap-4 items-center">
+    <div className="flex flex-wrap items-center gap-4">
+      {/* ── Play Trailer ── */}
       <button
         onClick={onPlayTrailer}
-        className="px-4 py-2 text-sm lg:text-base rounded-full font-medium flex items-center gap-2 transition bg-light-btn-bg hover:bg-light-btn-hover-bg text-light-btn-text dark:bg-dark-btn-bg dark:hover:bg-dark-btn-hover-bg dark:text-dark-btn-text"
+        className="
+          group relative overflow-hidden
+          px-5 py-2 rounded-2xl
+          flex items-center gap-2
+          font-semibold text-sm lg:text-base
+          transition-all duration-300
+          border border-transparent
+          bg-light-header text-white
+          hover:-translate-y-0.5 hover:shadow-xl hover:bg-light-nav
+          dark:bg-dark-header dark:text-dark-bg dark:hover:bg-white
+        "
       >
+        <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-white/10 via-white/0 to-white/10" />
         <FontAwesomeIcon
           icon={faPlay}
           fixedWidth
-          className="w-4 h-4 shrink-0"
+          className="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:scale-110"
         />
-        Play Trailer
+        <span className="relative z-10">Play Trailer</span>
       </button>
 
+      {/* ── List Button ── */}
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setOpen((o) => !o)}
           disabled={loading}
-          className="text-light-accent dark:text-dark-accent rounded-xl flex items-center gap-2 bg-light-bg dark:bg-dark-card hover:bg-light-border dark:hover:bg-dark-border px-6 py-3 font-semibold transition disabled:opacity-50"
+          className={`
+            group relative overflow-hidden
+            px-5 py-2 rounded-2xl
+            flex items-center gap-2
+            font-semibold text-sm lg:text-base
+            transition-all duration-300
+            border
+            hover:-translate-y-0.5 hover:shadow-lg
+            disabled:opacity-50
+            ${
+              activeOption
+                ? `
+                  border-light-accent/25 bg-light-card text-light-header
+                  hover:border-light-accent/50 hover:bg-light-accent-muted hover:text-light-header
+                  dark:border-dark-accent/25 dark:bg-dark-card dark:text-dark-header
+                  dark:hover:border-dark-accent/50 dark:hover:bg-dark-accent-muted dark:hover:text-dark-header
+                `
+                : `
+                  border-light-border bg-light-card text-light-body-text
+                  hover:border-light-accent/30 hover:bg-light-bg hover:text-light-header
+                  dark:border-dark-border dark:bg-dark-card dark:text-dark-body-text
+                  dark:hover:border-dark-accent/30 dark:hover:bg-dark-bg dark:hover:text-dark-header
+                `
+            }
+          `}
         >
-          <span>{activeOption ? activeOption.label : "Add to List"}</span>
+          <span className="relative z-10">
+            {activeOption ? activeOption.label : "Add to List"}
+          </span>
           <FontAwesomeIcon
             icon={faChevronDown}
-            className={`h-3 w-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            className={`h-3 w-3 relative z-10 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
           />
         </button>
 
+        {/* ── Dropdown ── */}
         {open && (
-          <div className="absolute left-0 top-full mt-2 w-44 rounded-xl overflow-hidden shadow-xl z-50 bg-light-bg dark:bg-dark-card border border-light-border dark:border-dark-border">
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: "calc(100% + 0.75rem)",
+              width: "13rem",
+              zIndex: 50,
+              borderRadius: "1rem",
+              overflow: "hidden",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+              backgroundColor: "light-dark(var(--color-light-bg), #18181b)",
+              borderStyle: "solid",
+              borderWidth: "1px",
+              borderColor: "light-dark(var(--color-light-border), #27272a)",
+            }}
+          >
             {!isAuthenticated ? (
-              <div className="px-3 py-2 flex items-center gap-2 text-sm text-gray-400">
-                <FontAwesomeIcon icon={faLock} className="h-3 w-3" />
-                Sign in to save.
+              <div
+                style={{
+                  padding: "0.75rem 1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  fontSize: "0.875rem",
+                  color:
+                    "light-dark(var(--color-light-secondary-text), #71717a)",
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={faLock}
+                  style={{ width: "0.75rem", height: "0.75rem", flexShrink: 0 }}
+                />
+                <span>Sign in to save.</span>
               </div>
             ) : (
-              LIST_OPTIONS.map((option) => {
+              LIST_OPTIONS.map((option, i) => {
                 const isActive = currentStatus === option.value;
                 return (
                   <button
                     key={option.value}
                     onClick={() => handleSelect(option.value)}
-                    className={`bg-transparent text-light-secondary-text dark:text-dark-secondary-text hover:text-light-header hover:dark:text-dark-header w-full text-left px-3 py-1.5 text-sm flex items-center justify-between gap-2 transition
-                      hover:bg-light-border dark:hover:bg-dark-border
-                      ${
-                        isActive
-                          ? "text-light-accent dark:text-dark-accent font-semibold"
-                          : "text-light-text dark:text-dark-text"
-                      }`}
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem 1rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "0.5rem",
+                      fontSize: "0.875rem",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      borderStyle: "solid",
+                      borderWidth: "0",
+                      borderTopWidth: i === 0 ? "0" : "1px",
+                      borderTopColor:
+                        i === 0
+                          ? "transparent"
+                          : "light-dark(var(--color-light-border), #27272a)",
+                      borderLeftWidth: "2px",
+                      borderLeftColor: isActive ? "#94a3b8" : "transparent",
+                      backgroundColor: isActive
+                        ? "light-dark(rgba(0,0,0,0.07), rgba(255,255,255,0.08))"
+                        : "transparent",
+                      color: isActive
+                        ? "light-dark(var(--color-light-header), #f4f4f5)"
+                        : "light-dark(var(--color-light-body-text), #71717a)",
+                      fontWeight: isActive ? 600 : 400,
+                      transition:
+                        "background-color 150ms ease, color 150ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor =
+                          "light-dark(rgba(0,0,0,0.04), rgba(255,255,255,0.05))";
+                        e.currentTarget.style.color =
+                          "light-dark(var(--color-light-header), #f4f4f5)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.color =
+                          "light-dark(var(--color-light-body-text), #71717a)";
+                      }
+                    }}
                   >
-                    {option.label}
+                    <span>{option.label}</span>
                     {isActive && (
                       <FontAwesomeIcon
                         icon={faCheck}
-                        className="h-3 w-3 shrink-0"
+                        style={{
+                          width: "0.875rem",
+                          height: "0.875rem",
+                          color: "#94a3b8",
+                          flexShrink: 0,
+                        }}
                       />
                     )}
                   </button>
