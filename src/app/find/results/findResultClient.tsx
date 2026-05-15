@@ -423,7 +423,7 @@ export default function FindResultsPage() {
                 ),
             )}
             {strict && (
-              <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+              <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-accent dark:bg-dark-accent text-white">
                 Strict
               </span>
             )}
