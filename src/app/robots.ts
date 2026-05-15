@@ -5,29 +5,31 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: [
-          "/",
-          "/echo",
-          "/find",
-          "/random",
-          "/spinner",
-          "/about",
-          "/terms",
-          "/privacy",
-          "/movie/",
-          "/tv/",
-          "/person/",
-          "/genre/",
-          "/production-company/",
-          "/_next/static/", 
-        ],
+        allow: ["/"],
         disallow: [
+          // Auth & account flows — no SEO value, should never be indexed
+          "/auth",
+          "/auth/confirmed",
+          "/reset-password",
+
+          // Personal/gated user pages
           "/user",
+          "/user/library",
+          "/user/profile",
+
+          // All API routes
           "/api/",
-          "/admin",
-          "/private/",
+
+          // OG image generation endpoint
+          "/og",
+
+          // Query-driven results — Google skips these anyway, but be explicit
+          "/find/results",
+          "/search",
+
+          // Tool pages with no unique indexable content
+          "/sceneDetect",
         ],
-        crawlDelay: 1,
       },
     ],
     sitemap: "https://watchedthis.com/sitemap.xml",

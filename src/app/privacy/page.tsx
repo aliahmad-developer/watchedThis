@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import PrivacyPolicyPage from "./privacyPage";
+
 
 export const metadata: Metadata = {
   title: "Privacy Policy — WatchedThis",
@@ -7,8 +9,18 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <>
-    <h1 className="sr-only">Privacy Policy — WatchedThis</h1>
-    <PrivacyPolicyPage />
-  </>;
+  return (
+    <>
+      <h1 className="sr-only">Privacy Policy — WatchedThis</h1>
+      <Breadcrumbs
+        crumbs={[
+          { name: "Home", href: "/" },
+          { name: "Privacy Policy", href: "/privacy" },
+        ]}
+      />
+      <PrivacyPolicyPage />
+    </>
+  );
 }
+
+

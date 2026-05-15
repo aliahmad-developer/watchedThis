@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import GenrePageClient from "./genrePage"; // rename current file to this
+
 
 const GENRE_NAMES: Record<string, string> = {
   action: "Action",
@@ -63,8 +65,18 @@ export default async function GenrePage({
 }) {
   const { genreId } = await params;
   const genreName = GENRE_NAMES[genreId.toLowerCase()] || genreId.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  return <>
-    <h1 className="sr-only">{genreName} Movies & TV Shows | WatchedThis</h1>
-    <GenrePageClient />
-  </>;
+  return (
+    <>
+      <h1 className="sr-only">{genreName} Movies & TV Shows | WatchedThis</h1>
+      <Breadcrumbs
+        crumbs={[
+          { name: "Home", href: "/" },
+          { name: "Genres", href: "/genre" },
+          { name: genreName, href: `/genre/${genreId}` },
+        ]}
+      />
+      <GenrePageClient />
+    </>
+  );
 }
+

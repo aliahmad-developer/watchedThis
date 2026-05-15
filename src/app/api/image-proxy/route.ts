@@ -17,6 +17,7 @@ const ALLOWED_SIZES = new Set([
   "w780",
   "w1280",
   "h632",
+  "w300",
   "original",
 ]);
 
@@ -28,9 +29,8 @@ const ALLOWED_CONTENT_TYPES = new Set([
   "image/svg+xml",
 ]);
 
-// Limits a single IP to 60 proxy requests per minute
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 60;
+const RATE_LIMIT = 500;
 const RATE_WINDOW_MS = 60_000;
 
 function isRateLimited(ip: string): boolean {

@@ -50,10 +50,21 @@ export const CarouselItem = memo(function CarouselItem({
             className="hidden md:flex flex-col justify-between mr-3 w-8"
             style={{ height: `${itemHeight}px` }}
           >
-            <div className="flex-1 flex justify-center pt-4">
+            <div
+              className="flex justify-center pt-4 overflow-hidden"
+              style={{ height: `${itemHeight - 50}px` }} 
+            >
               <p
                 className="cursor-default text-sm font-semibold rotate-180 [writing-mode:vertical-lr] whitespace-nowrap
-                           text-light-accent dark:text-dark-accent line-clamp-3"
+                 text-light-accent dark:text-dark-accent"
+                style={{
+                  maxHeight: "100%",
+                  overflow: "hidden",
+                  maskImage:
+                    "linear-gradient(to top, transparent 0%, black 20%)",
+                  WebkitMaskImage:
+                    "linear-gradient(to top, transparent 0%, black 20%)",
+                }}
                 title={item.title || item.name}
               >
                 {item.title || item.name}

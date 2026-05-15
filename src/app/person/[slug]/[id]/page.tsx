@@ -1,6 +1,8 @@
 import { Metadata } from "next";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import PersonPageClient from "./PersonPageClient";
 import { fetchPerson } from "@/lib/fetchPerson";
+
 
 export async function generateMetadata({
   params,
@@ -76,7 +78,15 @@ export default async function Page({
   return (
     <>
       <h1 className="sr-only">{name} | WatchedThis</h1>
+      <Breadcrumbs
+        crumbs={[
+          { name: "Home", href: "/" },
+          { name: "People", href: "/person" },
+          { name, href: `/person/${slug}/${id}` },
+        ]}
+      />
       <PersonPageClient id={id} slug={slug} initialData={data} />
     </>
   );
 }
+

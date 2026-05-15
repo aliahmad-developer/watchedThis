@@ -14,10 +14,8 @@ type ChangeFreq =
   | "yearly"
   | "never";
 
-// Updated to reflect actual last significant content change
 const STATIC_LAST_MODIFIED = new Date("2026-05-13");
 
-// Only include pages that are truly indexable by Google
 const staticRoutes: MetadataRoute.Sitemap = [
   {
     url: SITE_URL,
@@ -25,40 +23,44 @@ const staticRoutes: MetadataRoute.Sitemap = [
     priority: 1.0,
   },
   {
-    // Movie listing/browse page — high value for SEO
     url: `${SITE_URL}/movie`,
     changeFrequency: "daily" as ChangeFreq,
     priority: 0.9,
   },
   {
-    // TV listing/browse page — high value for SEO
     url: `${SITE_URL}/tv`,
     changeFrequency: "daily" as ChangeFreq,
     priority: 0.9,
   },
   {
-    // Discovery/search page — users land here from search engines
     url: `${SITE_URL}/find`,
     changeFrequency: "weekly" as ChangeFreq,
     priority: 0.8,
   },
   {
-    // "Movies like X" — high-value long-tail SEO, keep indexed
     url: `${SITE_URL}/echo`,
-    changeFrequency: "daily" as ChangeFreq,
-    priority: 0.9,
+    changeFrequency: "monthly" as ChangeFreq,
+    priority: 0.8,
   },
   {
-    // "Random movie to watch" — real search intent, worth indexing
-    url: `${SITE_URL}/random`,
-    changeFrequency: "daily" as ChangeFreq,
+    url: `${SITE_URL}/genre`,
+    changeFrequency: "weekly" as ChangeFreq,
     priority: 0.7,
   },
   {
-    // Customizable watch spinner — niche but unique, "what should I watch tonight"
-    url: `${SITE_URL}/spinner`,
+    url: `${SITE_URL}/production`,
     changeFrequency: "weekly" as ChangeFreq,
     priority: 0.6,
+  },
+  {
+    url: `${SITE_URL}/random`,
+    changeFrequency: "monthly" as ChangeFreq,
+    priority: 0.6,
+  },
+  {
+    url: `${SITE_URL}/spinner`,
+    changeFrequency: "monthly" as ChangeFreq,
+    priority: 0.5,
   },
   {
     url: `${SITE_URL}/about`,
@@ -66,26 +68,28 @@ const staticRoutes: MetadataRoute.Sitemap = [
     priority: 0.5,
   },
   {
-    url: `${SITE_URL}/privacy-policy`,
+    url: `${SITE_URL}/privacy`,
     changeFrequency: "yearly" as ChangeFreq,
     priority: 0.3,
   },
   {
-    url: `${SITE_URL}/terms-and-conditions`,
+    url: `${SITE_URL}/terms`,
     changeFrequency: "yearly" as ChangeFreq,
     priority: 0.3,
   },
-  // Removed: /user    — base route is not a real indexable page
-  // Removed: /random  — interactive tool, same content every load, no SEO value
-  // Removed: /spinner — interactive tool, no unique indexable content
+  // Excluded:
+  // /auth, /auth/confirmed, /reset-password  — auth flows, no SEO value
+  // /user, /user/library, /user/profile      — personal/gated pages
+  // /sceneDetect                             — tool page, no unique indexable content
+  // /search, /find/results                  — query-driven, Google skips param URLs
 ].map((r) => ({ ...r, lastModified: STATIC_LAST_MODIFIED }));
 
 type SitemapEntry = {
   id: number;
   slug: string;
   updatedAt?: string;
-  posterPath?: string; // Optional: used for image sitemap entries
-  title?: string; // Optional: used for image sitemap alt text
+  posterPath?: string;
+  title?: string;
 };
 
 type SitemapCache = {
@@ -105,10 +109,6 @@ function safeDate(updatedAt?: string): Date {
   return isNaN(d.getTime()) ? STATIC_LAST_MODIFIED : d;
 }
 
-/**
- * Splits a flat array into chunks for sitemap index support.
- * Useful when you exceed 50,000 URLs per sitemap file.
- */
 export function chunkArray<T>(arr: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < arr.length; i += size) {
@@ -178,9 +178,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...genreRoutes,
     ];
 
-    // Warn early if approaching the 50,000 URL limit per sitemap file.
-    // If you exceed this, migrate to generateSitemaps() with a sitemap index:
-    // https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap#generating-multiple-sitemaps
     if (allRoutes.length > 45000) {
       console.warn(
         `Sitemap is approaching the 50,000 URL limit (${allRoutes.length} URLs). ` +

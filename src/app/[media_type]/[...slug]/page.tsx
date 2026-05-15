@@ -8,6 +8,8 @@ import DetailsClientShell from "./clientShell";
 import type { Metadata } from "next";
 import { tmdbImage } from "@/lib/imageTmdb";
 import { cache } from "react";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -236,6 +238,20 @@ export default async function SpecificRandomMediaPage({
       <div className="py-6 px-4 sm:px-6 lg:px-8 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-lg overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
+          <Breadcrumbs
+            crumbs={[
+              { name: "Home", href: "/" },
+              {
+                name: media_type === "movie" ? "Movies" : "TV Series",
+                href: `/${media_type}`,
+              },
+              {
+                name: mediaTitle,
+                href: `/${media_type}/${media_name_slug}/${id}`,
+              },
+            ]}
+          />
+
 
           <DetailsPage
             data={data}

@@ -1,4 +1,4 @@
-import './globals.css'
+import "./globals.css";
 import "../lib/fontawesome";
 import ClientProviders from "./components/utilities/clientProvider/clientProvider";
 import BackButton from "./components/utilities/backButton";
@@ -56,20 +56,28 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-  shortcut: "/favicon.ico?v=2",
-  icon: [
-    { url: "/favicon-16x16.png?v=2", sizes: "16x16", type: "image/png" },
-    { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
-    { url: "/android-chrome-192x192.png?v=2", sizes: "192x192", type: "image/png" }, 
-    { url: "/android-chrome-512x512.png?v=2", sizes: "512x512", type: "image/png" }, 
-  ],
-  apple: "/apple-touch-icon.png?v=2",
-},
+    shortcut: "/favicon.ico?v=2",
+    icon: [
+      { url: "/favicon-16x16.png?v=2", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
+      {
+        url: "/android-chrome-192x192.png?v=2",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/android-chrome-512x512.png?v=2",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+    apple: "/apple-touch-icon.png?v=2",
+  },
   manifest: "/site.webmanifest",
 };
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
 };
 
@@ -133,22 +141,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
         <meta name="theme-color" content="#1f2937" />
-
         <meta name="mobile-web-app-capable" content="yes" />
-
         <meta name="apple-mobile-web-app-capable" content="yes" />
-
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="WatchedThis" />
-
         <link
           rel="preconnect"
           href="https://image.tmdb.org"
           crossOrigin="anonymous"
         />
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
-        <link rel="canonical" href="https://watchedthis.com" />
       </head>
+
 
       <body className="bg-light-bg text-dark-text dark:bg-dark-bg dark:text-light-text transition-colors duration-300 min-h-screen">
         {/* Google Tag Manager (noscript) */}

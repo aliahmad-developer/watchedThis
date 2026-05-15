@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import EchoClient from "./clientPage";
+
 
 export const metadata: Metadata = {
   title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
@@ -42,9 +44,16 @@ export default function EchoPage() {
       <h1 className="sr-only">
         Echo – Find Movies and TV Shows Similar to What You Already Watched
       </h1>
+      <Breadcrumbs
+        crumbs={[
+          { name: "Home", href: "/" },
+          { name: "Echo", href: "/echo" },
+        ]}
+      />
       <div className="min-h-screen">
         <EchoClient />
       </div>
+
     </>
   );
 }

@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import SceneDetect from "../components/sceneDetection/sceneCamera";
 import FindPageClient from "./findClient";
 import type { Metadata } from "next";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
+
 
 export const metadata: Metadata = {
   title: "Find – Scene Detection & Advanced Movie Filters | WatchedThis",
@@ -39,6 +41,12 @@ export default function Page() {
       <h1 className="sr-only">
         Find – Scene Detection &amp; Advanced Movie Filters | WatchedThis
       </h1>
+      <Breadcrumbs
+        crumbs={[
+          { name: "Home", href: "/" },
+          { name: "Find", href: "/find" },
+        ]}
+      />
       <div className="min-h-screen">
         <Suspense fallback={null}>
           <FindPageClient />

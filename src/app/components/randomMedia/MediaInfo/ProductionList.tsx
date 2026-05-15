@@ -109,9 +109,7 @@ function MoreTooltip({
     if (closeTimer.current) clearTimeout(closeTimer.current);
   };
 
-  // Build ambient-tinted dark bg:
-  // Take the ambient color, darken it heavily (15% luminance) + high opacity
-  // This gives a colour that reads as "dark version of the accent" not plain black
+
   const { r, g, b } = parseRgb(ambientText.primary);
   const bgR = Math.min(30 + Math.round(r * 0.18), 60);
   const bgG = Math.min(20 + Math.round(g * 0.18), 55);

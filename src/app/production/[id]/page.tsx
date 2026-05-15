@@ -1,13 +1,14 @@
 import { Metadata } from "next";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import ProductionPageClient from "./pageClient";
+
+
 
 const fetchCompany = async (id: string) => {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
   const res = await fetch(
-    `${baseUrl}/api/company/${id}?mediaType=movie&page=1`,
-    {
-      next: { revalidate: 3600 },
-    },
+    `${baseUrl}/api/production/${id}?mediaType=movie&page=1`,
+    { next: { revalidate: 3600 } },
   );
   if (!res.ok) return null;
   return res.json();
@@ -74,7 +75,14 @@ export default async function ProductionPage({
   return (
     <>
       <h1 className="sr-only">{name} | Production Company | WatchedThis</h1>
+      <Breadcrumbs
+        crumbs={[
+          { name: "Home", href: "/" },
+          { name, href: `/production/${id}` },
+        ]}
+      />
       <ProductionPageClient id={id} />
     </>
   );
 }
+

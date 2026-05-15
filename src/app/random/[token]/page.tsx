@@ -5,7 +5,9 @@ import RandomMediaShell from "./pageClient";
 import DetailsPage from "@/app/components/randomMedia/detailsPage";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 import { Metadata } from "next";
+import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import { tmdbImage } from "@/lib/imageTmdb";
+
 
 interface PageParams {
   token: string;
@@ -90,8 +92,19 @@ export default async function Page({
       <div className="py-6 px-4 min-h-screen bg-light-bg dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto bg-light-card dark:bg-dark-card text-light-body-text dark:text-dark-body-text rounded-xl shadow-md overflow-hidden transition-colors">
           <h1 className="sr-only">{mediaTitle}</h1>
+          <Breadcrumbs
+            crumbs={[
+              { name: "Home", href: "/" },
+              { name: "Random", href: "/random" },
+              {
+                name: `${String(token).slice(0, 8)}…`,
+                href: `/random/${token}`,
+              },
+            ]}
+          />
           <DetailsPage
             data={safeData}
+
             backdropUrl={safeData.backdrop_path ?? ""}
             isLoading={false}
           />
