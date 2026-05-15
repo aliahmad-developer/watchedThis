@@ -6,7 +6,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { createSlug } from "../../components/utilities/createSlug";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEarth, faSearch, faStar } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEarth,
+  faSearch,
+  faStar,
+  faCopy,
+  faCheck,
+  faShareNodes,
+} from "@fortawesome/free-solid-svg-icons";
 
 interface MediaResult {
   id: number;
@@ -490,13 +497,14 @@ export default function FindResultsPage() {
 
 function ResultCard({ item }: { item: MediaResult }) {
   const isLightMode = useThemeDetection();
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const genreNames = item.genre_ids
     .slice(0, 4)
     .map((id) => Object.entries(ALL_GENRES).find(([, v]) => v === id)?.[0])
     .filter(Boolean) as string[];
 
-  // Both URLs now go through your proxy — same-origin, no CORS, ColorThief works fine
   const imageUrl = item.backdrop_path
     ? proxyUrl(item.backdrop_path, "w1280")
     : item.poster_path
@@ -519,10 +527,90 @@ function ResultCard({ item }: { item: MediaResult }) {
     processedLuminance,
   );
 
+  // Derive a text scheme for the copy icon color feedback
+  const useLightText = !isLightMode || processedLuminance < 0.45;
+  const textScheme = useLightText ? "dark" : "light";
+
+  // Button styling derived from ambient color
+  const btnBg = useLightText ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.35)";
+  const btnBorder = useLightText
+    ? "rgba(255,255,255,0.15)"
+    : "rgba(0,0,0,0.15)";
+  const iconColor = useLightText
+    ? "rgba(255,255,255,0.90)"
+    : "rgba(0,0,0,0.75)";
+
   const fullTint = `rgba(${rgbColor}, 0.45)`;
   const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
   const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
   const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
+
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (copied) return;
+      try {
+        await navigator.clipboard.writeText(item.title);
+        setCopied(true);
+        copyTimer.current = setTimeout(() => setCopied(false), 2000);
+      } catch {
+        const el = document.createElement("textarea");
+        el.value = item.title;
+        el.style.cssText = "position:fixed;top:-9999px;left:-9999px";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+        setCopied(true);
+        copyTimer.current = setTimeout(() => setCopied(false), 2000);
+      }
+    },
+    [item.title, copied],
+  );
+
+  const handleShare = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = `${window.location.origin}/${item.media_type}/${createSlug(item.title)}/${item.id}`;
+      const shareData = { title: item.title, url };
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        try {
+          await navigator.share(shareData);
+        } catch {
+          // user dismissed — no-op
+        }
+      } else {
+        await navigator.clipboard.writeText(url).catch(() => {});
+      }
+    },
+    [item],
+  );
+
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    [],
+  );
+
+  const btnStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "2.5rem",
+    height: "2.5rem",
+    borderRadius: "0.625rem",
+    background: btnBg,
+    border: `1px solid ${btnBorder}`,
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    color: iconColor,
+    cursor: "pointer",
+    transition: "transform 150ms ease, opacity 150ms ease",
+    flexShrink: 0,
+  };
 
   return (
     <Link
@@ -535,7 +623,6 @@ function ResultCard({ item }: { item: MediaResult }) {
     >
       <div className="relative w-full aspect-4/3 sm:aspect-16/6 lg:aspect-16/5 overflow-hidden">
         {imageUrl ? (
-          // No crossOrigin needed — proxy serves from your own origin
           <Image
             unoptimized
             ref={imgRef}
@@ -579,6 +666,8 @@ function ResultCard({ item }: { item: MediaResult }) {
             Click for full details
           </p>
         </div>
+
+        {/* Share + Copy buttons — bottom-right of poster */}
       </div>
 
       {/* Bottom info bar */}
@@ -586,27 +675,80 @@ function ResultCard({ item }: { item: MediaResult }) {
         className="px-3 sm:px-4 py-2 sm:py-3 space-y-1 transition-all duration-700"
         style={{ backgroundColor: solidColor }}
       >
-        {genreNames.length > 0 && (
-          <p
-            className="text-xs sm:text-sm leading-snug transition-colors duration-700"
-            style={{ color: textColor.secondary }}
-          >
-            {genreNames.join(", ")}
-          </p>
-        )}
-        {item.keywords && item.keywords.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            {item.keywords.slice(0, 4).map((kw) => (
-              <span
-                key={kw}
-                className="font-mono text-[10px] sm:text-xs tracking-tight transition-colors duration-700"
-                style={{ color: textColor.muted }}
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: genres + keywords */}
+          <div className="flex flex-col gap-1 min-w-0">
+            {genreNames.length > 0 && (
+              <p
+                className="text-xs sm:text-sm leading-snug transition-colors duration-700 truncate"
+                style={{ color: textColor.secondary }}
               >
-                #{kw.toLowerCase().replace(/\s+/g, "-")}
-              </span>
-            ))}
+                {genreNames.join(", ")}
+              </p>
+            )}
+            {item.keywords && item.keywords.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {item.keywords.slice(0, 4).map((kw) => (
+                  <span
+                    key={kw}
+                    className="font-mono text-[10px] sm:text-xs tracking-tight transition-colors duration-700"
+                    style={{ color: textColor.muted }}
+                  >
+                    #{kw.toLowerCase().replace(/\s+/g, "-")}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Right: copy + share buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleCopy}
+              title={copied ? "Copied!" : `Copy title: ${item.title}`}
+              aria-label={copied ? "Copied!" : "Copy title"}
+              style={btnStyle}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseDown={(e) =>
+                (e.currentTarget.style.transform = "scale(0.92)")
+              }
+              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <FontAwesomeIcon
+                icon={copied ? faCheck : faCopy}
+                style={{
+                  width: "0.875rem",
+                  height: "0.875rem",
+                  transition: "opacity 200ms ease",
+                  color: copied
+                    ? textScheme === "light"
+                      ? "rgba(134,239,172,0.95)"
+                      : "rgba(21,128,61,0.95)"
+                    : iconColor,
+                }}
+              />
+            </button>
+
+            <button
+              onClick={handleShare}
+              title="Share"
+              aria-label="Share"
+              style={btnStyle}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseDown={(e) =>
+                (e.currentTarget.style.transform = "scale(0.92)")
+              }
+              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <FontAwesomeIcon
+                icon={faShareNodes}
+                style={{ width: "0.875rem", height: "0.875rem" }}
+              />
+            </button>
+          </div>
+        </div>
       </div>
     </Link>
   );
