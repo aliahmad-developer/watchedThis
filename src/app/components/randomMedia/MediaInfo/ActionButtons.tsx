@@ -148,7 +148,7 @@ export default function ActionButtons({
               position: "absolute",
               left: 0,
               top: "calc(100% + 0.75rem)",
-              width: "13rem",
+              width: "12rem",
               zIndex: 50,
               borderRadius: "1rem",
               overflow: "hidden",
