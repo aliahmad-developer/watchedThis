@@ -73,18 +73,40 @@ export default function TrailerModal({
   }, [fetchTrailer]);
 
   const handleClose = useCallback(() => {
+    // Exit fullscreen if active before closing
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
     setClosing(true);
     setVisible(false);
     setTimeout(onClose, 220);
   }, [onClose]);
 
+  // Escape to close + F to fullscreen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") {
+        handleClose();
+        return;
+      }
+
+      if (e.key === "f" || e.key === "F") {
+        if (!videoKey) return;
+        const target = modalRef.current;
+        if (!target) return;
+        if (!document.fullscreenElement) {
+          target.requestFullscreen().catch((err) => {
+            console.warn("Fullscreen request failed:", err);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      }
     };
+
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleClose]);
+  }, [handleClose, videoKey]);
 
   const embedUrl = videoKey
     ? `https://www.youtube.com/embed/${videoKey}?autoplay=1&rel=0&playsinline=1&enablejsapi=1&modestbranding=1&color=white`
@@ -169,13 +191,13 @@ export default function TrailerModal({
               </div>
             </div>
 
-            {/* Right: esc hint + close button */}
+            {/* Right: hints + close button */}
             <div className="flex items-center gap-3 shrink-0">
               <span
                 className="hidden sm:block text-[10px] tracking-widest uppercase select-none"
                 style={{ color: "rgba(255,255,255,0.2)" }}
               >
-                esc to close
+                f · fullscreen &nbsp;·&nbsp; esc · close
               </span>
               <button
                 onClick={handleClose}

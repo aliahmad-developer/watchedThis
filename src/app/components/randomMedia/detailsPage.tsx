@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { tmdbImage } from "@/lib/imageTmdb"
+import { tmdbImage } from "@/lib/imageTmdb";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import KeywordsSection from "./MediaInfo/KeywordSection";
 import MediaPoster from "./mediaPoster";
@@ -14,6 +14,7 @@ import {
   faShareNodes,
   faCheck,
 } from "@fortawesome/free-solid-svg-icons";
+import toast from "react-hot-toast";
 
 interface DescProps {
   data: any;
@@ -45,7 +46,7 @@ const isValidBackdropUrl = (url: string): boolean =>
   Boolean(url?.trim() && url !== "undefined");
 
 const getTmdbSrc = (url: string, size: string): string =>
-  url.startsWith("http") ? url : tmdbImage(url, size)!
+  url.startsWith("http") ? url : tmdbImage(url, size)!;
 
 interface AmbientColor {
   solid: string;
@@ -286,32 +287,55 @@ function MediaActions({
   const iconColor =
     textScheme === "light" ? "rgba(255,255,255,0.88)" : "rgba(20,20,20,0.82)";
 
-  const handleCopy = useCallback(async () => {
-    if (copied) return;
-    try {
-      await navigator.clipboard.writeText(title);
-      setCopied(true);
-      copyTimer.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      const el = document.createElement("textarea");
-      el.value = title;
-      el.style.cssText = "position:fixed;top:-9999px;left:-9999px";
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-      setCopied(true);
-      copyTimer.current = setTimeout(() => setCopied(false), 2000);
-    }
-  }, [title, copied]);
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (copied) return;
+
+      const showCopiedToast = () => {
+        toast.success("Copied");
+      };
+
+      const fallbackCopy = (text: string) => {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+          document.execCommand("copy");
+        } finally {
+          document.body.removeChild(textarea);
+        }
+      };
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(title);
+        } else {
+          fallbackCopy(title);
+        }
+        setCopied(true);
+        showCopiedToast();
+        copyTimer.current = setTimeout(() => setCopied(false), 2000);
+      } catch {
+        toast.error("Failed to copy");
+      }
+    },
+    [title, copied],
+  );
 
   const handleShare = useCallback(async () => {
     const shareData = { title, url: window.location.href };
     if (navigator.share && navigator.canShare?.(shareData)) {
       try {
         await navigator.share(shareData);
-      } catch {
-      }
+      } catch {}
     } else {
       await navigator.clipboard.writeText(window.location.href).catch(() => {});
     }
@@ -359,7 +383,11 @@ function MediaActions({
         style={btnStyle}
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-        onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget.style.transform = "scale(0.92)";
+        }}
         onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
       >
         <FontAwesomeIcon
@@ -384,7 +412,11 @@ function MediaActions({
         style={btnStyle}
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-        onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget.style.transform = "scale(0.92)";
+        }}
         onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
       >
         <FontAwesomeIcon
@@ -508,7 +540,6 @@ export default function Desc({
 
       {/* Main content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 md:py-16 lg:py-20">
-        
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-12">
           {/* Poster */}
           <div className="w-full sm:w-4/5 md:w-3/5 lg:w-1/3 xl:w-1/4 mx-auto">

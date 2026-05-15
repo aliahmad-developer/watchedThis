@@ -14,6 +14,7 @@ import {
   faCheck,
   faShareNodes,
 } from "@fortawesome/free-solid-svg-icons";
+import { toast } from "react-hot-toast";
 
 interface MediaResult {
   id: number;
@@ -545,29 +546,45 @@ function ResultCard({ item }: { item: MediaResult }) {
   const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
   const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
 
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (copied) return;
+ const handleCopy = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (copied) return;
+
+    const showCopiedToast = () => {
+      toast.success("Copied");
+    };
+
+    const fallbackCopy = (text: string) => {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
       try {
-        await navigator.clipboard.writeText(item.title);
-        setCopied(true);
-        copyTimer.current = setTimeout(() => setCopied(false), 2000);
-      } catch {
-        const el = document.createElement("textarea");
-        el.value = item.title;
-        el.style.cssText = "position:fixed;top:-9999px;left:-9999px";
-        document.body.appendChild(el);
-        el.select();
         document.execCommand("copy");
-        document.body.removeChild(el);
-        setCopied(true);
-        copyTimer.current = setTimeout(() => setCopied(false), 2000);
+      } finally {
+        document.body.removeChild(textarea);
       }
-    },
-    [item.title, copied],
-  );
+    };
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(item.title);
+      } else {
+        fallbackCopy(item.title);
+      }
+      setCopied(true);
+      showCopiedToast();
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  }, [item.title, copied]);
 
   const handleShare = useCallback(
     async (e: React.MouseEvent) => {
