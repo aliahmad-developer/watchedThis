@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
-const W = 1200;
+const W = 1200; 
 const H = 630;
+
+const COLORS = {
+  bg: "#031926", // --color-dark-bg
+  card: "#0d2535", // --color-dark-card (used for subtle gradient end)
+  accent: "#468189", // --color-dark-accent (top bar)
+  title: "#eef0f2", // --color-dark-header
+  subtitle: "#bdd4e7", // --color-dark-body-text
+  footer: "#8693ab", // --color-dark-secondary-text
+};
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
@@ -60,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   const composites: sharp.OverlayOptions[] = [];
 
-  // ---- Logo (top left) ----
+  // Logo (top left)
   if (logoBuffer) {
     try {
       const logoImg = await sharp(logoBuffer)
@@ -76,12 +85,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ---- Centered Poster ----
+  // Centered poster
   let posterTop = 0;
   let posterLeft = 0;
   if (posterBuffer) {
     try {
-      // Max poster size: 400px wide, 560px tall (leaves room for text below)
       const MAX_POSTER_W = 400;
       const MAX_POSTER_H = 560;
 
@@ -97,9 +105,8 @@ export async function GET(req: NextRequest) {
       const posterW = meta.width || MAX_POSTER_W;
       const posterH = meta.height || MAX_POSTER_H;
 
-      // Center horizontally and vertically (with a slight upward offset to leave room for text below)
       posterLeft = Math.round((W - posterW) / 2);
-      posterTop = Math.round((H - posterH) / 2) - 40; // shift up a bit so text fits below
+      posterTop = Math.round((H - posterH) / 2) - 40; // shift up for text below
 
       composites.push({ input: posterImg, top: posterTop, left: posterLeft });
     } catch (err) {
@@ -107,12 +114,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ---- Text (placed below the poster) ----
+  // Text below poster
   const titleLines = wrapText(title, 35);
   const subtitleLines = wrapText(subtitle, 55);
-
-  // Position text below poster (add padding)
-  const textStartY = posterTop + 560 + 30; // poster bottom + margin
+  const textStartY = posterTop + 560 + 30;
   const titleLineHeight = 48;
   const subtitleLineHeight = 34;
 
@@ -120,15 +125,15 @@ export async function GET(req: NextRequest) {
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#0a0c10"/>
-      <stop offset="100%" stop-color="#1a1f2a"/>
+      <stop offset="0%" stop-color="${COLORS.bg}"/>
+      <stop offset="100%" stop-color="${COLORS.card}"/>
     </linearGradient>
   </defs>
   <rect width="${W}" height="${H}" fill="url(#bgGrad)"/>
-  <rect width="${W}" height="4" fill="#e50914"/> <!-- accent bar -->
+  <rect width="${W}" height="4" fill="${COLORS.accent}"/>
 `;
 
-  // Title (centered)
+  // Title
   titleLines.forEach((line, i) => {
     svgHtml += `
 <text
@@ -137,7 +142,7 @@ export async function GET(req: NextRequest) {
   text-anchor="middle"
   font-size="42"
   font-weight="700"
-  fill="#ffffff"
+  fill="${COLORS.title}"
   font-family="Arial, Helvetica, sans-serif"
 >
   ${line}
@@ -145,7 +150,7 @@ export async function GET(req: NextRequest) {
 `;
   });
 
-  // Subtitle (centered)
+  // Subtitle
   subtitleLines.forEach((line, i) => {
     svgHtml += `
 <text
@@ -154,7 +159,7 @@ export async function GET(req: NextRequest) {
   text-anchor="middle"
   font-size="22"
   font-weight="400"
-  fill="#b0b8c5"
+  fill="${COLORS.subtitle}"
   font-family="Arial, Helvetica, sans-serif"
 >
   ${line}
@@ -162,14 +167,14 @@ export async function GET(req: NextRequest) {
 `;
   });
 
-  // Footer (bottom right)
+  // Footer
   svgHtml += `
 <text
   x="${W - 30}"
   y="${H - 25}"
   text-anchor="end"
   font-size="14"
-  fill="#6a7a8a"
+  fill="${COLORS.footer}"
   font-family="Arial, Helvetica, sans-serif"
 >
   watchedthis.com
@@ -178,7 +183,6 @@ export async function GET(req: NextRequest) {
 
   svgHtml += `</svg>`;
 
-  // ---- Render PNG ----
   const png = await sharp(Buffer.from(svgHtml))
     .composite(composites)
     .png()
