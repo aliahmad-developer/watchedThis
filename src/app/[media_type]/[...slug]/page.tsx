@@ -169,7 +169,7 @@ export async function generateMetadata({
     ? `${data.overview.substring(0, 155)}...`
     : `Details about ${mediaTitle}`;
 
-  const ogUrl = new URL("/og", "https://watchedthis.com");
+  const ogUrl = new URL("/og/", "https://watchedthis.com");
   ogUrl.searchParams.set("title", `${mediaTitle}${year ? ` (${year})` : ""}`);
   ogUrl.searchParams.set("subtitle", description);
   if (data.poster_path) ogUrl.searchParams.set("poster", data.poster_path);

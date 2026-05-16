@@ -35,7 +35,7 @@ export async function generateMetadata({
       ? `${biography.substring(0, 155)}...`
       : `Explore movies and TV shows featuring ${name}. Discover filmography, cast appearances, acting credits, and more on WatchedThis.`;
 
-    const ogUrl = new URL("/og", "https://watchedthis.com");
+    const ogUrl = new URL("/og/", "https://watchedthis.com");
 
     ogUrl.searchParams.set("title", name);
 

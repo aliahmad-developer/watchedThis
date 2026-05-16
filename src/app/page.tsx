@@ -6,7 +6,7 @@ import Strip from "./components/alphabetStrip/strip";
 import type { Metadata } from "next";
 
 // ─── OG Image URL ─────────────────────────────────────────────────────────────
-const homeOg = new URL("/og", "https://watchedthis.com");
+const homeOg = new URL("/og/", "https://watchedthis.com");
 homeOg.searchParams.set("title", "WatchedThis — AI Movie & TV Discovery");
 homeOg.searchParams.set(
   "subtitle",

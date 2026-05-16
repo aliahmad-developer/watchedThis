@@ -47,7 +47,7 @@ export async function generateMetadata({
 
   const description = `Explore movies and TV shows produced by ${name}${country}. Browse their catalog, productions, and filmography on WatchedThis.`;
 
-  const ogUrl = new URL("/og", "https://watchedthis.com");
+  const ogUrl = new URL("/og/", "https://watchedthis.com");
 
   ogUrl.searchParams.set("title", name);
 

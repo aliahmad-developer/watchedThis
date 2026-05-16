@@ -1,30 +1,20 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 
-export const runtime = "edge";
 
 const W = 1200;
 const H = 630;
 
-// ─────────────────────────────────────────────
-// Simple Edge-safe in-memory cache (per isolate)
-// ─────────────────────────────────────────────
 const imageCache = new Map<string, ArrayBuffer>();
 
-// ─────────────────────────────────────────────
-// Safe timeout fetch (Edge compatible)
-// ─────────────────────────────────────────────
 async function fetchBuffer(url: string): Promise<ArrayBuffer | null> {
   try {
     if (imageCache.has(url)) return imageCache.get(url)!;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 7000);
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(3000), // 3s max — Edge has ~10s total budget
+    });
 
-    // Fetch TMDB directly — no proxy needed in Edge OG route
-    const res = await fetch(url, { signal: controller.signal });
-
-    clearTimeout(timeout);
     if (!res.ok) return null;
 
     const buffer = await res.arrayBuffer();
@@ -35,37 +25,26 @@ async function fetchBuffer(url: string): Promise<ArrayBuffer | null> {
   }
 }
 
-
-
-// ─────────────────────────────────────────────
-// Text safety (prevents layout break)
-// ─────────────────────────────────────────────
 function clampText(text: string, max: number) {
   if (!text) return "";
   return text.length > max ? text.slice(0, max - 3) + "..." : text;
 }
 
-// ─────────────────────────────────────────────
-// Handler
-// ─────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
 
-  const rawTitle =
-    searchParams.get("title") || "Find Your Next Favorite Watch.";
-
-  const rawSubtitle =
-    searchParams.get("subtitle") || "Movies & TV shows, curated just for you.";
-
+  const title = clampText(
+    searchParams.get("title") || "Find Your Next Favorite Watch.",
+    90,
+  );
+  const subtitle = clampText(
+    searchParams.get("subtitle") || "Movies & TV shows, curated just for you.",
+    140,
+  );
   const poster = searchParams.get("poster");
   const logo = searchParams.get("logo");
+  const cta = searchParams.get("cta") || "Discover Now →";
 
-  const title = clampText(rawTitle, 90);
-  const subtitle = clampText(rawSubtitle, 140);
-
-  // ─────────────────────────────────────────────
-  // Parallel image fetch
-  // ─────────────────────────────────────────────
   const [posterBuffer, logoBuffer] = await Promise.all([
     poster
       ? fetchBuffer(`https://image.tmdb.org/t/p/w780${poster}`)
@@ -77,8 +56,6 @@ export async function GET(req: NextRequest) {
 
   const hasPoster = Boolean(posterBuffer);
   const hasLogo = Boolean(logoBuffer);
-
-  const cta = searchParams.get("cta") || "Discover Now →";
 
   return new ImageResponse(
     <div
@@ -121,14 +98,8 @@ export async function GET(req: NextRequest) {
             src={posterBuffer}
             width={420}
             height={630}
-            style={{
-              width: "420px",
-              height: "630px",
-              objectFit: "cover",
-            }}
+            style={{ width: "420px", height: "630px", objectFit: "cover" }}
           />
-
-          {/* Gradient overlay */}
           <div
             style={{
               position: "absolute",
@@ -140,7 +111,7 @@ export async function GET(req: NextRequest) {
         </div>
       )}
 
-      {/* LEFT CONTENT */}
+      {/* Left Content */}
       <div
         style={{
           display: "flex",
@@ -169,14 +140,7 @@ export async function GET(req: NextRequest) {
               borderRadius: "6px",
             }}
           />
-
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: 700,
-              color: "#fff",
-            }}
-          >
+          <div style={{ fontSize: "18px", fontWeight: 700, color: "#fff" }}>
             Watched<span style={{ color: "#468189" }}>This</span>
           </div>
         </div>
@@ -197,11 +161,7 @@ export async function GET(req: NextRequest) {
             <img
               // @ts-expect-error
               src={logoBuffer}
-              style={{
-                width: "64px",
-                height: "64px",
-                objectFit: "contain",
-              }}
+              style={{ width: "64px", height: "64px", objectFit: "contain" }}
             />
           </div>
         )}

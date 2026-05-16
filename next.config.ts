@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/og",
+        source: "/og/",
         headers: [
           {
             key: "Content-Type",
