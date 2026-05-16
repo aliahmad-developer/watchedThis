@@ -36,15 +36,15 @@ async function getFonts(): Promise<{ regular: string; bold: string } | null> {
     // no local fonts
   }
 
-  // Try fetching TTF from Google Fonts (not woff2 — librsvg needs TTF/OTF)
+  // Try fetching TTF from Google Fonts (librsvg needs TTF/OTF, not woff/woff2)
   try {
     const [r, b] = await Promise.all([
       fetch(
-        "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff",
+        "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuBSc.ttf",
         { signal: AbortSignal.timeout(5000) },
       ),
       fetch(
-        "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff",
+        "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuHOc.ttf",
         { signal: AbortSignal.timeout(5000) },
       ),
     ]);
@@ -136,8 +136,7 @@ export async function GET(req: NextRequest) {
 
   const title = clampText(searchParams.get("title") || "", 90);
   const subtitle = clampText(
-    searchParams.get("subtitle") ||
-      "Movies & TV shows, curated just for you.",
+    searchParams.get("subtitle") || "Movies & TV shows, curated just for you.",
     140,
   );
   const poster = searchParams.get("poster");
@@ -164,19 +163,21 @@ export async function GET(req: NextRequest) {
   const composites: sharp.OverlayOptions[] = [];
 
   if (posterBuf && !isHomePage) {
-    // ── Show full poster on the RIGHT — fit: contain with dark bg padding ───
-    // This avoids cropping: poster is scaled to fit inside a box, letterboxed.
+    // ── Show full poster on the RIGHT — no cropping, full image visible ──────
+    // Use fit: "contain" to preserve the full image, transparent background
+    // so SVG gradient shows through any gaps, no blue background visible.
     const POSTER_W = 480;
     const POSTER_H = H; // full height slot on the right
 
     const resizedPoster = await sharp(posterBuf)
       .resize(POSTER_W, POSTER_H, {
-        fit: "contain",       // ← no cropping, full image visible
+        fit: "contain",
         position: "centre",
-        background: { r: 3, g: 25, b: 38, alpha: 1 }, // match bg color
+        background: { r: 0, g: 0, b: 0, alpha: 0 }, // transparent, SVG bg shows through
       })
       .toBuffer();
 
+    // Position poster on the right, centered horizontally within its box
     composites.push({ input: resizedPoster, top: 0, left: W - POSTER_W });
 
     // Soft left-edge fade so poster blends into the text panel
