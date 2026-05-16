@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
-const W = 1200; 
+const W = 1200;
 const H = 630;
 
 const COLORS = {
-  bg: "#031926", // --color-dark-bg
-  card: "#0d2535", // --color-dark-card (used for subtle gradient end)
-  accent: "#468189", // --color-dark-accent (top bar)
-  title: "#eef0f2", // --color-dark-header
-  subtitle: "#bdd4e7", // --color-dark-body-text
-  footer: "#8693ab", // --color-dark-secondary-text
+  bg: "#031926",
+  card: "#0d2535",
+  accent: "#468189",
+  title: "#eef0f2",
+  subtitle: "#bdd4e7",
+  footer: "#8693ab",
 };
 
 const APP_URL =
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   const composites: sharp.OverlayOptions[] = [];
 
-  // Logo (top left)
+  // Logo (top left, but above poster area)
   if (logoBuffer) {
     try {
       const logoImg = await sharp(logoBuffer)
@@ -85,16 +85,15 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Centered poster
-  let posterTop = 0;
-  let posterLeft = 0;
+  // Poster (left-aligned, no gaps around it)
+  let posterHeight = 0;
   if (posterBuffer) {
     try {
-      const MAX_POSTER_W = 400;
-      const MAX_POSTER_H = 560;
+      const POSTER_WIDTH = 360; // fixed width
+      const MAX_POSTER_HEIGHT = 560; // fit within canvas (630 - margins)
 
       let posterImg = await sharp(posterBuffer)
-        .resize(MAX_POSTER_W, MAX_POSTER_H, {
+        .resize(POSTER_WIDTH, MAX_POSTER_HEIGHT, {
           fit: "contain",
           background: { r: 0, g: 0, b: 0, alpha: 0 },
         })
@@ -102,23 +101,34 @@ export async function GET(req: NextRequest) {
         .toBuffer();
 
       const meta = await sharp(posterImg).metadata();
-      const posterW = meta.width || MAX_POSTER_W;
-      const posterH = meta.height || MAX_POSTER_H;
+      const actualWidth = meta.width || POSTER_WIDTH;
+      const actualHeight = meta.height || MAX_POSTER_HEIGHT;
+      posterHeight = actualHeight;
 
-      posterLeft = Math.round((W - posterW) / 2);
-      posterTop = Math.round((H - posterH) / 2) - 40; // shift up for text below
+      // Left margin: 40px, vertically centered (or slightly offset)
+      const left = 40;
+      const top = Math.round((H - actualHeight) / 2);
 
-      composites.push({ input: posterImg, top: posterTop, left: posterLeft });
+      composites.push({ input: posterImg, top, left });
     } catch (err) {
       console.error("Poster error:", err);
     }
   }
 
-  // Text below poster
-  const titleLines = wrapText(title, 35);
-  const subtitleLines = wrapText(subtitle, 55);
-  const textStartY = posterTop + 560 + 30;
-  const titleLineHeight = 48;
+  // Text area (right side, starting after poster + margin)
+  const textStartX = 440; // 40 (poster left) + 360 (poster width) + 40 (gap)
+  const textMaxWidth = W - textStartX - 40; // ~720px
+
+  // Wrap text to fit the right column (more characters because wider)
+  const titleLines = wrapText(title, 45);
+  const subtitleLines = wrapText(subtitle, 85);
+
+  // Vertical start: align with poster's vertical center
+  const titleStartY = Math.max(
+    140,
+    (H - (titleLines.length * 48 + subtitleLines.length * 34 + 40)) / 2,
+  );
+  const titleLineHeight = 52;
   const subtitleLineHeight = 34;
 
   let svgHtml = `
@@ -133,14 +143,13 @@ export async function GET(req: NextRequest) {
   <rect width="${W}" height="4" fill="${COLORS.accent}"/>
 `;
 
-  // Title
+  // Title (right side)
   titleLines.forEach((line, i) => {
     svgHtml += `
 <text
-  x="50%"
-  y="${textStartY + i * titleLineHeight}"
-  text-anchor="middle"
-  font-size="42"
+  x="${textStartX}"
+  y="${titleStartY + i * titleLineHeight}"
+  font-size="44"
   font-weight="700"
   fill="${COLORS.title}"
   font-family="Arial, Helvetica, sans-serif"
@@ -150,14 +159,14 @@ export async function GET(req: NextRequest) {
 `;
   });
 
-  // Subtitle
+  // Subtitle (right side)
+  const subtitleStartY = titleStartY + titleLines.length * titleLineHeight + 20;
   subtitleLines.forEach((line, i) => {
     svgHtml += `
 <text
-  x="50%"
-  y="${textStartY + titleLines.length * titleLineHeight + 20 + i * subtitleLineHeight}"
-  text-anchor="middle"
-  font-size="22"
+  x="${textStartX}"
+  y="${subtitleStartY + i * subtitleLineHeight}"
+  font-size="24"
   font-weight="400"
   fill="${COLORS.subtitle}"
   font-family="Arial, Helvetica, sans-serif"
@@ -167,7 +176,7 @@ export async function GET(req: NextRequest) {
 `;
   });
 
-  // Footer
+  // Footer (bottom right)
   svgHtml += `
 <text
   x="${W - 30}"
