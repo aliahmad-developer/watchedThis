@@ -5,6 +5,15 @@ import RecommendationShelf from "./components/Recommendation/recommendationShelf
 import Strip from "./components/alphabetStrip/strip";
 import type { Metadata } from "next";
 
+// ─── OG Image URL ─────────────────────────────────────────────────────────────
+const homeOg = new URL("/og", "https://watchedthis.com");
+homeOg.searchParams.set("title", "WatchedThis — AI Movie & TV Discovery");
+homeOg.searchParams.set(
+  "subtitle",
+  "Discover movies and TV shows instantly with AI-powered recommendations, trending picks, and scene detection.",
+);
+
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
   metadataBase: new URL("https://watchedthis.com"),
 
@@ -37,7 +46,7 @@ export const metadata: Metadata = {
 
     images: [
       {
-        url: "/og",
+        url: homeOg.toString(),
         width: 1200,
         height: 630,
         alt: "WatchedThis — Discover Your Next Watch",
@@ -50,16 +59,62 @@ export const metadata: Metadata = {
     title: "WatchedThis - AI Movie & TV Discovery",
     description:
       "Find your next movie or show instantly with AI-powered recommendations and trending picks.",
+    images: [homeOg.toString()],
   },
 };
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default async function Home() {
+  const [dailyRes, trendingRes] = await Promise.allSettled([
+    fetch("https://watchedthis.com/api/dailyMedia", {
+      next: { revalidate: 3600 },
+    }),
+    fetch("https://watchedthis.com/api/trending", {
+      next: { revalidate: 3600 },
+    }),
+  ]);
+
+  const dailyItems =
+    dailyRes.status === "fulfilled" && dailyRes.value.ok
+      ? ((await dailyRes.value.json()).data ?? [])
+      : [];
+
+  const trendingItems =
+    trendingRes.status === "fulfilled" && trendingRes.value.ok
+      ? ((await trendingRes.value.json()).results ?? [])
+      : [];
+
+  return (
+    <>
+      <h1 className="sr-only">
+        WatchedThis — AI Movie & TV Discovery Platform
+      </h1>
+
+      <SpotLightServer />
+
+      <div className="mx-3 sm:mx-4 md:mx-5 lg:mx-7 xl:mx-10">
+        <DailyMedia initialItems={dailyItems} />
+
+        <RecommendationShelf />
+
+        <Trending initialItems={trendingItems} />
+
+        <Strip />
+      </div>
+
+      <HomepageSchema />
+      <FAQSchema />
+    </>
+  );
+}
+
+// ─── Schemas ──────────────────────────────────────────────────────────────────
 function HomepageSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
 
     name: "WatchedThis Homepage",
-
     url: "https://watchedthis.com",
 
     description:
@@ -111,54 +166,8 @@ function HomepageSchema() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(schema),
-      }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
-  );
-}
-
-export default async function Home() {
-  const [dailyRes, trendingRes] = await Promise.allSettled([
-    fetch("https://watchedthis.com/api/dailyMedia", {
-      next: { revalidate: 3600 },
-    }),
-    fetch("https://watchedthis.com/api/trending", {
-      next: { revalidate: 3600 },
-    }),
-  ]);
-
-  const dailyItems =
-    dailyRes.status === "fulfilled" && dailyRes.value.ok
-      ? ((await dailyRes.value.json()).data ?? [])
-      : [];
-
-  const trendingItems =
-    trendingRes.status === "fulfilled" && trendingRes.value.ok
-      ? ((await trendingRes.value.json()).results ?? [])
-      : [];
-
-  return (
-    <>
-      <h1 className="sr-only">
-        WatchedThis — AI Movie & TV Discovery Platform
-      </h1>
-
-      <SpotLightServer />
-
-      <div className="mx-3 sm:mx-4 md:mx-5 lg:mx-7 xl:mx-10">
-        <DailyMedia initialItems={dailyItems} />
-
-        <RecommendationShelf />
-
-        <Trending initialItems={trendingItems} />
-
-        <Strip />
-      </div>
-
-      <HomepageSchema />
-      <FAQSchema />
-    </>
   );
 }
 
@@ -206,9 +215,7 @@ function FAQSchema() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(faq),
-      }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }}
     />
   );
 }

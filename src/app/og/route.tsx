@@ -30,15 +30,14 @@ async function fetchBuffer(url: string): Promise<ArrayBuffer | null> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7000);
 
+    // Fetch TMDB directly — no proxy needed in Edge OG route
     const res = await fetch(url, { signal: controller.signal });
 
     clearTimeout(timeout);
-
     if (!res.ok) return null;
 
     const buffer = await res.arrayBuffer();
     imageCache.set(url, buffer);
-
     return buffer;
   } catch {
     return null;
@@ -86,8 +85,12 @@ export async function GET(req: NextRequest) {
   // Parallel image fetch
   // ─────────────────────────────────────────────
   const [posterBuffer, logoBuffer] = await Promise.all([
-    poster ? fetchBuffer(tmdbProxyUrl("w780", poster)) : Promise.resolve(null),
-    logo ? fetchBuffer(tmdbProxyUrl("w185", logo)) : Promise.resolve(null),
+    poster
+      ? fetchBuffer(`https://image.tmdb.org/t/p/w780${poster}`)
+      : Promise.resolve(null),
+    logo
+      ? fetchBuffer(`https://image.tmdb.org/t/p/w185${logo}`)
+      : Promise.resolve(null),
   ]);
 
   const hasPoster = Boolean(posterBuffer);
