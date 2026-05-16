@@ -3,25 +3,67 @@ import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+
 export const metadata: Metadata = {
-  title: "Productions | WatchedThis",
-  description: "Browse studios and production companies on WatchedThis.",
-  alternates: { canonical: "https://watchedthis.com/production" },
+  metadataBase: new URL("https://watchedthis.com"),
+
+  title: "Productions – Browse Movie & TV Studios | WatchedThis",
+
+  description:
+    "Browse movies and TV shows by production companies and studios including Marvel Studios, Pixar, A24, Warner Bros., Netflix, HBO, and more.",
+
+  keywords: [
+    "production companies",
+    "movie studios",
+    "tv studios",
+    "browse by studio",
+    "movies by production company",
+    "movie production companies",
+    "tv production companies",
+    "Marvel Studios movies",
+    "Pixar movies",
+    "Warner Bros movies",
+    "A24 films",
+    "Netflix originals",
+    "HBO shows",
+  ],
+
+  robots: {
+    index: true,
+    follow: true,
+  },
+
+  alternates: {
+    canonical: "/production",
+  },
+
   openGraph: {
-    title: "Productions | WatchedThis",
-    description: "Browse studios and production companies on WatchedThis.",
+    title: "Productions – Browse Movie & TV Studios | WatchedThis",
+
+    description:
+      "Discover movies and TV shows from top production companies and studios.",
+
     type: "website",
+
     url: "https://watchedthis.com/production",
+
     siteName: "WatchedThis",
   },
+
   twitter: {
     card: "summary_large_image",
-    title: "Productions | WatchedThis",
-    description: "Browse studios and production companies on WatchedThis.",
+
+    title: "Productions – Browse Movie & TV Studios | WatchedThis",
+
+    description:
+      "Browse movies and TV shows from Marvel Studios, Pixar, A24, Netflix, HBO, and more.",
   },
 };
 
-const PRODUCTIONS: { id: number; name: string }[] = [
+const PRODUCTIONS: {
+  id: number;
+  name: string;
+}[] = [
   { id: 420, name: "Marvel Studios" },
   { id: 9993, name: "DC Studios" },
   { id: 174, name: "Warner Bros." },
@@ -54,6 +96,47 @@ function toSlug(name: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function ProductionsSchema() {
+  const schema = {
+    "@context": "https://schema.org",
+
+    "@type": "CollectionPage",
+
+    name: "Production Companies",
+
+    url: "https://watchedthis.com/production",
+
+    description:
+      "Browse movies and TV shows by production studios and companies.",
+
+    publisher: {
+      "@type": "Organization",
+
+      name: "WatchedThis",
+
+      url: "https://watchedthis.com",
+    },
+
+    hasPart: PRODUCTIONS.map((p) => ({
+      "@type": "Organization",
+
+      name: p.name,
+
+      url: `https://watchedthis.com/production/${p.id}-${toSlug(p.name)}`,
+    })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(schema),
+      }}
+      key="productions-schema"
+    />
+  );
+}
+
 export default async function ProductionListPage() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
@@ -61,10 +144,15 @@ export default async function ProductionListPage() {
     PRODUCTIONS.map(async ({ id, name }) => {
       const [moviesRes, tvRes] = await Promise.allSettled([
         fetch(`${baseUrl}/api/production/${id}?mediaType=movie&page=1`, {
-          next: { revalidate: 3600 },
+          next: {
+            revalidate: 3600,
+          },
         }),
+
         fetch(`${baseUrl}/api/production/${id}?mediaType=tv&page=1`, {
-          next: { revalidate: 3600 },
+          next: {
+            revalidate: 3600,
+          },
         }),
       ]);
 
@@ -87,49 +175,64 @@ export default async function ProductionListPage() {
       const interleaved: any[] = [];
 
       const m = movies.filter((x: any) => x?.poster_path);
+
       const t = tv.filter((x: any) => x?.poster_path);
 
       let mi = 0;
       let ti = 0;
 
       while (interleaved.length < 5 && (mi < m.length || ti < t.length)) {
-        if (mi < m.length) interleaved.push(m[mi++]);
+        if (mi < m.length) {
+          interleaved.push(m[mi++]);
+        }
 
         if (interleaved.length < 5 && ti < t.length) {
           interleaved.push(t[ti++]);
         }
       }
 
-      return { id, name, top: interleaved };
+      return {
+        id,
+        name,
+        top: interleaved,
+      };
     }),
   );
 
   return (
     <>
-      <h1 className="sr-only">Productions | WatchedThis</h1>
+      <h1 className="sr-only">Browse Movie and TV Production Companies</h1>
+
       <Breadcrumbs
         crumbs={[
-          { name: "Home", href: "/" },
-          { name: "Productions", href: "/production" },
+          {
+            name: "Home",
+            href: "/",
+          },
+          {
+            name: "Productions",
+            href: "/production",
+          },
         ]}
       />
 
       <div className="container mx-auto px-4 py-8 min-h-screen">
-        <h2 className="font-semibold mb-3 text-center">Browse by studio</h2>
+        <h2 className="text-center font-semibold mb-3">Browse by studio</h2>
+
         <div className="flex flex-wrap gap-2 mb-8">
           {PRODUCTIONS.map(({ id, name }) => (
             <a
               key={id}
               href={`/production/${id}-${toSlug(name)}`}
               className="
-                px-3 py-1 rounded-full border text-sm
-                border-light-accent/30 dark:border-dark-accent/30
-                text-light-accent dark:text-dark-accent
-                bg-light-accent/5 dark:bg-dark-accent/5
-                hover:bg-light-accent/15 dark:hover:bg-dark-accent/15
-                hover:border-light-accent dark:hover:border-dark-accent
-                transition-colors duration-200
-              "
+                  px-3 py-1 rounded-full border text-sm
+                  border-light-accent/30 dark:border-dark-accent/30
+                  text-light-accent dark:text-dark-accent
+                  bg-light-accent/5 dark:bg-dark-accent/5
+                  hover:bg-light-accent/15 dark:hover:bg-dark-accent/15
+                  hover:border-light-accent dark:hover:border-dark-accent
+                  transition-colors duration-200
+                "
             >
               {name}
             </a>
@@ -139,56 +242,56 @@ export default async function ProductionListPage() {
         {productionSections.map(({ id, name, top }) => (
           <section key={id} className="mb-10">
             <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-lg font-bold">Popular in {name}</h3>
-            
-                          <a
-                            href={`/genre/${id}`}
-                            className="
-                  group
-                  flex
-                  items-center
-                  text-sm
-                  font-medium
-                  leading-none
-                  text-light-accent
-                  dark:text-dark-accent
-                "
-                          >
-                            <span className="hover:underline underline-offset-4 m-0">
-                              See all
-                            </span>
-            
-                            <FontAwesomeIcon
-                              icon={faArrowRight}
-                              className="
-                    ml-1
-                    text-[10px]
-                    translate-y-[0.5px]
-                    transition-transform
-                    duration-200
-                    group-hover:translate-x-1
+              <h3 className="text-lg font-bold">Popular in {name}</h3>
+
+              <a
+                href={`/production/${id}-${toSlug(name)}`}
+                className="
+                    group
+                    flex
+                    items-center
+                    text-sm
+                    font-medium
+                    leading-none
+                    text-light-accent
+                    dark:text-dark-accent
                   "
-                            />
-                          </a>
-                        </div>
+              >
+                <span className="hover:underline underline-offset-4 m-0">
+                  See all
+                </span>
+
+                <FontAwesomeIcon
+                  icon={faArrowRight}
+                  className="
+                      ml-1
+                      text-[10px]
+                      translate-y-[0.5px]
+                      transition-transform
+                      duration-200
+                      group-hover:translate-x-1
+                    "
+                />
+              </a>
+            </div>
 
             {top.length ? (
               <div
                 className="
-    grid
-    grid-cols-2
-    sm:grid-cols-3
-    lg:grid-cols-5
-    gap-4
-  "
+                    grid
+                    grid-cols-2
+                    sm:grid-cols-3
+                    lg:grid-cols-5
+                    gap-4
+                  "
               >
                 {top.map((m: any, index: number) => (
                   <div
                     key={m.id}
                     className={`
-        ${index >= 4 ? "hidden lg:block" : ""}
-        ${index >= 3 ? "sm:hidden lg:block" : ""}
-      `}
+                          ${index >= 4 ? "hidden lg:block" : ""}
+                          ${index >= 3 ? "sm:hidden lg:block" : ""}
+                        `}
                   >
                     <MediaCard item={m} index={index} />
                   </div>
@@ -200,6 +303,8 @@ export default async function ProductionListPage() {
           </section>
         ))}
       </div>
+
+      <ProductionsSchema />
     </>
   );
 }

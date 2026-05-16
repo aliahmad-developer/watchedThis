@@ -6,111 +6,114 @@ import Strip from "./components/alphabetStrip/strip";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://watchedthis.com"),
+
   title: "WatchedThis - Best Random Movie Finder & TV Show Recommender",
+
   description:
-    "AI-powered movie picker, scene detection, personalized TV recommendations. Find what to watch instantly with WatchedThis.",
+    "AI-powered movie picker, scene detection, and personalized TV recommendations. Discover what to watch instantly with WatchedThis.",
+
   keywords: [
     "random movie generator",
     "movie finder",
     "random TV show picker",
-    "random movie picker",
-    "random anime picker",
     "what to watch tonight",
     "TV show recommendations",
-    "scene detection movies",
     "AI movie recommendations",
-    "film discovery platform",
-    "movie picker",
-    "best movies 2026",
+    "movie discovery platform",
+    "trending movies",
     "trending TV shows",
   ],
+
   openGraph: {
-    title: "WatchedThis - Movies tailored to your taste.",
+    title: "WatchedThis - AI Movie & TV Discovery Platform",
+
     description:
-      "AI-driven discovery platform for movies and TV shows, featuring scene detection, interactive spinner exploration, and personalized recommendations.",
+      "Discover movies and TV shows instantly with AI-powered recommendations, trending picks, and scene detection.",
+
     url: "https://watchedthis.com",
     siteName: "WatchedThis",
     type: "website",
+
     images: [
       {
         url: "/og",
         width: 1200,
         height: 630,
-        alt: "WatchedThis — Find Your Next Favorite Watch",
+        alt: "WatchedThis — Discover Your Next Watch",
       },
     ],
   },
+
   twitter: {
     card: "summary_large_image",
-    title: "WatchedThis - Random Movie & TV Discovery",
+    title: "WatchedThis - AI Movie & TV Discovery",
     description:
-      "Never wonder what to watch again. AI-powered random picks with scene detection & recommendations.",
+      "Find your next movie or show instantly with AI-powered recommendations and trending picks.",
   },
 };
 
 function HomepageSchema() {
-  const homepageSchema = {
+  const schema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "WatchedThis - Movie & TV Discovery Homepage",
-    description:
-      "AI-powered platform for discovering movies and TV shows through random selection, scene detection, and personalized recommendations.",
+
+    name: "WatchedThis Homepage",
+
     url: "https://watchedthis.com",
+
+    description:
+      "AI-powered platform for discovering movies and TV shows through recommendations, trending content, and scene detection.",
+
     publisher: {
       "@type": "Organization",
+      "@id": "https://watchedthis.com/#organization",
       name: "WatchedThis",
+      url: "https://watchedthis.com",
       logo: {
         "@type": "ImageObject",
-        url: "https://watchedthis.com/og",
+        url: "https://watchedthis.com/android-chrome-512x512.png",
       },
     },
+
     mainEntity: {
       "@type": "ItemList",
-      name: "Featured Movie & TV Content",
-      description:
-        "Curated trending movies, TV shows, daily picks, and personalized recommendations.",
-      numberOfItems: 4,
+      name: "Featured Content Sections",
       itemListElement: [
         {
           "@type": "ListItem",
           position: 1,
-          name: "Spotlight Trending Movies & Shows",
+          name: "Spotlight",
           url: "https://watchedthis.com/#spotlight",
         },
         {
           "@type": "ListItem",
           position: 2,
-          name: "Daily Media Recommendations",
+          name: "Daily Picks",
           url: "https://watchedthis.com/#daily",
         },
         {
           "@type": "ListItem",
           position: 3,
-          name: "Personalized Recommendations",
+          name: "Recommendations",
           url: "https://watchedthis.com/#recommendations",
         },
         {
           "@type": "ListItem",
           position: 4,
-          name: "Trending Now",
+          name: "Trending",
           url: "https://watchedthis.com/#trending",
         },
       ],
     },
-    keywords: [
-      "random movies",
-      "movie discovery",
-      "TV recommendations",
-      "scene detection",
-      "what to watch",
-    ],
   };
 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageSchema) }}
-      key="homepage-schema"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(schema),
+      }}
     />
   );
 }
@@ -138,15 +141,21 @@ export default async function Home() {
   return (
     <>
       <h1 className="sr-only">
-        WatchedThis, Best Random Movie Finder &amp; TV Show Recommender
+        WatchedThis — AI Movie & TV Discovery Platform
       </h1>
+
       <SpotLightServer />
+
       <div className="mx-3 sm:mx-4 md:mx-5 lg:mx-7 xl:mx-10">
         <DailyMedia initialItems={dailyItems} />
+
         <RecommendationShelf />
+
         <Trending initialItems={trendingItems} />
+
         <Strip />
       </div>
+
       <HomepageSchema />
       <FAQSchema />
     </>
@@ -154,40 +163,41 @@ export default async function Home() {
 }
 
 function FAQSchema() {
-  const faqSchema = {
+  const faq = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+
     mainEntity: [
       {
         "@type": "Question",
         name: "What is a random movie picker?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "A random movie picker instantly suggests movies or TV shows based on algorithms, genres, eras, and popularity – perfect when you can't decide what to watch.",
+          text: "A tool that instantly suggests movies or TV shows based on genres, trends, and AI recommendations.",
         },
       },
       {
         "@type": "Question",
-        name: "How does WatchedThis find personalized recommendations?",
+        name: "How does WatchedThis work?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Using your viewing history, behavior data, and AI matching against trending content from TMDB, we suggest hidden gems tailored to your taste.",
+          text: "WatchedThis uses AI, TMDB data, and user behavior to recommend movies, shows, and hidden gems.",
         },
       },
       {
         "@type": "Question",
-        name: "What is scene detection in movies?",
+        name: "What is scene detection?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Scene detection analyzes keyframes to identify specific moments, moods, or visuals in films for precise discovery.",
+          text: "Scene detection identifies movies or shows from visual frames or descriptions.",
         },
       },
       {
         "@type": "Question",
-        name: "Can I create watchlists on WatchedThis?",
+        name: "Can I save watchlists?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes, sign up for free to save lists, track watched items, and get better personalized picks.",
+          text: "Yes, users can create and manage watchlists to track movies and TV shows.",
         },
       },
     ],
@@ -196,8 +206,9 @@ function FAQSchema() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      key="faq-schema"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(faq),
+      }}
     />
   );
 }

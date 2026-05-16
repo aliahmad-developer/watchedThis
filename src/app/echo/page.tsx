@@ -2,58 +2,146 @@ import { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import EchoClient from "./clientPage";
 
-
 export const metadata: Metadata = {
+  metadataBase: new URL("https://watchedthis.com"),
+
   title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
+
   description:
-    "Describe a movie or show or anime you loved and Echo finds similar ones instantly. Matches by plot, genre, keywords, and synopsis — just type something like 'movies like Sherlock Holmes'.",
+    "Describe a movie, TV show, or anime you loved and Echo instantly finds similar titles using plot, genre, keywords, and synopsis matching.",
+
   keywords: [
-    "movie like",
-    "anime like",
-    "drama like",
-    "similar movie",
     "movies like",
+    "shows like",
+    "anime like",
     "similar movies",
-    "similar movies",
+    "similar tv shows",
+    "movies similar to",
     "find movies like this",
-    "shows similar to",
     "movie recommendations by plot",
     "find movies by synopsis",
-    "similar tv shows",
+    "recommend movies based on description",
+    "movie finder",
+    "AI movie recommendations",
+    "find anime like",
   ],
-  alternates: { canonical: "/echo" },
+
+  alternates: {
+    canonical: "/echo",
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+  },
+
   openGraph: {
     title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
+
     description:
-      "Type any movie or show and Echo finds similar ones by matching plot, genre, keywords, and synopsis.",
+      "Type any movie, show, or anime and Echo finds similar titles by matching plot, genre, keywords, and synopsis.",
+
     url: "https://watchedthis.com/echo",
     siteName: "WatchedThis",
     type: "website",
   },
+
   twitter: {
     card: "summary_large_image",
+
     title: "Echo – Find Movies & Shows Similar to What You Loved | WatchedThis",
+
     description:
-      "Type any movie or show and Echo finds similar ones by plot, genre, and synopsis.",
+      "Type any movie, show, or anime and Echo finds similar titles instantly.",
   },
 };
+
+function EchoFAQSchema({
+  host = "https://watchedthis.com",
+}: {
+  host?: string;
+}) {
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What does Echo match on?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "Echo finds similar movies, TV shows, and anime by comparing plot, genre, keywords, and synopsis so recommendations feel accurate and relevant.",
+        },
+      },
+
+      {
+        "@type": "Question",
+        name: "Do I need to type a full movie title?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "No. You can type part of a title or describe what you liked and Echo will generate similar recommendations.",
+        },
+      },
+
+      {
+        "@type": "Question",
+        name: "Can Echo recommend anime and TV shows too?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "Yes. Echo supports movies, TV shows, and anime recommendations using similarity matching.",
+        },
+      },
+
+      {
+        "@type": "Question",
+        name: "Where does WatchedThis get movie and TV data?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "WatchedThis uses TMDB data including titles, descriptions, genres, and images to power discovery features like Echo.",
+        },
+      },
+    ],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(faqSchema),
+      }}
+      key="echo-faq-schema"
+    />
+  );
+}
 
 export default function EchoPage() {
   return (
     <>
       <h1 className="sr-only">
-        Echo – Find Movies and TV Shows Similar to What You Already Watched
+        Echo – Find Similar Movies, TV Shows, and Anime Instantly
       </h1>
+
       <Breadcrumbs
         crumbs={[
           { name: "Home", href: "/" },
           { name: "Echo", href: "/echo" },
         ]}
       />
+
       <div className="min-h-screen">
         <EchoClient />
       </div>
 
+      <EchoFAQSchema />
     </>
   );
 }

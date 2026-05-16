@@ -322,8 +322,50 @@ function CardSkeleton() {
 // FIX: How long to wait before bailing to /find if no results (handles cold starts + mobile timeouts)
 const LOAD_TIMEOUT_MS = 12_000;
 
+function SceneDetectFAQSchema() {
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "Why are the results ranked?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Results are sorted by match confidence (based on how closely the scene aligns with key moments across titles).",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What can I do if I don’t get a good match?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Try capturing a clearer frame with better lighting, or use a description in Find to guide the search.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is this limited to movies only?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "No—scene detection can match both movies and TV shows depending on what’s available and how closely the scene fits.",
+        },
+      },
+    ],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      key="sceneDetect-faq-schema"
+    />
+  );
+}
+
 export default function SceneDetectPage() {
   const [movies, setMovies] = useState<Movie[]>([]);
+
   const [ready, setReady] = useState(false);
   // FIX: Track timed-out state to show a helpful message instead of infinite skeleton
   const [timedOut, setTimedOut] = useState(false);
@@ -372,7 +414,6 @@ export default function SceneDetectPage() {
   useEffect(() => {
     loadResults();
 
-    // FIX: Give the backend time to respond before bailing — handles cold starts and slow mobile networks
     const timer = setTimeout(async () => {
       const retried = await loadResults();
       if (!retried) {
@@ -427,6 +468,7 @@ export default function SceneDetectPage() {
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
       <h1 className="sr-only">Scene Detection Results | WatchedThis</h1>
+      <SceneDetectFAQSchema />
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
         <div className="text-center flex items-center gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">

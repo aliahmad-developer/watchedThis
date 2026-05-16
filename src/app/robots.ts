@@ -5,34 +5,42 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
+
         allow: ["/"],
+
         disallow: [
-          // Auth & account flows — no SEO value, should never be indexed
+          // Auth flows
           "/auth",
           "/auth/confirmed",
           "/reset-password",
 
-          // Personal/gated user pages
+          // User-private areas
           "/user",
           "/user/library",
           "/user/profile",
 
-          // All API routes
-          "/api/",
+          // Internal APIs (keep targeted, not global block)
+          "/api/auth",
+          "/api/user",
+          "/api/internal",
 
-          // OG image generation endpoint
+          // OG image route (IMPORTANT: single endpoint only)
           "/og",
 
-          // Query-driven results — Google skips these anyway, but be explicit
-          "/find/results",
+          // Search / filtered results (thin pages)
           "/search",
+          "/find/results",
 
-          // Tool pages with no unique indexable content
+          // Random/token pages (non-indexable)
+          "/random",
+          "/random/*",
+
+          // Tooling pages
           "/sceneDetect",
         ],
       },
     ],
+
     sitemap: "https://watchedthis.com/sitemap.xml",
-    host: "https://watchedthis.com",
   };
 }

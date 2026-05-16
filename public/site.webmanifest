@@ -1,14 +1,20 @@
 {
   "name": "WatchedThis - Movie & TV Discovery",
   "short_name": "WatchedThis",
-  "description": "AI-powered movie and TV show discovery. Random picks, scene detection, personalized recs. Works offline!",
-  "related_applications": [
-    {
-      "platform": "webapp",
-      "url": "https://watchedthis.com/site.webmanifest"
-    }
-  ],
-  "prefer_related_applications": false,
+  "description": "AI-powered movie and TV discovery with random picks, scene detection, and personalized recommendations.",
+
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+
+  "theme_color": "#1f2937",
+  "background_color": "#1f2937",
+
+  "lang": "en",
+  "dir": "ltr",
+
+  "categories": ["entertainment", "utilities"],
+
   "icons": [
     {
       "src": "/favicon-16x16.png",
@@ -23,46 +29,43 @@
     {
       "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "theme_color": "#1f2937",
-  "background_color": "#ffffff",
-  "display": "standalone",
-  "start_url": "/",
-  "scope": "/",
-  "categories": ["entertainment", "photo", "utilities"],
-  "screenshots": [
-    {
-      "src": "/og",
-      "sizes": "1200x630",
-      "type": "image/png"
-    }
-  ],
+
   "shortcuts": [
     {
       "name": "Random Movie",
       "short_name": "Random",
       "description": "Get a random movie recommendation",
-      "url": "/random/",
-      "icons": [{ "src": "/favicon-32x32.png", "sizes": "96x96" }]
+      "url": "/random",
+      "icons": [
+        {
+          "src": "/favicon-32x32.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Scene Detection",
       "short_name": "Scene",
-      "description": "Upload scene photo to find movies",
+      "description": "Find movies from a scene or image",
       "url": "/sceneDetect",
-      "icons": [{ "src": "/favicon-32x32.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/favicon-32x32.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

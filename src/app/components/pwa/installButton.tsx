@@ -6,11 +6,14 @@ import { faMobileScreenButton } from "@fortawesome/free-solid-svg-icons";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+  userChoice: Promise<{
+    outcome: "accepted" | "dismissed";
+  }>;
 }
 
 export default function InstallButton() {
-  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
+  const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
+
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -18,48 +21,63 @@ export default function InstallButton() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if (window.matchMedia("(display-mode: standalone)").matches) {
+    // Already installed
+    if (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone
+    ) {
       setIsInstalled(true);
       return;
     }
 
-    const handler = (e: Event) => {
-      e.preventDefault();
-      deferredPromptRef.current = e as BeforeInstallPromptEvent;
+    const beforeInstallPromptHandler = (event: Event) => {
+      event.preventDefault();
+
+      deferredPrompt.current = event as BeforeInstallPromptEvent;
+
       setIsAvailable(true);
     };
 
-    const installedHandler = () => {
+    const appInstalledHandler = () => {
       setIsInstalled(true);
-      deferredPromptRef.current = null;
       setIsAvailable(false);
+      deferredPrompt.current = null;
     };
 
-    window.addEventListener("beforeinstallprompt", handler);
-    window.addEventListener("appinstalled", installedHandler);
+    window.addEventListener("beforeinstallprompt", beforeInstallPromptHandler);
+
+    window.addEventListener("appinstalled", appInstalledHandler);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-      window.removeEventListener("appinstalled", installedHandler);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        beforeInstallPromptHandler,
+      );
+
+      window.removeEventListener("appinstalled", appInstalledHandler);
     };
   }, []);
 
   const handleInstall = async () => {
-    const promptEvent = deferredPromptRef.current;
+    const promptEvent = deferredPrompt.current;
+
     if (!promptEvent) return;
 
     setIsInstalling(true);
 
     try {
       await promptEvent.prompt();
-      const choice = await promptEvent.userChoice;
 
-      if (choice.outcome === "accepted") {
+      const choiceResult = await promptEvent.userChoice;
+
+      if (choiceResult.outcome === "accepted") {
         setIsInstalled(true);
       }
 
-      deferredPromptRef.current = null;
+      deferredPrompt.current = null;
       setIsAvailable(false);
+    } catch (error) {
+      console.error("Install prompt failed:", error);
     } finally {
       setIsInstalling(false);
     }
@@ -69,13 +87,17 @@ export default function InstallButton() {
 
   return (
     <button
+      type="button"
       onClick={handleInstall}
       disabled={isInstalling}
       aria-label="Install WatchedThis app"
       className="
-        group flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium
+        group flex items-center gap-2
+        px-3 py-1.5 rounded-md
+        text-xs font-medium
         border border-light-border dark:border-dark-border
-        hover:shadow-sm transition-all duration-200
+        hover:shadow-sm
+        transition-all duration-200
         active:scale-[0.98]
         disabled:opacity-60
       "
@@ -100,7 +122,11 @@ export default function InstallButton() {
         <>
           <FontAwesomeIcon
             icon={faMobileScreenButton}
-            className="text-sm group-hover:-translate-y-px transition-transform duration-200"
+            className="
+              text-sm
+              group-hover:-translate-y-px
+              transition-transform duration-200
+            "
           />
           Install App
         </>

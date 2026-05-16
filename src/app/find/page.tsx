@@ -4,55 +4,148 @@ import FindPageClient from "./findClient";
 import type { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 
-
 export const metadata: Metadata = {
+  metadataBase: new URL("https://watchedthis.com"),
+
   title: "Find – Scene Detection & Advanced Movie Filters | WatchedThis",
+
   description:
-    "Describe a scene and we'll identify the movie or show. Use powerful filters by genre, mood, year, rating and more to find exactly what you're looking for.",
+    "Find movies, TV shows, and anime from scenes, screenshots, or descriptions. Use AI-powered scene detection and advanced filters by genre, mood, year, rating, and more.",
+
   keywords: [
     "scene detection",
     "find movie by scene",
     "movie scene finder",
-    "advanced movie filter",
+    "find movie from screenshot",
+    "what movie is this scene from",
+    "reverse movie search",
+    "movie identifier",
+    "AI scene detection",
     "movie search by description",
+    "advanced movie filter",
+    "find tv show by scene",
+    "anime scene finder",
+    "search movie by image",
   ],
+
+  alternates: {
+    canonical: "/find",
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+  },
+
   openGraph: {
     title: "Find – Scene Detection & Advanced Movie Filters | WatchedThis",
+
     description:
-      "Describe a scene and we'll identify the movie. Plus powerful filters to find exactly what you want to watch.",
+      "Upload a screenshot, describe a scene, or use advanced filters to instantly find movies, TV shows, and anime.",
+
     url: "https://watchedthis.com/find",
     siteName: "WatchedThis",
     type: "website",
   },
-  alternates: { canonical: "/find" },
+
   twitter: {
     card: "summary_large_image",
-    title: "Find – Scene Detection & Advanced Filters | WatchedThis",
+
+    title: "Find – Scene Detection & Advanced Movie Filters | WatchedThis",
+
     description:
-      "Describe a scene and find the movie instantly. Powered by AI.",
+      "Upload a scene or describe a movie moment to identify movies and shows instantly.",
   },
 };
 
 export const dynamic = "force-dynamic";
 
+function FindFAQSchema() {
+  const faqSchema = {
+    "@context": "https://schema.org",
+
+    "@type": "FAQPage",
+
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "How does scene detection work?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "Upload or capture a movie or TV scene and WatchedThis compares visual moments and metadata to identify the most likely title.",
+        },
+      },
+
+      {
+        "@type": "Question",
+        name: "Can I find a movie from a screenshot?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "Yes. You can upload screenshots or scene captures and WatchedThis will try to identify the movie, TV show, or anime.",
+        },
+      },
+
+      {
+        "@type": "Question",
+        name: "What filters can I use?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "You can filter by genre, year, rating, keywords, themes, mood, and more to narrow down results.",
+        },
+      },
+
+      {
+        "@type": "Question",
+        name: "Can I search using a description instead of an image?",
+
+        acceptedAnswer: {
+          "@type": "Answer",
+
+          text: "Yes. You can describe a plot, scene, character, or vibe and WatchedThis will generate matching recommendations.",
+        },
+      },
+    ],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(faqSchema),
+      }}
+      key="find-faq-schema"
+    />
+  );
+}
+
 export default function Page() {
   return (
     <>
       <h1 className="sr-only">
-        Find – Scene Detection &amp; Advanced Movie Filters | WatchedThis
+        Find Movies, TV Shows, and Anime by Scene or Screenshot
       </h1>
+
       <Breadcrumbs
         crumbs={[
           { name: "Home", href: "/" },
           { name: "Find", href: "/find" },
         ]}
       />
+
       <div className="min-h-screen">
         <Suspense fallback={null}>
           <FindPageClient />
           <SceneDetect />
         </Suspense>
       </div>
+
+      <FindFAQSchema />
     </>
   );
 }

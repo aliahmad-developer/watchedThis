@@ -8,13 +8,11 @@ import { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import { tmdbImage } from "@/lib/imageTmdb";
 
-
 interface PageParams {
   token: string;
 }
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 // Single fetch — gets everything
 const fetchMediaDetails = cache(async (media_type: string, id: number) => {
@@ -37,31 +35,73 @@ export async function generateMetadata({
   params: Promise<PageParams>;
 }): Promise<Metadata> {
   const { token } = await params;
+
   const payload = verifyToken(token);
-  if (!payload) return { title: "Not Found | WatchedThis" };
+
+  if (!payload) {
+    return {
+      title: "Not Found | WatchedThis",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
 
   const data = await fetchMediaDetails(payload.media_type, payload.id);
+
   const title = data?.title || data?.name || "Random Pick";
+
   const description =
-    data?.overview?.substring(0, 160) ?? `Details about ${title}`;
+    data?.overview?.slice(0, 160) || `Explore ${title} on WatchedThis.`;
+
+  const image = data?.poster_path
+    ? tmdbImage(data.poster_path, "w780")
+    : undefined;
 
   return {
+    metadataBase: new URL("https://watchedthis.com"),
+
     title: `${title} | WatchedThis`,
+
     description,
+
+    alternates: {
+      canonical: `/random/${token}`,
+    },
+
+    robots: {
+      index: false,
+      follow: true,
+    },
+
     openGraph: {
       title,
       description,
 
-      images: data?.poster_path ? [tmdbImage(data.poster_path, "w780")!] : [],
-      type: "website",
+      url: `https://watchedthis.com/random/${token}`,
+
+      siteName: "WatchedThis",
+
+      images: image ? [image] : [],
+
+      type: "article",
     },
+
     twitter: {
       card: "summary_large_image",
+
       title,
       description,
+
+      images: image ? [image] : [],
     },
   };
 }
+
+export const dynamic = "force-dynamic";
+
+export const revalidate = 0;
 
 export default async function Page({
   params,
@@ -104,7 +144,6 @@ export default async function Page({
           />
           <DetailsPage
             data={safeData}
-
             backdropUrl={safeData.backdrop_path ?? ""}
             isLoading={false}
           />
