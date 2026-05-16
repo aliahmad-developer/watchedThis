@@ -10,11 +10,13 @@ const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
   "https://watchedthis.com";
 
-// ── Font loading ──────────────────────────────────────────────────────────────
-let fontBase64Cache: { regular: string; bold: string } | null = null;
+// ── librsvg-safe font loading ─────────────────────────────────────────────────
+// sharp uses librsvg which does NOT support woff2 @font-face in SVG.
+// We load TTF files and embed them as base64 — librsvg supports TTF/OTF only.
+let fontCache: { regular: string; bold: string } | null = null;
 
-async function getFontBase64(): Promise<{ regular: string; bold: string }> {
-  if (fontBase64Cache) return fontBase64Cache;
+async function getFonts(): Promise<{ regular: string; bold: string } | null> {
+  if (fontCache) return fontCache;
 
   try {
     const regularPath = path.join(
@@ -24,35 +26,40 @@ async function getFontBase64(): Promise<{ regular: string; bold: string }> {
     const boldPath = path.join(process.cwd(), "public/fonts/inter-bold.ttf");
 
     if (fs.existsSync(regularPath) && fs.existsSync(boldPath)) {
-      fontBase64Cache = {
+      fontCache = {
         regular: fs.readFileSync(regularPath).toString("base64"),
         bold: fs.readFileSync(boldPath).toString("base64"),
       };
-      return fontBase64Cache;
+      return fontCache;
     }
   } catch {
-    // fall through to network fetch
+    // no local fonts
   }
 
-  const [regularRes, boldRes] = await Promise.all([
-    fetch(
-      "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2",
-      { signal: AbortSignal.timeout(5000) },
-    ),
-    fetch(
-      "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiA.woff2",
-      { signal: AbortSignal.timeout(5000) },
-    ),
-  ]);
+  // Try fetching TTF from Google Fonts (not woff2 — librsvg needs TTF/OTF)
+  try {
+    const [r, b] = await Promise.all([
+      fetch(
+        "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff",
+        { signal: AbortSignal.timeout(5000) },
+      ),
+      fetch(
+        "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff",
+        { signal: AbortSignal.timeout(5000) },
+      ),
+    ]);
+    if (r.ok && b.ok) {
+      fontCache = {
+        regular: Buffer.from(await r.arrayBuffer()).toString("base64"),
+        bold: Buffer.from(await b.arrayBuffer()).toString("base64"),
+      };
+      return fontCache;
+    }
+  } catch {
+    // fall through
+  }
 
-  if (!regularRes.ok || !boldRes.ok) throw new Error("Font fetch failed");
-
-  fontBase64Cache = {
-    regular: Buffer.from(await regularRes.arrayBuffer()).toString("base64"),
-    bold: Buffer.from(await boldRes.arrayBuffer()).toString("base64"),
-  };
-
-  return fontBase64Cache;
+  return null; // use librsvg system sans-serif
 }
 
 async function fetchBuffer(url: string): Promise<Buffer | null> {
@@ -100,13 +107,34 @@ function wrapLines(text: string, maxChars: number): string[] {
   return lines;
 }
 
+// Build font-face block for SVG — TTF/OTF only (librsvg limitation)
+function buildFontStyle(fonts: { regular: string; bold: string } | null): {
+  style: string;
+  family: string;
+} {
+  if (!fonts) return { style: "", family: "sans-serif" };
+  return {
+    style: `
+      <style>
+        @font-face {
+          font-family: 'Inter';
+          font-weight: 400;
+          src: url('data:font/truetype;base64,${fonts.regular}') format('truetype');
+        }
+        @font-face {
+          font-family: 'Inter';
+          font-weight: 700;
+          src: url('data:font/truetype;base64,${fonts.bold}') format('truetype');
+        }
+      </style>`,
+    family: "Inter, sans-serif",
+  };
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
 
-  const title = clampText(
-    searchParams.get("title") || "Find Your Next Favorite Watch.",
-    90,
-  );
+  const title = clampText(searchParams.get("title") || "", 90);
   const subtitle = clampText(
     searchParams.get("subtitle") || "Movies & TV shows, curated just for you.",
     140,
@@ -114,215 +142,189 @@ export async function GET(req: NextRequest) {
   const poster = searchParams.get("poster");
   const logo = searchParams.get("logo");
   const cta = searchParams.get("cta") || "Discover Now →";
-  const isHomePage = !poster && !searchParams.get("title");
 
-  // ── Fetch all in parallel ─────────────────────────────────────────────────
+  // Is this the brand/home OG (no poster, no title)?
+  const isHomePage = !poster && !title;
+
+  const effectiveTitle = title || "Find Your Next Favorite Watch.";
+
+  // ── Fetch in parallel ─────────────────────────────────────────────────────
   const [posterBuf, logoBuf, siteLogo, fonts] = await Promise.all([
     poster ? fetchBuffer(proxyUrl("w780", poster)) : Promise.resolve(null),
     logo ? fetchBuffer(proxyUrl("w185", logo)) : Promise.resolve(null),
     fetchBuffer(`${APP_URL}/watchedthis-logo.svg`),
-    getFontBase64().catch(() => null),
+    getFonts().catch(() => null),
   ]);
 
   const hasPoster = Boolean(posterBuf);
-  const fontFamily = fonts ? "Inter" : "DejaVu Sans, sans-serif";
-
-  const fontStyle = fonts
-    ? `
-    <style>
-      @font-face {
-        font-family: 'Inter';
-        font-weight: 400;
-        src: url('data:font/woff2;base64,${fonts.regular}') format('woff2');
-      }
-      @font-face {
-        font-family: 'Inter';
-        font-weight: 700;
-        src: url('data:font/woff2;base64,${fonts.bold}') format('woff2');
-      }
-    </style>`
-    : "";
+  const { style: fontStyle, family: fontFamily } = buildFontStyle(fonts);
 
   // ── Composites ────────────────────────────────────────────────────────────
   const composites: sharp.OverlayOptions[] = [];
 
-  if (posterBuf) {
-    // Poster as full background
-    const resizedPoster = await sharp(posterBuf)
-      .resize(W, H, { fit: "cover", position: "centre" })
-      .toBuffer();
-    composites.push({ input: resizedPoster, top: 0, left: 0 });
+  if (posterBuf && !isHomePage) {
+    // ── Show full poster on the RIGHT — fit: contain with dark bg padding ───
+    // This avoids cropping: poster is scaled to fit inside a box, letterboxed.
+    const POSTER_W = 480;
+    const POSTER_H = H; // full height slot on the right
 
-    // ── Improved gradient: subtle left-side scrim, poster visible on right ──
-    // Only covers ~65% of width, fades from semi-opaque to fully transparent
-    const gradientSvg = `
+    const resizedPoster = await sharp(posterBuf)
+      .resize(POSTER_W, POSTER_H, {
+        fit: "contain", // ← no cropping, full image visible
+        position: "centre",
+        background: { r: 3, g: 25, b: 38, alpha: 1 }, // match bg color
+      })
+      .toBuffer();
+
+    composites.push({ input: resizedPoster, top: 0, left: W - POSTER_W });
+
+    // Soft left-edge fade so poster blends into the text panel
+    const fadeSvg = `
       <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="scrim" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stop-color="#031926" stop-opacity="0.93"/>
-            <stop offset="40%"  stop-color="#031926" stop-opacity="0.82"/>
-            <stop offset="65%"  stop-color="#031926" stop-opacity="0.45"/>
-            <stop offset="85%"  stop-color="#031926" stop-opacity="0.08"/>
+          <linearGradient id="fade" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#031926" stop-opacity="1"/>
+            <stop offset="45%"  stop-color="#031926" stop-opacity="1"/>
+            <stop offset="62%"  stop-color="#031926" stop-opacity="0.7"/>
+            <stop offset="75%"  stop-color="#031926" stop-opacity="0.15"/>
             <stop offset="100%" stop-color="#031926" stop-opacity="0"/>
           </linearGradient>
-          <!-- Subtle vignette top/bottom -->
-          <linearGradient id="vignette-top" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%"  stop-color="#000000" stop-opacity="0.35"/>
-            <stop offset="25%" stop-color="#000000" stop-opacity="0"/>
-          </linearGradient>
-          <linearGradient id="vignette-bot" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="75%" stop-color="#000000" stop-opacity="0"/>
-            <stop offset="100%" stop-color="#000000" stop-opacity="0.4"/>
-          </linearGradient>
         </defs>
-        <rect width="${W}" height="${H}" fill="url(#scrim)"/>
-        <rect width="${W}" height="${H}" fill="url(#vignette-top)"/>
-        <rect width="${W}" height="${H}" fill="url(#vignette-bot)"/>
+        <rect width="${W}" height="${H}" fill="url(#fade)"/>
       </svg>`;
-    composites.push({ input: Buffer.from(gradientSvg), top: 0, left: 0 });
+    composites.push({ input: Buffer.from(fadeSvg), top: 0, left: 0 });
   }
 
   // Site logo
   if (siteLogo) {
+    const logoW = isHomePage ? 300 : 150;
+    const logoH = isHomePage ? 72 : 36;
+
+    const resizedSiteLogo = await sharp(siteLogo, { density: 300 })
+      .resize(logoW, logoH, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+
     if (isHomePage) {
-      // Larger, centered logo for home page
-      const resizedSiteLogo = await sharp(siteLogo, { density: 300 })
-        .resize(320, 78, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .png()
-        .toBuffer();
       composites.push({
         input: resizedSiteLogo,
-        top: Math.round(H / 2 - 120),
-        left: Math.round(W / 2 - 160),
+        top: Math.round(H / 2 - 130),
+        left: Math.round(W / 2 - logoW / 2),
       });
     } else {
-      // Small top-left logo for content pages
-      const resizedSiteLogo = await sharp(siteLogo, { density: 300 })
-        .resize(160, 38, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .png()
-        .toBuffer();
-      composites.push({ input: resizedSiteLogo, top: 44, left: 64 });
+      composites.push({ input: resizedSiteLogo, top: 44, left: 60 });
     }
   }
 
-  // Media network logo badge (content pages only)
+  // Network logo badge (content pages only)
   if (logoBuf && !isHomePage) {
     const resizedLogo = await sharp(logoBuf)
-      .resize(48, 48, {
+      .resize(44, 44, {
         fit: "contain",
         background: { r: 13, g: 37, b: 53, alpha: 1 },
       })
       .toBuffer();
-    composites.push({ input: resizedLogo, top: 108, left: 64 });
+    composites.push({ input: resizedLogo, top: 104, left: 60 });
   }
 
-  // ── Text layout ───────────────────────────────────────────────────────────
-  const logoOffsetY = logoBuf && !isHomePage ? 68 : 0;
-  const titleFontSize = 40;
-  const titleLineHeight = titleFontSize * 1.22;
-  const subtitleFontSize = 17;
-  const subtitleLineHeight = subtitleFontSize * 1.65;
-
+  // ── SVG: Home page ────────────────────────────────────────────────────────
   let svg: string;
 
   if (isHomePage) {
-    // ── Home page: centered brand layout ────────────────────────────────────
     const tagline = esc(subtitle);
-    const centerY = H / 2;
-    const logoBottom = centerY - 120 + 78 + 18; // logo bottom + gap
+    const midY = H / 2;
+    // logo sits at midY-130, is 72px tall → bottom at midY-58
+    const ruleY = midY - 50;
+    const taglineY = midY + 10;
+    const ctaY = midY + 46;
 
     svg = `
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="45%" r="75%">
-      <stop offset="0%"  stop-color="#0f3f50"/>
-      <stop offset="60%" stop-color="#041e2b"/>
+    <radialGradient id="bg" cx="50%" cy="44%" r="70%">
+      <stop offset="0%"   stop-color="#0f3f50"/>
+      <stop offset="55%"  stop-color="#041e2b"/>
       <stop offset="100%" stop-color="#020f18"/>
     </radialGradient>
     <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%"   stop-color="#468189"/>
       <stop offset="100%" stop-color="#9dbebb"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="42%" r="35%">
-      <stop offset="0%"  stop-color="#468189" stop-opacity="0.18"/>
+    <radialGradient id="glow" cx="50%" cy="42%" r="32%">
+      <stop offset="0%"   stop-color="#468189" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#468189" stop-opacity="0"/>
     </radialGradient>
   </defs>
   ${fontStyle}
 
-  <!-- Background -->
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
-  <!-- Soft center glow -->
   <rect width="${W}" height="${H}" fill="url(#glow)"/>
-
-  <!-- Subtle film-grain dot grid -->
-  ${Array.from({ length: 18 }, (_, row) =>
-    Array.from({ length: 32 }, (_, col) => {
-      const x = col * 40 + 10;
-      const y = row * 38 + 10;
-      const opacity = (Math.sin(row * 3.7 + col * 2.1) * 0.5 + 0.5) * 0.06;
-      return `<circle cx="${x}" cy="${y}" r="1" fill="#9dbebb" opacity="${opacity.toFixed(3)}"/>`;
-    }).join(""),
-  ).join("")}
 
   <!-- Top accent bar -->
   <rect width="${W}" height="4" fill="url(#accent)"/>
 
-  <!-- Decorative horizontal rule below logo -->
-  <rect x="${W / 2 - 120}" y="${logoBottom + 18}" width="240" height="1" fill="url(#accent)" opacity="0.5"/>
+  <!-- Horizontal rule below logo -->
+  <rect x="${W / 2 - 110}" y="${ruleY}" width="220" height="1" fill="#468189" opacity="0.45"/>
 
   <!-- Tagline -->
   <text
-    x="${W / 2}" y="${logoBottom + 56}"
-    font-size="18" font-weight="400"
-    fill="#8ea8b0"
+    x="${W / 2}" y="${taglineY}"
+    font-size="19" font-weight="400"
+    fill="#7a9faa"
     font-family="${fontFamily}"
     text-anchor="middle"
-    letter-spacing="0.04em"
+    letter-spacing="1"
   >${tagline}</text>
 
   <!-- CTA pill -->
-  <rect x="${W / 2 - 90}" y="${logoBottom + 84}" width="180" height="42" rx="21" fill="#468189"/>
+  <rect x="${W / 2 - 95}" y="${ctaY}" width="190" height="44" rx="22" fill="#468189"/>
   <text
-    x="${W / 2}" y="${logoBottom + 110}"
+    x="${W / 2}" y="${ctaY + 28}"
     font-size="14" font-weight="700"
     fill="#ffffff"
     font-family="${fontFamily}"
     text-anchor="middle"
-    letter-spacing="0.06em"
-  >${esc(cta.toUpperCase())}</text>
+    letter-spacing="1.5"
+  >${esc(cta)}</text>
 
   <!-- Footer -->
-  <text x="${W / 2}" y="${H - 20}" font-size="11" font-weight="400" fill="#3a5560" font-family="${fontFamily}" text-anchor="middle">watchedthis.com</text>
+  <text
+    x="${W / 2}" y="${H - 22}"
+    font-size="11" font-weight="400"
+    fill="#2e4f5c"
+    font-family="${fontFamily}"
+    text-anchor="middle"
+  >watchedthis.com</text>
 </svg>`;
   } else {
-    // ── Content page: left-aligned text over poster ──────────────────────────
-    const titleLines = wrapLines(title, 28);
-    const subtitleLines = wrapLines(subtitle, 40);
+    // ── SVG: Content page (movie/show/person) ─────────────────────────────
+    const logoOffsetY = logoBuf ? 60 : 0;
+    const titleFontSize = 38;
+    const titleLineH = titleFontSize * 1.22;
+    const subFontSize = 16;
+    const subLineH = subFontSize * 1.65;
 
-    const titleStartY = 128 + logoOffsetY;
-    const subtitleStartY =
-      titleStartY + titleLines.length * titleLineHeight + 14;
-    const ctaY =
-      subtitleStartY + subtitleLines.length * subtitleLineHeight + 28;
+    const titleLines = wrapLines(effectiveTitle, 26);
+    const subtitleLines = wrapLines(subtitle, 38);
 
-    const titleSvgLines = titleLines
+    const titleStartY = 126 + logoOffsetY;
+    const subStartY = titleStartY + titleLines.length * titleLineH + 14;
+    const ctaY = subStartY + subtitleLines.length * subLineH + 28;
+
+    const titleSvg = titleLines
       .map(
         (line, i) =>
-          `<text x="64" y="${titleStartY + i * titleLineHeight}" font-size="${titleFontSize}" font-weight="700" fill="#eef0f2" font-family="${fontFamily}">${esc(line)}</text>`,
+          `<text x="60" y="${titleStartY + i * titleLineH}" font-size="${titleFontSize}" font-weight="700" fill="#eef0f2" font-family="${fontFamily}">${esc(line)}</text>`,
       )
       .join("");
 
-    const subtitleSvgLines = subtitleLines
+    const subSvg = subtitleLines
       .map(
         (line, i) =>
-          `<text x="64" y="${subtitleStartY + i * subtitleLineHeight}" font-size="${subtitleFontSize}" font-weight="400" fill="#7a93a0" font-family="${fontFamily}">${esc(line)}</text>`,
+          `<text x="60" y="${subStartY + i * subLineH}" font-size="${subFontSize}" font-weight="400" fill="#7a93a0" font-family="${fontFamily}">${esc(line)}</text>`,
       )
       .join("");
 
@@ -334,30 +336,33 @@ export async function GET(req: NextRequest) {
       <stop offset="70%" stop-color="#031926"/>
     </radialGradient>
     <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#468189"/>
+      <stop offset="0%"   stop-color="#468189"/>
       <stop offset="100%" stop-color="#9dbebb"/>
     </linearGradient>
   </defs>
   ${fontStyle}
 
-  <!-- Background (shows only if no poster) -->
+  <!-- Solid dark bg (shows where no poster) -->
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
 
   <!-- Top accent bar -->
   <rect width="${W}" height="4" fill="url(#accent)"/>
 
-  <!-- Title -->
-  ${titleSvgLines}
-
-  <!-- Subtitle -->
-  ${subtitleSvgLines}
+  ${titleSvg}
+  ${subSvg}
 
   <!-- CTA button -->
-  <rect x="64" y="${ctaY}" width="178" height="42" rx="6" fill="#468189"/>
-  <text x="153" y="${ctaY + 26}" font-size="13" font-weight="700" fill="#ffffff" font-family="${fontFamily}" text-anchor="middle">${esc(cta)}</text>
+  <rect x="60" y="${ctaY}" width="178" height="42" rx="6" fill="#468189"/>
+  <text
+    x="149" y="${ctaY + 26}"
+    font-size="13" font-weight="700"
+    fill="#ffffff"
+    font-family="${fontFamily}"
+    text-anchor="middle"
+  >${esc(cta)}</text>
 
   <!-- Footer -->
-  <text x="64" y="${H - 20}" font-size="11" font-weight="400" fill="#637074" font-family="${fontFamily}">watchedthis.com</text>
+  <text x="60" y="${H - 22}" font-size="11" font-weight="400" fill="#637074" font-family="${fontFamily}">watchedthis.com</text>
 </svg>`;
   }
 
