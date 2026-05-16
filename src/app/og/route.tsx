@@ -31,7 +31,6 @@ async function fetchBuffer(url: string): Promise<ArrayBuffer | null> {
 function proxyUrl(size: string, path: string): string {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const tmdb = `https://image.tmdb.org/t/p/${size}${cleanPath}`;
-  // Must be absolute — ImageResponse cannot resolve relative URLs
   return `${APP_URL}/api/image-proxy/?url=${encodeURIComponent(tmdb)}`;
 }
 

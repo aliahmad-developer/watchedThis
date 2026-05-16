@@ -121,9 +121,13 @@ const getAmbientText = (
 };
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+  "https://watchedthis.com";
+
 function proxyUrl(tmdbPath: string, size: string): string {
   const upstream = `https://image.tmdb.org/t/p/${size}${tmdbPath}`;
-  return `/api/image-proxy?url=${encodeURIComponent(upstream)}`;
+  return `${APP_URL}/api/image-proxy/?url=${encodeURIComponent(upstream)}`;
 }
 
 function useTheme() {
