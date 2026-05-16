@@ -39,7 +39,7 @@ const staticRoutes: MetadataRoute.Sitemap = [
   },
   {
     url: `${SITE_URL}/echo`,
-    changeFrequency: "monthly" as ChangeFreq,
+    changeFrequency: "always" as ChangeFreq,
     priority: 0.8,
   },
   {
@@ -54,12 +54,12 @@ const staticRoutes: MetadataRoute.Sitemap = [
   },
   {
     url: `${SITE_URL}/random`,
-    changeFrequency: "monthly" as ChangeFreq,
+    changeFrequency: "always" as ChangeFreq,
     priority: 0.6,
   },
   {
     url: `${SITE_URL}/spinner`,
-    changeFrequency: "monthly" as ChangeFreq,
+    changeFrequency: "always" as ChangeFreq,
     priority: 0.5,
   },
   {
@@ -77,11 +77,7 @@ const staticRoutes: MetadataRoute.Sitemap = [
     changeFrequency: "yearly" as ChangeFreq,
     priority: 0.3,
   },
-  // Excluded:
-  // /auth, /auth/confirmed, /reset-password  — auth flows, no SEO value
-  // /user, /user/library, /user/profile      — personal/gated pages
-  // /sceneDetect                             — tool page, no unique indexable content
-  // /search, /find/results                  — query-driven, Google skips param URLs
+
 ].map((r) => ({ ...r, lastModified: STATIC_LAST_MODIFIED }));
 
 type SitemapEntry = {
