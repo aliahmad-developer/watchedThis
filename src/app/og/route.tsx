@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
+import path from "path";
+import fs from "fs";
 
 const W = 1200;
 const H = 630;
@@ -7,6 +9,54 @@ const H = 630;
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
   "https://watchedthis.com";
+
+// ── Font loading ──────────────────────────────────────────────────────────────
+// Looks for a bundled font in public/fonts/ — falls back to fetching from Google
+let fontBase64Cache: { regular: string; bold: string } | null = null;
+
+async function getFontBase64(): Promise<{ regular: string; bold: string }> {
+  if (fontBase64Cache) return fontBase64Cache;
+
+  try {
+    // Try loading from public/fonts/ first (fastest, no network)
+    const regularPath = path.join(
+      process.cwd(),
+      "public/fonts/inter-regular.ttf",
+    );
+    const boldPath = path.join(process.cwd(), "public/fonts/inter-bold.ttf");
+
+    if (fs.existsSync(regularPath) && fs.existsSync(boldPath)) {
+      fontBase64Cache = {
+        regular: fs.readFileSync(regularPath).toString("base64"),
+        bold: fs.readFileSync(boldPath).toString("base64"),
+      };
+      return fontBase64Cache;
+    }
+  } catch {
+    // fall through to network fetch
+  }
+
+  // Fetch from Google Fonts CDN
+  const [regularRes, boldRes] = await Promise.all([
+    fetch(
+      "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2",
+      { signal: AbortSignal.timeout(5000) },
+    ),
+    fetch(
+      "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiA.woff2",
+      { signal: AbortSignal.timeout(5000) },
+    ),
+  ]);
+
+  if (!regularRes.ok || !boldRes.ok) throw new Error("Font fetch failed");
+
+  fontBase64Cache = {
+    regular: Buffer.from(await regularRes.arrayBuffer()).toString("base64"),
+    bold: Buffer.from(await boldRes.arrayBuffer()).toString("base64"),
+  };
+
+  return fontBase64Cache;
+}
 
 async function fetchBuffer(url: string): Promise<Buffer | null> {
   try {
@@ -68,43 +118,43 @@ export async function GET(req: NextRequest) {
   const logo = searchParams.get("logo");
   const cta = searchParams.get("cta") || "Discover Now →";
 
-  // ── Fetch all images in parallel ─────────────────────────────────────────
-  const [posterBuf, logoBuf, siteLogo] = await Promise.all([
+  // ── Fetch all in parallel ─────────────────────────────────────────────────
+  const [posterBuf, logoBuf, siteLogo, fonts] = await Promise.all([
     poster ? fetchBuffer(proxyUrl("w780", poster)) : Promise.resolve(null),
     logo ? fetchBuffer(proxyUrl("w185", logo)) : Promise.resolve(null),
     fetchBuffer(`${APP_URL}/watchedthis-logo.svg`),
+    getFontBase64().catch(() => null),
   ]);
 
   const hasPoster = Boolean(posterBuf);
 
-  // ── Build composites ──────────────────────────────────────────────────────
+  // ── Composites ────────────────────────────────────────────────────────────
   const composites: sharp.OverlayOptions[] = [];
 
-  // Poster — right side
+  // Poster — full background
   if (posterBuf) {
     const resizedPoster = await sharp(posterBuf)
-      .resize(420, H, { fit: "cover", position: "centre" })
+      .resize(W, H, { fit: "cover", position: "centre" })
       .toBuffer();
+    composites.push({ input: resizedPoster, top: 0, left: 0 });
 
-    composites.push({ input: resizedPoster, top: 0, left: W - 420 });
-
-    // Fade gradient over poster
     const gradientSvg = `
-      <svg width="420" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#031926" stop-opacity="0.95"/>
-            <stop offset="100%" stop-color="#031926" stop-opacity="0.2"/>
+            <stop offset="0%"   stop-color="#031926" stop-opacity="0.97"/>
+            <stop offset="55%"  stop-color="#031926" stop-opacity="0.88"/>
+            <stop offset="100%" stop-color="#031926" stop-opacity="0.15"/>
           </linearGradient>
         </defs>
-        <rect width="420" height="${H}" fill="url(#g)"/>
+        <rect width="${W}" height="${H}" fill="url(#g)"/>
       </svg>`;
-    composites.push({ input: Buffer.from(gradientSvg), top: 0, left: W - 420 });
+    composites.push({ input: Buffer.from(gradientSvg), top: 0, left: 0 });
   }
 
-  // Site logo — top left
+  // Site logo
   if (siteLogo) {
-    const resizedSiteLogo = await sharp(siteLogo)
+    const resizedSiteLogo = await sharp(siteLogo, { density: 300 })
       .resize(180, 44, {
         fit: "contain",
         background: { r: 0, g: 0, b: 0, alpha: 0 },
@@ -114,7 +164,7 @@ export async function GET(req: NextRequest) {
     composites.push({ input: resizedSiteLogo, top: 152, left: 76 });
   }
 
-  // Media logo badge (e.g. network logo)
+  // Media network logo badge
   if (logoBuf) {
     const resizedLogo = await sharp(logoBuf)
       .resize(48, 48, {
@@ -127,29 +177,48 @@ export async function GET(req: NextRequest) {
 
   // ── Text layout ───────────────────────────────────────────────────────────
   const logoOffsetY = logoBuf ? 68 : 0;
-  const titleFontSize = hasPoster ? 36 : 44;
+  const titleFontSize = 38;
   const titleLineHeight = titleFontSize * 1.2;
   const subtitleFontSize = 16;
   const subtitleLineHeight = subtitleFontSize * 1.6;
 
-  const titleLines = wrapLines(title, hasPoster ? 28 : 36);
-  const subtitleLines = wrapLines(subtitle, hasPoster ? 38 : 52);
+  const titleLines = wrapLines(title, 30);
+  const subtitleLines = wrapLines(subtitle, 42);
 
   const titleStartY = 230 + logoOffsetY;
   const subtitleStartY = titleStartY + titleLines.length * titleLineHeight + 16;
   const ctaY = subtitleStartY + subtitleLines.length * subtitleLineHeight + 26;
 
+  // Font family string — uses embedded font if available, falls back to system
+  const fontFamily = fonts ? "Inter" : "DejaVu Sans, sans-serif";
+
+  const fontStyle = fonts
+    ? `
+    <style>
+      @font-face {
+        font-family: 'Inter';
+        font-weight: 400;
+        src: url('data:font/woff2;base64,${fonts.regular}') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-weight: 700;
+        src: url('data:font/woff2;base64,${fonts.bold}') format('woff2');
+      }
+    </style>`
+    : "";
+
   const titleSvgLines = titleLines
     .map(
       (line, i) =>
-        `<text x="76" y="${titleStartY + i * titleLineHeight}" font-size="${titleFontSize}" font-weight="700" fill="#eef0f2" font-family="sans-serif">${esc(line)}</text>`,
+        `<text x="76" y="${titleStartY + i * titleLineHeight}" font-size="${titleFontSize}" font-weight="700" fill="#eef0f2" font-family="${fontFamily}">${esc(line)}</text>`,
     )
     .join("");
 
   const subtitleSvgLines = subtitleLines
     .map(
       (line, i) =>
-        `<text x="76" y="${subtitleStartY + i * subtitleLineHeight}" font-size="${subtitleFontSize}" fill="#8693ab" font-family="sans-serif">${esc(line)}</text>`,
+        `<text x="76" y="${subtitleStartY + i * subtitleLineHeight}" font-size="${subtitleFontSize}" font-weight="400" fill="#8693ab" font-family="${fontFamily}">${esc(line)}</text>`,
     )
     .join("");
 
@@ -166,6 +235,7 @@ export async function GET(req: NextRequest) {
       <stop offset="100%" stop-color="#9dbebb"/>
     </linearGradient>
   </defs>
+  ${fontStyle}
 
   <!-- Background -->
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
@@ -192,10 +262,10 @@ export async function GET(req: NextRequest) {
 
   <!-- CTA button -->
   <rect x="76" y="${ctaY}" width="180" height="42" rx="6" fill="#468189"/>
-  <text x="166" y="${ctaY + 26}" font-size="14" font-weight="700" fill="#ffffff" font-family="sans-serif" text-anchor="middle">${esc(cta)}</text>
+  <text x="166" y="${ctaY + 26}" font-size="14" font-weight="700" fill="#ffffff" font-family="${fontFamily}" text-anchor="middle">${esc(cta)}</text>
 
   <!-- Footer -->
-  <text x="76" y="${H - 20}" font-size="11" fill="#637074" font-family="sans-serif">watchedthis.com</text>
+  <text x="76" y="${H - 20}" font-size="11" font-weight="400" fill="#637074" font-family="${fontFamily}">watchedthis.com</text>
 </svg>`;
 
   // ── Compose and return ────────────────────────────────────────────────────
