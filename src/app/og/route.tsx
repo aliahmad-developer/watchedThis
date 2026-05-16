@@ -1,5 +1,5 @@
-import { ImageResponse } from "next/og";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
 const W = 1200;
 const H = 630;
@@ -8,21 +8,11 @@ const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
   "https://watchedthis.com";
 
-const imageCache = new Map<string, ArrayBuffer>();
-
-async function fetchBuffer(url: string): Promise<ArrayBuffer | null> {
+async function fetchBuffer(url: string): Promise<Buffer | null> {
   try {
-    if (imageCache.has(url)) return imageCache.get(url)!;
-
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(3000),
-    });
-
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) return null;
-
-    const buffer = await res.arrayBuffer();
-    imageCache.set(url, buffer);
-    return buffer;
+    return Buffer.from(await res.arrayBuffer());
   } catch {
     return null;
   }
@@ -37,6 +27,30 @@ function proxyUrl(size: string, path: string): string {
 function clampText(text: string, max: number) {
   if (!text) return "";
   return text.length > max ? text.slice(0, max - 3) + "..." : text;
+}
+
+function esc(str: string) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function wrapLines(text: string, maxChars: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if ((current + " " + word).trim().length > maxChars) {
+      if (current) lines.push(current.trim());
+      current = word;
+    } else {
+      current = (current + " " + word).trim();
+    }
+  }
+  if (current) lines.push(current.trim());
+  return lines;
 }
 
 export async function GET(req: NextRequest) {
@@ -54,218 +68,147 @@ export async function GET(req: NextRequest) {
   const logo = searchParams.get("logo");
   const cta = searchParams.get("cta") || "Discover Now →";
 
-  const [posterBuffer, logoBuffer] = await Promise.all([
+  // ── Fetch all images in parallel ─────────────────────────────────────────
+  const [posterBuf, logoBuf, siteLogo] = await Promise.all([
     poster ? fetchBuffer(proxyUrl("w780", poster)) : Promise.resolve(null),
     logo ? fetchBuffer(proxyUrl("w185", logo)) : Promise.resolve(null),
+    fetchBuffer(`${APP_URL}/watchedthis-logo.svg`),
   ]);
 
-  const hasPoster = Boolean(posterBuffer);
-  const hasLogo = Boolean(logoBuffer);
+  const hasPoster = Boolean(posterBuf);
 
-  return new ImageResponse(
-    <div
-      style={{
-        width: `${W}px`,
-        height: `${H}px`,
-        display: "flex",
-        position: "relative",
-        flexDirection: "row",
-        overflow: "hidden",
-        background: "radial-gradient(circle at 20% 20%, #0f3a45, #031926 70%)",
-      }}
-    >
-      {/* Top Accent */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "4px",
-          background: "linear-gradient(to right, #468189, #9dbebb)",
-        }}
-      />
+  // ── Build composites ──────────────────────────────────────────────────────
+  const composites: sharp.OverlayOptions[] = [];
 
-      {/* Poster */}
-      {hasPoster && posterBuffer && (
-        <div
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            width: "420px",
-            height: "630px",
-            display: "flex",
-          }}
-        >
-          <img
-            // @ts-expect-error Edge ImageResponse accepts ArrayBuffer
-            src={posterBuffer}
-            width={420}
-            height={630}
-            style={{ width: "420px", height: "630px", objectFit: "cover" }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to left, rgba(3,25,38,0.95), rgba(3,25,38,0.2))",
-            }}
-          />
-        </div>
-      )}
+  // Poster — right side
+  if (posterBuf) {
+    const resizedPoster = await sharp(posterBuf)
+      .resize(420, H, { fit: "cover", position: "centre" })
+      .toBuffer();
 
-      {/* Left Content */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          paddingLeft: "76px",
-          paddingRight: hasPoster ? "460px" : "56px",
-          flex: 1,
-          zIndex: 2,
-        }}
-      >
-        {/* Brand */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            marginBottom: "28px",
-            gap: "10px",
-          }}
-        >
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              background: "#468189",
-              borderRadius: "6px",
-            }}
-          />
-          <div style={{ fontSize: "18px", fontWeight: 700, color: "#fff" }}>
-            Watched<span style={{ color: "#468189" }}>This</span>
-          </div>
-        </div>
+    composites.push({ input: resizedPoster, top: 0, left: W - 420 });
 
-        {/* Logo badge */}
-        {hasLogo && logoBuffer && (
-          <div
-            style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "10px",
-              background: "#0d2535",
-              marginBottom: "18px",
-              display: "flex",
-              overflow: "hidden",
-            }}
-          >
-            <img
-              // @ts-expect-error
-              src={logoBuffer}
-              style={{ width: "64px", height: "64px", objectFit: "contain" }}
-            />
-          </div>
-        )}
+    // Fade gradient over poster
+    const gradientSvg = `
+      <svg width="420" height="${H}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#031926" stop-opacity="0.95"/>
+            <stop offset="100%" stop-color="#031926" stop-opacity="0.2"/>
+          </linearGradient>
+        </defs>
+        <rect width="420" height="${H}" fill="url(#g)"/>
+      </svg>`;
+    composites.push({ input: Buffer.from(gradientSvg), top: 0, left: W - 420 });
+  }
 
-        {/* Title */}
-        <div
-          style={{
-            fontSize: hasPoster ? "36px" : "44px",
-            fontWeight: 700,
-            color: "#eef0f2",
-            lineHeight: 1.15,
-            marginBottom: "12px",
-            maxWidth: "520px",
-          }}
-        >
-          {title}
-        </div>
+  // Site logo — top left
+  if (siteLogo) {
+    const resizedSiteLogo = await sharp(siteLogo)
+      .resize(180, 44, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+    composites.push({ input: resizedSiteLogo, top: 152, left: 76 });
+  }
 
-        {/* Subtitle */}
-        <div
-          style={{
-            fontSize: "16px",
-            color: "#8693ab",
-            lineHeight: 1.5,
-            maxWidth: "460px",
-            marginBottom: "26px",
-          }}
-        >
-          {subtitle}
-        </div>
+  // Media logo badge (e.g. network logo)
+  if (logoBuf) {
+    const resizedLogo = await sharp(logoBuf)
+      .resize(48, 48, {
+        fit: "contain",
+        background: { r: 13, g: 37, b: 53, alpha: 1 },
+      })
+      .toBuffer();
+    composites.push({ input: resizedLogo, top: 216, left: 76 });
+  }
 
-        {/* CTA */}
-        <div
-          style={{
-            width: "180px",
-            height: "42px",
-            background: "#468189",
-            borderRadius: "6px",
-            fontSize: "14px",
-            fontWeight: 700,
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {cta}
-        </div>
-      </div>
+  // ── Text layout ───────────────────────────────────────────────────────────
+  const logoOffsetY = logoBuf ? 68 : 0;
+  const titleFontSize = hasPoster ? 36 : 44;
+  const titleLineHeight = titleFontSize * 1.2;
+  const subtitleFontSize = 16;
+  const subtitleLineHeight = subtitleFontSize * 1.6;
 
-      {/* Fallback cards */}
-      {!hasPoster && !hasLogo && (
-        <div
-          style={{
-            position: "absolute",
-            right: "40px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-            width: "300px",
-          }}
-        >
-          {[140, 100, 80].map((h, i) => (
-            <div
-              key={i}
-              style={{
-                width: "280px",
-                height: `${h}px`,
-                background: "#0d2535",
-                borderRadius: "8px",
-                opacity: 1 - i * 0.15,
-              }}
-            />
-          ))}
-        </div>
-      )}
+  const titleLines = wrapLines(title, hasPoster ? 28 : 36);
+  const subtitleLines = wrapLines(subtitle, hasPoster ? 38 : 52);
 
-      {/* Footer */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          left: "76px",
-          fontSize: "11px",
-          color: "#637074",
-        }}
-      >
-        watchedthis.com
-      </div>
-    </div>,
-    {
-      width: W,
-      height: H,
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=600, stale-while-revalidate=86400",
-      },
+  const titleStartY = 230 + logoOffsetY;
+  const subtitleStartY = titleStartY + titleLines.length * titleLineHeight + 16;
+  const ctaY = subtitleStartY + subtitleLines.length * subtitleLineHeight + 26;
+
+  const titleSvgLines = titleLines
+    .map(
+      (line, i) =>
+        `<text x="76" y="${titleStartY + i * titleLineHeight}" font-size="${titleFontSize}" font-weight="700" fill="#eef0f2" font-family="sans-serif">${esc(line)}</text>`,
+    )
+    .join("");
+
+  const subtitleSvgLines = subtitleLines
+    .map(
+      (line, i) =>
+        `<text x="76" y="${subtitleStartY + i * subtitleLineHeight}" font-size="${subtitleFontSize}" fill="#8693ab" font-family="sans-serif">${esc(line)}</text>`,
+    )
+    .join("");
+
+  // ── Base SVG ──────────────────────────────────────────────────────────────
+  const svg = `
+<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="20%" cy="20%" r="80%">
+      <stop offset="0%" stop-color="#0f3a45"/>
+      <stop offset="70%" stop-color="#031926"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#468189"/>
+      <stop offset="100%" stop-color="#9dbebb"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="${W}" height="${H}" fill="url(#bg)"/>
+
+  <!-- Top accent bar -->
+  <rect width="${W}" height="4" fill="url(#accent)"/>
+
+  <!-- Fallback cards when no poster -->
+  ${
+    !hasPoster
+      ? `
+  <rect x="${W - 340}" y="165" width="280" height="140" rx="8" fill="#0d2535" opacity="1"/>
+  <rect x="${W - 340}" y="317" width="280" height="100" rx="8" fill="#0d2535" opacity="0.85"/>
+  <rect x="${W - 340}" y="429" width="280" height="80" rx="8" fill="#0d2535" opacity="0.7"/>
+  `
+      : ""
+  }
+
+  <!-- Title -->
+  ${titleSvgLines}
+
+  <!-- Subtitle -->
+  ${subtitleSvgLines}
+
+  <!-- CTA button -->
+  <rect x="76" y="${ctaY}" width="180" height="42" rx="6" fill="#468189"/>
+  <text x="166" y="${ctaY + 26}" font-size="14" font-weight="700" fill="#ffffff" font-family="sans-serif" text-anchor="middle">${esc(cta)}</text>
+
+  <!-- Footer -->
+  <text x="76" y="${H - 20}" font-size="11" fill="#637074" font-family="sans-serif">watchedthis.com</text>
+</svg>`;
+
+  // ── Compose and return ────────────────────────────────────────────────────
+  const png = await sharp(Buffer.from(svg))
+    .composite(composites)
+    .png()
+    .toBuffer();
+
+  return new NextResponse(new Uint8Array(png), {
+    status: 200,
+    headers: {
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=600, stale-while-revalidate=86400",
     },
-  );
+  });
 }
