@@ -53,11 +53,34 @@ export async function GET(req: NextRequest) {
   );
   const poster = searchParams.get("poster");
 
-  const posterBuffer = poster
-    ? await fetchBuffer(`https://image.tmdb.org/t/p/w500${poster}`)
-    : null;
+  const [posterBuffer, logoBuffer] = await Promise.all([
+    poster
+      ? fetchBuffer(`https://image.tmdb.org/t/p/w500${poster}`)
+      : Promise.resolve(null),
+    fetchBuffer(`${APP_URL}/watchedthis-logo.png`),
+  ]);
 
   const composites: sharp.OverlayOptions[] = [];
+
+  if (logoBuffer) {
+    try {
+      const logoImg = await sharp(logoBuffer, { density: 300 })
+        .resize(120, 40, {
+          fit: "contain",
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
+        .png()
+        .toBuffer();
+
+      composites.push({
+        input: logoImg,
+        top: 50,
+        left: 60,
+      });
+    } catch (err) {
+      console.error("Logo processing error:", err);
+    }
+  }
 
   if (posterBuffer) {
     try {
