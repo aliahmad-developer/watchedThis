@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
 
   const composites: sharp.OverlayOptions[] = [];
 
-  // ── Artwork / poster ──────────────────────────────────────────────────────
+  // ── Poster / artwork ──────────────────────────────────────────────────────
 
   if (!isHomePage) {
     let artwork: Buffer | null = posterBuf;
@@ -138,8 +138,10 @@ export async function GET(req: NextRequest) {
 
       const artH = meta.height || SLOT_H;
 
-      // centered right section
-      const left = 760 + Math.round((SLOT_W - artW) / 2);
+      // safe right-side centered area
+      const SLOT_X = W - SLOT_W - 40;
+
+      const left = SLOT_X + Math.round((SLOT_W - artW) / 2);
 
       const top = Math.round((H - artH) / 2);
 
@@ -197,7 +199,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // ── SVG ───────────────────────────────────────────────────────────────────
+  // ── SVG generation ────────────────────────────────────────────────────────
 
   let svg = "";
 
