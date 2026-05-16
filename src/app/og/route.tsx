@@ -54,28 +54,28 @@ export async function GET(req: NextRequest) {
   const poster = searchParams.get("poster");
 
   const posterBuffer = poster
-    ? await fetchBuffer(
-        `${APP_URL}/api/image-proxy/?url=${encodeURIComponent(
-          `https://image.tmdb.org/t/p/w500${poster}`,
-        )}`,
-      )
+    ? await fetchBuffer(`https://image.tmdb.org/t/p/w500${poster}`)
     : null;
 
   const composites: sharp.OverlayOptions[] = [];
 
   if (posterBuffer) {
-    const posterImg = await sharp(posterBuffer)
-      .resize(450, 630, {
-        fit: "cover",
-        position: "center",
-      })
-      .toBuffer();
+    try {
+      const posterImg = await sharp(posterBuffer)
+        .resize(450, 630, {
+          fit: "cover",
+          position: "center",
+        })
+        .toBuffer();
 
-    composites.push({
-      input: posterImg,
-      top: 0,
-      left: 750,
-    });
+      composites.push({
+        input: posterImg,
+        top: 0,
+        left: 750,
+      });
+    } catch (err) {
+      console.error("Poster processing error:", err);
+    }
   }
 
   const titleLines = wrapText(title, 28);
@@ -105,21 +105,18 @@ export async function GET(req: NextRequest) {
     <rect x="600" y="0" width="600" height="${H}" fill="url(#fadeRight)"/>
     `;
 
-  // Title text
   titleLines.forEach((line, i) => {
     svgHtml += `<text x="60" y="${
       titleY + i * titleLineHeight
     }" font-size="60" font-weight="700" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" letter-spacing="-0.5">${line}</text>`;
   });
 
-  // Subtitle text
   subtitleLines.forEach((line, i) => {
     svgHtml += `<text x="60" y="${
       subtitleY + i * subtitleLineHeight
     }" font-size="30" font-weight="400" fill="#a8c5cc" font-family="system-ui, -apple-system, sans-serif">${line}</text>`;
   });
 
-  // Footer
   svgHtml += `<text x="60" y="${
     H - 30
   }" font-size="14" fill="#6a8a92" font-family="system-ui, -apple-system, sans-serif">watchedthis.com</text>`;
