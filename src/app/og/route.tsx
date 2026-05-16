@@ -12,7 +12,7 @@ async function fetchBuffer(url: string): Promise<ArrayBuffer | null> {
     if (imageCache.has(url)) return imageCache.get(url)!;
 
     const res = await fetch(url, {
-      signal: AbortSignal.timeout(3000), // 3s max — Edge has ~10s total budget
+      signal: AbortSignal.timeout(3000),
     });
 
     if (!res.ok) return null;
@@ -45,17 +45,21 @@ export async function GET(req: NextRequest) {
   const logo = searchParams.get("logo");
   const cta = searchParams.get("cta") || "Discover Now →";
 
-  const [posterBuffer, logoBuffer] = await Promise.all([
-    poster
-      ? fetchBuffer(`https://image.tmdb.org/t/p/w780${poster}`)
-      : Promise.resolve(null),
-    logo
-      ? fetchBuffer(`https://image.tmdb.org/t/p/w185${logo}`)
-      : Promise.resolve(null),
-  ]);
+  // Best practice for next/og: use supported src inputs.
+  // Security concern: rendering OG by directly fetching TMDB from the renderer can leak TMDB requests.
+  // So we proxy through our own server (/api/image-proxy) and pass *our* URLs to <img>.
+  // Note: poster/logo params are the TMDB path parts (e.g. /abc.jpg), so we encode them.
+  const posterUrl = poster
+    ? `/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w780${poster}`)}`
+    : null;
+  const logoUrl = logo
+    ? `/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w185${logo}`)}`
+    : null;
 
-  const hasPoster = Boolean(posterBuffer);
-  const hasLogo = Boolean(logoBuffer);
+
+  const hasPoster = Boolean(posterUrl);
+  const hasLogo = Boolean(logoUrl);
+
 
   return new ImageResponse(
     <div
@@ -82,7 +86,7 @@ export async function GET(req: NextRequest) {
       />
 
       {/* Poster */}
-      {hasPoster && posterBuffer && (
+      {hasPoster && posterUrl && (
         <div
           style={{
             position: "absolute",
@@ -94,8 +98,7 @@ export async function GET(req: NextRequest) {
           }}
         >
           <img
-            // @ts-expect-error Edge ImageResponse accepts ArrayBuffer
-            src={posterBuffer}
+            src={posterUrl}
             width={420}
             height={630}
             style={{ width: "420px", height: "630px", objectFit: "cover" }}
@@ -146,7 +149,7 @@ export async function GET(req: NextRequest) {
         </div>
 
         {/* Logo badge */}
-        {hasLogo && logoBuffer && (
+        {hasLogo && logoUrl && (
           <div
             style={{
               width: "64px",
@@ -159,8 +162,7 @@ export async function GET(req: NextRequest) {
             }}
           >
             <img
-              // @ts-expect-error
-              src={logoBuffer}
+              src={logoUrl}
               style={{ width: "64px", height: "64px", objectFit: "contain" }}
             />
           </div>
