@@ -10,6 +10,7 @@ const APP_URL =
 
 function clampText(text: string, max: number) {
   if (!text) return "";
+
   return text.length > max ? text.slice(0, max - 3) + "..." : text;
 }
 
@@ -98,19 +99,15 @@ export async function GET(req: NextRequest) {
 
   const composites: sharp.OverlayOptions[] = [];
 
-  // ── Poster panel ──────────────────────────────────────────────────────────
+  // ── Artwork / poster ──────────────────────────────────────────────────────
 
   if (!isHomePage) {
-    const PANEL_W = 500;
-
-    const PANEL_X = W - PANEL_W;
-
     let artwork: Buffer | null = posterBuf;
 
-    // fallback logo
+    // fallback logo if poster missing
     if (!artwork && siteLogo) {
       artwork = await sharp(siteLogo)
-        .resize(340, 340, {
+        .resize(360, 360, {
           fit: "contain",
         })
         .png()
@@ -118,8 +115,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (artwork) {
+      const SLOT_W = 420;
+      const SLOT_H = 560;
+
       const fittedArtwork = await sharp(artwork)
-        .resize(PANEL_W - 40, H - 40, {
+        .resize(SLOT_W, SLOT_H, {
           fit: "contain",
           position: "centre",
           background: {
@@ -134,11 +134,12 @@ export async function GET(req: NextRequest) {
 
       const meta = await sharp(fittedArtwork).metadata();
 
-      const artW = meta.width || 0;
+      const artW = meta.width || SLOT_W;
 
-      const artH = meta.height || 0;
+      const artH = meta.height || SLOT_H;
 
-      const left = PANEL_X + Math.round((PANEL_W - artW) / 2);
+      // centered right section
+      const left = 760 + Math.round((SLOT_W - artW) / 2);
 
       const top = Math.round((H - artH) / 2);
 
@@ -146,28 +147,6 @@ export async function GET(req: NextRequest) {
         input: fittedArtwork,
         left,
         top,
-      });
-
-      // left fade
-      const fadeSvg = `
-      <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="fade" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#031926" stop-opacity="1"/>
-            <stop offset="52%" stop-color="#031926" stop-opacity="1"/>
-            <stop offset="70%" stop-color="#031926" stop-opacity="0.82"/>
-            <stop offset="85%" stop-color="#031926" stop-opacity="0.25"/>
-            <stop offset="100%" stop-color="#031926" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-
-        <rect width="${W}" height="${H}" fill="url(#fade)"/>
-      </svg>`;
-
-      composites.push({
-        input: Buffer.from(fadeSvg),
-        top: 0,
-        left: 0,
       });
     }
   }
@@ -218,7 +197,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // ── SVG generation ────────────────────────────────────────────────────────
+  // ── SVG ───────────────────────────────────────────────────────────────────
 
   let svg = "";
 
@@ -306,46 +285,46 @@ export async function GET(req: NextRequest) {
 
     const subLineH = subFontSize * 1.6;
 
-    const titleLines = wrapLines(effectiveTitle, 26);
+    const titleLines = wrapLines(effectiveTitle, 24);
 
-    const subtitleLines = wrapLines(subtitle, 38);
+    const subtitleLines = wrapLines(subtitle, 42);
 
-    const titleStartY = 140 + logoOffsetY;
+    const titleStartY = 145 + logoOffsetY;
 
     const subStartY = titleStartY + titleLines.length * titleLineH + 20;
 
-    const ctaY = subStartY + subtitleLines.length * subLineH + 30;
+    const ctaY = subStartY + subtitleLines.length * subLineH + 34;
 
     const titleSvg = titleLines
       .map(
         (line, i) => `
-        <text
-          x="60"
-          y="${titleStartY + i * titleLineH}"
-          font-size="${titleFontSize}"
-          font-weight="700"
-          fill="#eef0f2"
-          font-family="Arial, Helvetica, sans-serif"
-        >
-          ${esc(line)}
-        </text>
-      `,
+<text
+  x="60"
+  y="${titleStartY + i * titleLineH}"
+  font-size="${titleFontSize}"
+  font-weight="700"
+  fill="#eef0f2"
+  font-family="Arial, Helvetica, sans-serif"
+>
+  ${esc(line)}
+</text>
+`,
       )
       .join("");
 
     const subSvg = subtitleLines
       .map(
         (line, i) => `
-        <text
-          x="60"
-          y="${subStartY + i * subLineH}"
-          font-size="${subFontSize}"
-          fill="#8aa0a8"
-          font-family="Arial, Helvetica, sans-serif"
-        >
-          ${esc(line)}
-        </text>
-      `,
+<text
+  x="60"
+  y="${subStartY + i * subLineH}"
+  font-size="${subFontSize}"
+  fill="#8ea0a8"
+  font-family="Arial, Helvetica, sans-serif"
+>
+  ${esc(line)}
+</text>
+`,
       )
       .join("");
 
@@ -393,8 +372,20 @@ export async function GET(req: NextRequest) {
     ${esc(cta)}
   </text>
 
+  <text
+    x="60"
+    y="${H - 24}"
+    font-size="12"
+    fill="#6f7d82"
+    font-family="Arial, Helvetica, sans-serif"
+  >
+    watchedthis.com
+  </text>
+
 </svg>`;
   }
+
+  // ── Final render ──────────────────────────────────────────────────────────
 
   const png = await sharp(Buffer.from(svg))
     .composite(composites)
