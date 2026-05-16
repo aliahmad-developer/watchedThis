@@ -4,14 +4,17 @@ import { NextRequest, NextResponse } from "next/server";
 const BAD_BOTS =
   /crawler|spider|scraper|go-http|libwww|python-requests|curl|wget|axios|java\/|ruby|perl|php|bot(?!tle)/i;
 
+const SOCIAL_CRAWLERS =
+  /facebookexternalhit|twitterbot|telegrambot|whatsapp|linkedinbot|slackbot|discordbot|applebot|googlebot|bingbot/i;
+
 function isBadBot(req: NextRequest): boolean {
   const ua = req.headers.get("user-agent") ?? "";
   const host = req.headers.get("host") ?? "";
 
   if (host.includes("localhost") || host.includes("127.0.0.1")) return false;
+  if (SOCIAL_CRAWLERS.test(ua)) return false;
 
   if (ua.trim() === "" || BAD_BOTS.test(ua)) return true;
-
   return false;
 }
 

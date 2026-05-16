@@ -10,7 +10,6 @@ import { tmdbImage } from "@/lib/imageTmdb";
 import { cache } from "react";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface PageParams {
@@ -251,7 +250,6 @@ export default async function SpecificRandomMediaPage({
               },
             ]}
           />
-
 
           <DetailsPage
             data={data}

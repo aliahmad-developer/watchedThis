@@ -7,15 +7,6 @@ const W = 1200;
 const H = 630;
 
 // ─────────────────────────────────────────────
-// Base URL (Edge-safe fallback)
-// ─────────────────────────────────────────────
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-  (process.env.NODE_ENV === "production"
-    ? "https://watchedthis.com"
-    : "http://localhost:3000");
-
-// ─────────────────────────────────────────────
 // Simple Edge-safe in-memory cache (per isolate)
 // ─────────────────────────────────────────────
 const imageCache = new Map<string, ArrayBuffer>();
@@ -44,16 +35,7 @@ async function fetchBuffer(url: string): Promise<ArrayBuffer | null> {
   }
 }
 
-// ─────────────────────────────────────────────
-// TMDB proxy builder (safe path normalization)
-// ─────────────────────────────────────────────
-function tmdbProxyUrl(size: string, path: string): string {
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
 
-  const tmdbUrl = `https://image.tmdb.org/t/p/${size}${cleanPath}`;
-
-  return `${APP_URL}/api/image-proxy?url=${encodeURIComponent(tmdbUrl)}`;
-}
 
 // ─────────────────────────────────────────────
 // Text safety (prevents layout break)
