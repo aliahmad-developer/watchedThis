@@ -13,8 +13,8 @@ function isBadBot(req: NextRequest): boolean {
 
   if (host.includes("localhost") || host.includes("127.0.0.1")) return false;
   if (SOCIAL_CRAWLERS.test(ua)) return false;
-
   if (ua.trim() === "" || BAD_BOTS.test(ua)) return true;
+
   return false;
 }
 
@@ -122,5 +122,8 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|og|api/|.*\\..*).*)"],
+  // Excludes: static files, _next, favicon, og/, og (both with and without trailing slash), and all api/ routes
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|og/?|api/|.*\\..*).*)",
+  ],
 };
