@@ -25,7 +25,7 @@ const fetchCompany = async (id: string) => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function buildProxyUrl(path: string, size = "w500") {
-  return `${APP_URL}/api/image-proxy?url=${encodeURIComponent(
+  return `${APP_URL}/api/image-proxy/?url=${encodeURIComponent(
     `https://image.tmdb.org/t/p/${size}${path}`,
   )}`;
 }

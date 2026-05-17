@@ -181,7 +181,7 @@ export async function generateMetadata({
 
   // Poster images are portrait (2:3 ratio). w500 = 500×750.
   const ogImage = data?.poster_path
-    ? `${APP_URL}/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w500${data.poster_path}`)}`
+    ? `${APP_URL}/api/image-proxy/?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w500${data.poster_path}`)}`
     : undefined;
 
   // Keyword-rich title for better SERP performance

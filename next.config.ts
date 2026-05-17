@@ -97,13 +97,13 @@ const nextConfig: NextConfig = {
   },
 
   compiler: {
-    // Keep errors/warnings visible in Vercel logs even in production
     removeConsole:
       process.env.NODE_ENV === "production"
         ? { exclude: ["error", "warn"] }
         : false,
   },
 
+  // Single redirects function — merged both into one array
   async redirects() {
     return [
       {

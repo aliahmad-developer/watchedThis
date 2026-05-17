@@ -13,7 +13,6 @@ function hashToken(token: string): string {
     .digest("hex");
 }
 // Add to BOTH routes temporarily
-console.log("[debug] HMAC secret value:", process.env.RANDOM_HMAC_SECRET);
 export async function POST(req: NextRequest) {
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
     return NextResponse.json(

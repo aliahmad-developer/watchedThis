@@ -167,7 +167,7 @@ const useThemeDetection = () => {
 
 function proxyUrl(tmdbPath: string, size: string): string {
   const upstream = `https://image.tmdb.org/t/p/${size}${tmdbPath}`;
-  return `/api/image-proxy?url=${encodeURIComponent(upstream)}`;
+  return `/api/image-proxy/?url=${encodeURIComponent(upstream)}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

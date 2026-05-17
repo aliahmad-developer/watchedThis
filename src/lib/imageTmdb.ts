@@ -8,6 +8,6 @@ export function tmdbImage(path: string | null, size = "w185"): string | null {
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
   if (!base) return tmdbUrl;
 
-  return `${base}/api/image-proxy?url=${encodeURIComponent(tmdbUrl)}`;
+  return `${base}/api/image-proxy/?url=${encodeURIComponent(tmdbUrl)}`;
 
 }
