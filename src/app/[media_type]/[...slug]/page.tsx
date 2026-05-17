@@ -114,7 +114,6 @@ async function resolveParams(
   media_type: string,
   slug: string[],
 ): Promise<ResolvedMedia | null> {
-  // /tv/76479 → slug = ['76479']
   if (slug.length === 1 && /^\d+$/.test(slug[0])) {
     const id = slug[0];
     const data = await fetchMediaById(media_type, id);
@@ -164,15 +163,13 @@ export async function generateMetadata({
 
   const mediaTitle = data.title || data.name || "Media Details";
   const year = (data.release_date || data.first_air_date || "").substring(0, 4);
-  const typeLabel = media_type === "movie" ? "Movie" : "TV Series";
   const description = data.overview
     ? `${data.overview.substring(0, 155)}...`
     : `Details about ${mediaTitle}`;
 
-  const ogUrl = new URL("/og/", "https://watchedthis.com");
-  ogUrl.searchParams.set("title", `${mediaTitle}${year ? ` (${year})` : ""}`);
-  ogUrl.searchParams.set("subtitle", description);
-  if (data.poster_path) ogUrl.searchParams.set("poster", data.poster_path);
+  const ogImage = data?.poster_path
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/image-proxy${data.poster_path}`
+    : undefined;
 
   return {
     title: `${mediaTitle} ${year ? `(${year})` : ""} | WatchedThis`,
@@ -181,23 +178,10 @@ export async function generateMetadata({
       canonical: `https://watchedthis.com/${media_type}/${media_name_slug}/${id}`,
     },
     openGraph: {
-      title: `${mediaTitle} ${year ? `(${year})` : ""} — ${typeLabel} | WatchedThis`,
-      description,
-      type: "video.movie",
-      images: [
-        {
-          url: ogUrl.toString(),
-          width: 1200,
-          height: 630,
-          alt: `${mediaTitle} — WatchedThis`,
-        },
-      ],
+      images: ogImage ? [{ url: ogImage, width: 780, alt: mediaTitle }] : [],
     },
     twitter: {
-      card: "summary_large_image",
-      title: `${mediaTitle} ${year ? `(${year})` : ""} | WatchedThis`,
-      description,
-      images: [ogUrl.toString()],
+      images: ogImage ? [ogImage] : [],
     },
   };
 }
