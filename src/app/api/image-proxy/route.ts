@@ -151,6 +151,7 @@ export async function GET(request: NextRequest) {
         "X-Content-Type-Options": "nosniff",
         // Only own origin should be calling this proxy
         "Access-Control-Allow-Origin": "https://watchedthis.com",
+        Vary: "Origin",
       },
     });
   } catch (err) {

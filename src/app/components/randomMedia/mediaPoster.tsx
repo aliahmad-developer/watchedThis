@@ -83,7 +83,7 @@ function MediaPoster({
           <Image
             draggable={false}
             src={posterSrc}
-            alt={`Poster for ${displayTitle}`}
+            alt={`${displayTitle} ${data.media_type === "tv" ? "TV series" : "movie"} poster`}
             fill
             onContextMenu={(e) => e.preventDefault()}
             className={`object-cover object-center select-none transition-opacity duration-300 ${

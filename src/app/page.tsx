@@ -4,6 +4,8 @@ import DailyMedia from "./components/dailyMedia/dailyMedia";
 import RecommendationShelf from "./components/Recommendation/recommendationShelf";
 import Strip from "./components/alphabetStrip/strip";
 import type { Metadata } from "next";
+import SoftwareAppSchema from "@/breadCrumb/seo/SoftwareAppSchema";
+import InternalLinkingHub from "@/breadCrumb/seo/InternalLinkingHub";
 
 // ─── OG Image URL ─────────────────────────────────────────────────────────────
 const homeOg = new URL("/og/", "https://watchedthis.com");
@@ -21,18 +23,6 @@ export const metadata: Metadata = {
 
   description:
     "AI-powered movie picker, scene detection, and personalized TV recommendations. Discover what to watch instantly with WatchedThis.",
-
-  keywords: [
-    "random movie generator",
-    "movie finder",
-    "random TV show picker",
-    "what to watch tonight",
-    "TV show recommendations",
-    "AI movie recommendations",
-    "movie discovery platform",
-    "trending movies",
-    "trending TV shows",
-  ],
 
   openGraph: {
     title: "WatchedThis - AI Movie & TV Discovery Platform",
@@ -99,11 +89,14 @@ export default async function Home() {
 
         <Trending initialItems={trendingItems} />
 
+        <InternalLinkingHub />
+
         <Strip />
       </div>
 
       <HomepageSchema />
       <FAQSchema />
+      <SoftwareAppSchema feature="general" />
     </>
   );
 }

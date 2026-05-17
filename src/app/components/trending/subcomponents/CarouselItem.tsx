@@ -78,7 +78,7 @@ export const CarouselItem = memo(function CarouselItem({
 
         <Link
           href={href}
-          className="relative lg:md:rounded-lg overflow-hidden shadow-xl block hover:scale-105 transition-transform duration-300 ease-out"
+          className="relative lg:md:rounded-lg overflow-hidden shadow-xl dark:shadow-black/50 block hover:scale-105 transition-transform duration-300 ease-out "
           style={{ width: `${posterWidth}px`, height: `${itemHeight}px` }}
           prefetch={isPriority}
           onClick={() => trackClick(item.id, item.title ? "movie" : "tv")}

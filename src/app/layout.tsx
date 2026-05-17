@@ -19,18 +19,6 @@ export const metadata: Metadata = {
   description:
     "AI-powered movie and TV show discovery. Get random picks, scene detection, mood-based suggestions, and personalized recommendations.",
 
-  keywords: [
-    "random movie",
-    "movie finder",
-    "what to watch",
-    "TV show recommendations",
-    "movie discovery",
-    "scene detection",
-    "AI movies",
-    "film recommendations",
-    "movie picker",
-  ],
-
   openGraph: {
     siteName: "WatchedThis",
     type: "website",

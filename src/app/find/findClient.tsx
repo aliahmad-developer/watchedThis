@@ -407,6 +407,16 @@ function FindPageInner() {
     return urlFilters;
   });
 
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // Scene-detect deep link: /find?detect=1
+    const v = searchParams.get("detect");
+    if (v === "1" || v === "true") {
+      setOpen(true);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const hasUrlParams = searchParams.toString().length > 0;
     if (hasUrlParams) {

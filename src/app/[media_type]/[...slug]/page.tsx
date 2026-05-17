@@ -166,36 +166,66 @@ export async function generateMetadata({
 
   const mediaTitle = data.title || data.name || "Media Details";
   const year = (data.release_date || data.first_air_date || "").substring(0, 4);
-  const description = data.overview
-    ? `${data.overview.substring(0, 155)}...`
-    : `Details about ${mediaTitle}`;
+  const genreList = data.genres?.map((g: any) => g.name).join(", ") || "";
+  const mediaTypeLabel = media_type === "movie" ? "movie" : "TV series";
+
+  // Enhanced description with keywords for better CTR and ranking signals
+  const baseDescription = data.overview
+    ? data.overview.substring(0, 120)
+    : `Discover ${mediaTitle}, a popular ${mediaTypeLabel}`;
+
+  const description =
+    genreList.length > 0
+      ? `${baseDescription}. ${mediaTypeLabel === "movie" ? "Movie" : "Show"} in ${genreList}${year ? ` (${year})` : ""}.`
+      : `${baseDescription}${year ? ` (${year})` : ""}.`;
 
   // Poster images are portrait (2:3 ratio). w500 = 500×750.
   const ogImage = data?.poster_path
-  ? `${APP_URL}/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w500${data.poster_path}`)}`
-  : undefined;
+    ? `${APP_URL}/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w500${data.poster_path}`)}`
+    : undefined;
+
+  // Keyword-rich title for better SERP performance
+  const seoTitle =
+    genreList.length > 0
+      ? `${mediaTitle}${year ? ` (${year})` : ""} - ${genreList.split(",")[0].trim()} ${mediaTypeLabel} | WatchedThis`
+      : `${mediaTitle}${year ? ` (${year})` : ""} | WatchedThis`;
 
   return {
     metadataBase: new URL(APP_URL),
-    title: `${mediaTitle}${year ? ` (${year})` : ""} | WatchedThis`,
-    description,
+    title: seoTitle,
+    description: description.substring(0, 160),
     alternates: {
       canonical: `${APP_URL}/${media_type}/${media_name_slug}/${id}`,
     },
+    keywords: [
+      mediaTitle,
+      mediaTypeLabel,
+      year || "",
+      genreList,
+      `watch ${mediaTitle.toLowerCase()}`,
+      `${mediaTypeLabel} recommendations`,
+    ].filter(Boolean),
     openGraph: {
-      title: `${mediaTitle}${year ? ` (${year})` : ""} | WatchedThis`,
-      description,
+      title: seoTitle,
+      description: description.substring(0, 160),
       url: `${APP_URL}/${media_type}/${media_name_slug}/${id}`,
       siteName: "WatchedThis",
       type: "website",
       images: ogImage
-        ? [{ url: ogImage, width: 500, height: 750, alt: mediaTitle }]
+        ? [
+            {
+              url: ogImage,
+              width: 500,
+              height: 750,
+              alt: `${mediaTitle} poster`,
+            },
+          ]
         : [],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${mediaTitle}${year ? ` (${year})` : ""} | WatchedThis`,
-      description,
+      title: seoTitle,
+      description: description.substring(0, 160),
       images: ogImage ? [ogImage] : [],
     },
   };

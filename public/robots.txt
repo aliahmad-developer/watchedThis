@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+
+Disallow: /auth
+Disallow: /auth/confirmed
+Disallow: /reset-password
+
+Disallow: /user
+Disallow: /user/library
+Disallow: /user/profile
+
+Disallow: /api/auth
+Disallow: /api/user
+Disallow: /api/internal
+
+Disallow: /og
+
+Disallow: /search
+Disallow: /find/results
+
+Disallow: /random
+Disallow: /random/*
+
+Disallow: /sceneDetect
+
+Sitemap: https://watchedthis.com/sitemap.xml

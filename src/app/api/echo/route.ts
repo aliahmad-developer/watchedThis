@@ -93,8 +93,11 @@ export async function GET(req: NextRequest) {
           title: m.title ?? m.name ?? "",
           type: "movie" as const,
           year: (m.release_date ?? "").slice(0, 4),
-          // ✅ proxy URL built server-side via helper — no raw TMDB URL sent to client
-          poster: tmdbImage(m.poster_path ?? null, "w92"),
+          // pass through image-proxy route (client expects tmdbImage-style behavior)
+          poster: m.poster_path
+            ? `${process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com"}/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w92${m.poster_path}`)}`
+            : null,
+
           vote: m.vote_average ?? 0,
         }));
 
@@ -105,8 +108,9 @@ export async function GET(req: NextRequest) {
           title: t.name ?? t.title ?? "",
           type: "tv" as const,
           year: (t.first_air_date ?? "").slice(0, 4),
-          // ✅ proxy URL built server-side via helper — no raw TMDB URL sent to client
-          poster: tmdbImage(t.poster_path ?? null, "w92"),
+          poster: t.poster_path
+            ? `${process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com"}/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w92${t.poster_path}`)}`
+            : null,
           vote: t.vote_average ?? 0,
         }));
 

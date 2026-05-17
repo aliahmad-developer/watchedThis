@@ -9,7 +9,7 @@ export async function generateMetadata({
   const { q, keyword } = await searchParams;
   const term = q || keyword;
 
-  const canonicalUrl = `https://watchedthis.com/search${term ? `?q=${encodeURIComponent(term)}` : ''}`;
+  const canonicalUrl = `https://watchedthis.com/search${term ? `?q=${encodeURIComponent(term)}` : ""}`;
 
   const title = term
     ? `"${term}" Search Results - Movies, TV, Cast | WatchedThis`
@@ -25,14 +25,6 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
     },
-    keywords: [
-      "movie search",
-      "TV show search",
-      "film database",
-      "actor search",
-      "search by scene",
-      term ? `${term} movies` : "what to watch"
-    ].filter(Boolean),
     robots: {
       index: !!term,
       follow: true,
@@ -51,8 +43,12 @@ export default function SearchPage({
 }: {
   searchParams: Promise<{ q?: string; keyword?: string }>;
 }) {
-  return <>
-    <h1 className="sr-only">Advanced Movie TV Search Results | WatchedThis</h1>
-    <SearchClientPage />
-  </>;
+  return (
+    <>
+      <h1 className="sr-only">
+        Advanced Movie TV Search Results | WatchedThis
+      </h1>
+      <SearchClientPage />
+    </>
+  );
 }

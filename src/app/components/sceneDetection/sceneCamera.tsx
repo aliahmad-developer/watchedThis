@@ -1,9 +1,16 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SceneCameraModal from "./cameraModal";
+import { useSearchParams } from "next/navigation";
 
 export default function SceneCamera() {
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const v = searchParams.get("detect");
+    if (v === "1" || v === "true") setOpen(true);
+  }, [searchParams]);
 
   return (
     <>

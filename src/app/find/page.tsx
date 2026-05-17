@@ -3,6 +3,7 @@ import SceneDetect from "../components/sceneDetection/sceneCamera";
 import FindPageClient from "./findClient";
 import type { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
+import SoftwareAppSchema from "@/breadCrumb/seo/SoftwareAppSchema";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://watchedthis.com"),
@@ -11,22 +12,6 @@ export const metadata: Metadata = {
 
   description:
     "Find movies, TV shows, and anime from scenes, screenshots, or descriptions. Use AI-powered scene detection and advanced filters by genre, mood, year, rating, and more.",
-
-  keywords: [
-    "scene detection",
-    "find movie by scene",
-    "movie scene finder",
-    "find movie from screenshot",
-    "what movie is this scene from",
-    "reverse movie search",
-    "movie identifier",
-    "AI scene detection",
-    "movie search by description",
-    "advanced movie filter",
-    "find tv show by scene",
-    "anime scene finder",
-    "search movie by image",
-  ],
 
   alternates: {
     canonical: "/find",
@@ -141,11 +126,13 @@ export default function Page() {
       <div className="min-h-screen">
         <Suspense fallback={null}>
           <FindPageClient />
+          {/* Scene detect modal is triggered by SceneCamera component (query param controlled there) */}
           <SceneDetect />
         </Suspense>
       </div>
 
       <FindFAQSchema />
+      <SoftwareAppSchema feature="scene-detection" />
     </>
   );
 }

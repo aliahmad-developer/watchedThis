@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import EchoClient from "./clientPage";
+import SoftwareAppSchema from "@/breadCrumb/seo/SoftwareAppSchema";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://watchedthis.com"),
@@ -9,22 +10,6 @@ export const metadata: Metadata = {
 
   description:
     "Describe a movie, TV show, or anime you loved and Echo instantly finds similar titles using plot, genre, keywords, and synopsis matching.",
-
-  keywords: [
-    "movies like",
-    "shows like",
-    "anime like",
-    "similar movies",
-    "similar tv shows",
-    "movies similar to",
-    "find movies like this",
-    "movie recommendations by plot",
-    "find movies by synopsis",
-    "recommend movies based on description",
-    "movie finder",
-    "AI movie recommendations",
-    "find anime like",
-  ],
 
   alternates: {
     canonical: "/echo",
@@ -142,6 +127,7 @@ export default function EchoPage() {
       </div>
 
       <EchoFAQSchema />
+      <SoftwareAppSchema feature="recommendations" />
     </>
   );
 }

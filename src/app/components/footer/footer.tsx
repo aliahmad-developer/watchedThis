@@ -4,6 +4,8 @@ import InstallButton from "@/app/components/pwa/installButton";
 import { useState, useEffect, useMemo, useCallback, FormEvent } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 
 const RATE_LIMIT = { max: 3, windowMs: 60 * 60 * 1000 };
 const COOLDOWN_MS = 30_000;
@@ -203,7 +205,18 @@ export default function Footer() {
               href="/about"
               className="inline-block text-sm text-light-accent dark:text-dark-accent hover:opacity-80 transition-opacity"
             >
-              Learn more about who you're supporting →
+              Learn more about who you're supporting{" "}
+              <FontAwesomeIcon
+                icon={faArrowRight}
+                className="
+        ml-1
+        text-[10px]
+        translate-y-[0.5px]
+        transition-transform
+        duration-200
+        group-hover:translate-x-1
+      "
+              />
             </Link>
           </div>
 
@@ -326,7 +339,7 @@ export default function Footer() {
                 </Link>
                 <p>© {CURRENT_YEAR} WatchedThis. All rights reserved.</p>
               </div>
-              <InstallButton /> 
+              <InstallButton />
             </div>
           </div>
         </div>
