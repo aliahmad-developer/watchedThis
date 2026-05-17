@@ -10,7 +10,13 @@ import { tmdbImage } from "@/lib/imageTmdb";
 import { cache } from "react";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const APP_URL = (
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com"
+).replace(/\/$/, "");
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PageParams {
   media_type: string;
@@ -26,9 +32,7 @@ type ResolvedMedia =
 const fetchMediaById = (media_type: string, id: string) =>
   unstable_cache(
     async () => {
-      const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
-      const res = await fetch(`${baseUrl}/api/media/${media_type}/_/${id}`, {
+      const res = await fetch(`${APP_URL}/api/media/${media_type}/_/${id}`, {
         next: { revalidate: 3600 },
       });
       if (!res.ok) return null;
@@ -42,10 +46,8 @@ const fetchMediaDetails = cache(
   (media_type: string, media_name_slug: string, id: string) =>
     unstable_cache(
       async () => {
-        const baseUrl =
-          process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
         const res = await fetch(
-          `${baseUrl}/api/media/${media_type}/${media_name_slug}/${id}`,
+          `${APP_URL}/api/media/${media_type}/${media_name_slug}/${id}`,
           {
             next: { revalidate: 3600 },
           },
@@ -124,6 +126,7 @@ async function resolveParams(
       redirectTo: `/${media_type}/${correctSlug}/${id}`,
     };
   }
+
   const media_name_slug = slug[0];
   const id = slug[1];
   if (!media_name_slug || !id) return null;
@@ -167,20 +170,32 @@ export async function generateMetadata({
     ? `${data.overview.substring(0, 155)}...`
     : `Details about ${mediaTitle}`;
 
+  // Poster images are portrait (2:3 ratio). w500 = 500×750.
   const ogImage = data?.poster_path
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/image-proxy${data.poster_path}`
+    ? `${APP_URL}/api/image-proxy${data.poster_path}`
     : undefined;
 
   return {
-    title: `${mediaTitle} ${year ? `(${year})` : ""} | WatchedThis`,
+    metadataBase: new URL(APP_URL),
+    title: `${mediaTitle}${year ? ` (${year})` : ""} | WatchedThis`,
     description,
     alternates: {
-      canonical: `https://watchedthis.com/${media_type}/${media_name_slug}/${id}`,
+      canonical: `${APP_URL}/${media_type}/${media_name_slug}/${id}`,
     },
     openGraph: {
-      images: ogImage ? [{ url: ogImage, width: 780, alt: mediaTitle }] : [],
+      title: `${mediaTitle}${year ? ` (${year})` : ""} | WatchedThis`,
+      description,
+      url: `${APP_URL}/${media_type}/${media_name_slug}/${id}`,
+      siteName: "WatchedThis",
+      type: "website",
+      images: ogImage
+        ? [{ url: ogImage, width: 500, height: 750, alt: mediaTitle }]
+        : [],
     },
     twitter: {
+      card: "summary_large_image",
+      title: `${mediaTitle}${year ? ` (${year})` : ""} | WatchedThis`,
+      description,
       images: ogImage ? [ogImage] : [],
     },
   };

@@ -3,9 +3,13 @@ import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import PersonPageClient from "./PersonPageClient";
 import { fetchPerson } from "@/lib/fetchPerson";
 
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-  "https://watchedthis.com";
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const APP_URL = (
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com"
+).replace(/\/$/, "");
+
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
   params,
@@ -30,7 +34,7 @@ export async function generateMetadata({
       ? `${biography.substring(0, 155)}...`
       : `Explore movies and TV shows featuring ${name}. Discover filmography, cast appearances, acting credits, and more on WatchedThis.`;
 
-    // ✅ Route through your image proxy — no direct TMDB hit
+    // Profile images are portrait (2:3 ratio). w500 = 500×750.
     const ogImage = data.details.profile_path
       ? `${APP_URL}/api/image-proxy${data.details.profile_path}`
       : undefined;
@@ -54,7 +58,7 @@ export async function generateMetadata({
       ],
       robots: { index: true, follow: true },
       alternates: {
-        canonical: `/person/${slug}/${id}`,
+        canonical: `${APP_URL}/person/${slug}/${id}`,
       },
       openGraph: {
         title: `${name} | WatchedThis`,
@@ -63,7 +67,14 @@ export async function generateMetadata({
         url: `${APP_URL}/person/${slug}/${id}`,
         siteName: "WatchedThis",
         images: ogImage
-          ? [{ url: ogImage, width: 780, alt: `${name} — WatchedThis` }]
+          ? [
+              {
+                url: ogImage,
+                width: 500,
+                height: 750,
+                alt: `${name} — WatchedThis`,
+              },
+            ]
           : [],
       },
       twitter: {

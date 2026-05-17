@@ -2,22 +2,27 @@ import { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import ProductionPageClient from "./pageClient";
 
-const fetchCompany = async (id: string) => {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
+// ─── Constants ────────────────────────────────────────────────────────────────
 
+const APP_URL = (
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com"
+).replace(/\/$/, "");
+
+// ─── Fetcher ──────────────────────────────────────────────────────────────────
+
+const fetchCompany = async (id: string) => {
   const res = await fetch(
-    `${baseUrl}/api/production/${id}?mediaType=movie&page=1`,
+    `${APP_URL}/api/production/${id}?mediaType=movie&page=1`,
     {
-      next: {
-        revalidate: 3600,
-      },
+      next: { revalidate: 3600 },
     },
   );
 
   if (!res.ok) return null;
-
   return res.json();
 };
+
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
   params,
@@ -31,39 +36,27 @@ export async function generateMetadata({
   if (!data?.company) {
     return {
       title: "Production Company | WatchedThis",
-
-      robots: {
-        index: false,
-        follow: false,
-      },
+      robots: { index: false, follow: false },
     };
   }
 
   const name = data.company.name || "Production Company";
-
   const country = data.company.origin_country
     ? ` (${data.company.origin_country})`
     : "";
-
   const description = `Explore movies and TV shows produced by ${name}${country}. Browse their catalog, productions, and filmography on WatchedThis.`;
 
-  const ogUrl = new URL("/og/", "https://watchedthis.com");
-
+  const ogUrl = new URL(`${APP_URL}/og/`);
   ogUrl.searchParams.set("title", name);
-
   ogUrl.searchParams.set("subtitle", description);
-
   if (data.company.logo_path) {
     ogUrl.searchParams.set("logo", data.company.logo_path);
   }
 
   return {
-    metadataBase: new URL("https://watchedthis.com"),
-
+    metadataBase: new URL(APP_URL),
     title: `${name} | Production Company | WatchedThis`,
-
     description,
-
     keywords: [
       `${name} movies`,
       `${name} tv shows`,
@@ -74,50 +67,35 @@ export async function generateMetadata({
       "movies by production company",
       "tv shows by production company",
     ],
-
-    robots: {
-      index: true,
-      follow: true,
-    },
-
+    robots: { index: true, follow: true },
     alternates: {
-      canonical: `/production/${id}`,
+      canonical: `${APP_URL}/production/${id}`,
     },
-
     openGraph: {
       title: `${name} | Production Company | WatchedThis`,
-
       description,
-
-      url: `https://watchedthis.com/production/${id}`,
-
+      url: `${APP_URL}/production/${id}`,
       siteName: "WatchedThis",
-
       type: "article",
-
       images: [
         {
           url: ogUrl.toString(),
-
           width: 1200,
           height: 630,
-
           alt: `${name} — WatchedThis`,
         },
       ],
     },
-
     twitter: {
       card: "summary_large_image",
-
       title: `${name} | Production Company | WatchedThis`,
-
       description,
-
       images: [ogUrl.toString()],
     },
   };
 }
+
+// ─── Schema ───────────────────────────────────────────────────────────────────
 
 function ProductionSchema({
   name,
@@ -130,28 +108,24 @@ function ProductionSchema({
 }) {
   const schema = {
     "@context": "https://schema.org",
-
     "@type": "Organization",
-
     name,
-
-    url: `https://watchedthis.com/production/${id}`,
-
+    url: `${APP_URL}/production/${id}`,
     ...(logo && {
-      logo: `https://image.tmdb.org/t/p/w500${logo}`,
+      logo: `${APP_URL}/api/image-proxy${logo}`,
     }),
   };
 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(schema),
-      }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       key="production-schema"
     />
   );
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function ProductionPage({
   params,
@@ -163,7 +137,6 @@ export default async function ProductionPage({
   const data = await fetchCompany(id);
 
   const company = data?.company || null;
-
   const name = company?.name || "Production Company";
 
   return (
@@ -174,18 +147,9 @@ export default async function ProductionPage({
 
       <Breadcrumbs
         crumbs={[
-          {
-            name: "Home",
-            href: "/",
-          },
-          {
-            name: "Productions",
-            href: "/production",
-          },
-          {
-            name,
-            href: `/production/${id}`,
-          },
+          { name: "Home", href: "/" },
+          { name: "Productions", href: "/production" },
+          { name, href: `/production/${id}` },
         ]}
       />
 

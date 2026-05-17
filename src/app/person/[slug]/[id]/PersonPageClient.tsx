@@ -100,7 +100,6 @@ function CreditGrid({
               overview: credit.overview || undefined,
 
               release_date: credit.release_date || undefined,
-             
             }}
             displayTitle={
               displayTitleKey ? credit[displayTitleKey] || "" : undefined
