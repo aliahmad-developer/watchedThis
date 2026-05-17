@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   trailingSlash: true,
 
+  // ✅ Top-level in Next.js 14.2+
+  serverExternalPackages: ["sharp"],
+
   async headers() {
     return [
       {
@@ -34,10 +37,7 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
           },
-          {
-            key: "Vary",
-            value: "Accept-Encoding",
-          },
+          { key: "Vary", value: "Accept-Encoding" },
         ],
       },
       {
@@ -47,10 +47,7 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value: "public, max-age=86400, immutable",
           },
-          {
-            key: "Vary",
-            value: "Accept-Encoding",
-          },
+          { key: "Vary", value: "Accept-Encoding" },
         ],
       },
     ];
@@ -101,7 +98,11 @@ const nextConfig: NextConfig = {
   },
 
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    // Keep errors/warnings visible in Vercel logs even in production
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? { exclude: ["error", "warn"] }
+        : false,
   },
 
   async redirects() {
