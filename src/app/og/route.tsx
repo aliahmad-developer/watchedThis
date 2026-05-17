@@ -3,7 +3,7 @@ import sharp from "sharp";
 
 const W = 1200;
 const H = 630;
-const FONT = "DejaVu Sans, sans-serif";
+const FONT = "sans-serif";
 
 const COLORS = {
   bg: "#031926",
@@ -70,7 +70,6 @@ export async function GET(req: NextRequest) {
 
   const hasPoster = !!posterBuffer;
 
-  // Layout constants
   const HEADER_H = 80;
   const POSTER_LEFT = 40;
   const POSTER_WIDTH = 340;
@@ -81,28 +80,35 @@ export async function GET(req: NextRequest) {
 
   const composites: sharp.OverlayOptions[] = [];
 
-  // 1. Poster — composited first (bottom layer)
+  // 1. Poster — true centering via original aspect ratio
   if (posterBuffer) {
     try {
-      const posterImg = await sharp(posterBuffer)
-        .resize(POSTER_WIDTH, POSTER_MAX_H, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
+      const originalMeta = await sharp(posterBuffer).metadata();
+      const originalW = originalMeta.width || POSTER_WIDTH;
+      const originalH = originalMeta.height || POSTER_MAX_H;
+
+      const scale = Math.min(
+        POSTER_WIDTH / originalW,
+        POSTER_MAX_H / originalH,
+      );
+      const actualW = Math.round(originalW * scale);
+      const actualH = Math.round(originalH * scale);
+
+      const resized = await sharp(posterBuffer)
+        .resize(actualW, actualH)
         .png()
         .toBuffer();
 
-      const meta = await sharp(posterImg).metadata();
-      const actualH = meta.height || POSTER_MAX_H;
       const top = Math.round((H - actualH) / 2);
+      const left = POSTER_LEFT + Math.round((POSTER_WIDTH - actualW) / 2);
 
-      composites.push({ input: posterImg, top, left: POSTER_LEFT });
+      composites.push({ input: resized, top, left });
     } catch (err) {
       console.error("Poster composite error:", err);
     }
   }
 
-  // 2. Logo — only as fallback when no poster, composited last (top layer)
+  // 2. Logo — fallback only when no poster
   if (!hasPoster && logoBuffer) {
     try {
       const logoImg = await sharp(logoBuffer)
@@ -137,7 +143,6 @@ export async function GET(req: NextRequest) {
     contentAreaTop + Math.round((contentAreaH - blockH) / 2) + titleLineH;
   const subtitleStartY = titleStartY + titleLines.length * titleLineH + 20;
 
-  // Build SVG — all attribute values properly quoted, font has no inner quotes
   let svgHtml = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
