@@ -22,6 +22,14 @@ const fetchCompany = async (id: string) => {
   return res.json();
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function buildProxyUrl(path: string, size = "w500") {
+  return `${APP_URL}/api/image-proxy?url=${encodeURIComponent(
+    `https://image.tmdb.org/t/p/${size}${path}`,
+  )}`;
+}
+
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -46,12 +54,10 @@ export async function generateMetadata({
     : "";
   const description = `Explore movies and TV shows produced by ${name}${country}. Browse their catalog, productions, and filmography on WatchedThis.`;
 
-  const ogUrl = new URL(`${APP_URL}/og/`);
-  ogUrl.searchParams.set("title", name);
-  ogUrl.searchParams.set("subtitle", description);
-  if (data.company.logo_path) {
-    ogUrl.searchParams.set("logo", data.company.logo_path);
-  }
+  // Logo images are typically square or landscape. w500 is a safe size.
+  const ogImage = data.company.logo_path
+    ? buildProxyUrl(data.company.logo_path, "w500")
+    : undefined;
 
   return {
     metadataBase: new URL(APP_URL),
@@ -77,20 +83,22 @@ export async function generateMetadata({
       url: `${APP_URL}/production/${id}`,
       siteName: "WatchedThis",
       type: "article",
-      images: [
-        {
-          url: ogUrl.toString(),
-          width: 1200,
-          height: 630,
-          alt: `${name} — WatchedThis`,
-        },
-      ],
+      images: ogImage
+        ? [
+            {
+              url: ogImage,
+              width: 500,
+              height: 500,
+              alt: `${name} — WatchedThis`,
+            },
+          ]
+        : [],
     },
     twitter: {
       card: "summary_large_image",
       title: `${name} | Production Company | WatchedThis`,
       description,
-      images: [ogUrl.toString()],
+      images: ogImage ? [ogImage] : [],
     },
   };
 }
@@ -112,7 +120,7 @@ function ProductionSchema({
     name,
     url: `${APP_URL}/production/${id}`,
     ...(logo && {
-      logo: `${APP_URL}/api/image-proxy${logo}`,
+      logo: buildProxyUrl(logo, "w500"),
     }),
   };
 

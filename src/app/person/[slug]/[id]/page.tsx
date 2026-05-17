@@ -36,7 +36,7 @@ export async function generateMetadata({
 
     // Profile images are portrait (2:3 ratio). w500 = 500×750.
     const ogImage = data.details.profile_path
-      ? `${APP_URL}/api/image-proxy${data.details.profile_path}`
+      ? `${APP_URL}/api/image-proxy?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w500${data.details.profile_path}`)}`
       : undefined;
 
     return {
@@ -113,7 +113,11 @@ function PersonSchema({
     name,
     url: `${APP_URL}/person/${slug}/${id}`,
     ...(biography && { description: biography }),
-    ...(image && { image: `${APP_URL}/api/image-proxy${image}` }),
+    ...(image && {
+      image: `${APP_URL}/api/image-proxy?url=${encodeURIComponent(
+        `https://image.tmdb.org/t/p/w500${image}`,
+      )}`,
+    }),
   };
 
   return (
