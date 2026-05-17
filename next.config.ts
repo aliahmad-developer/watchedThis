@@ -3,8 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   trailingSlash: true,
 
-  // ✅ Top-level in Next.js 14.2+
-  serverExternalPackages: ["sharp"],
+  serverExternalPackages: ["sharp", "satori"],
 
   async headers() {
     return [
