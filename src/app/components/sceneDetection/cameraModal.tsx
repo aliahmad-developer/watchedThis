@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 type CameraMode = "chooser" | "live" | "uploading" | "error";
 
@@ -19,6 +19,8 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // Track if we're still mounted to avoid state updates after close
   const isMounted = useRef(true);
@@ -56,14 +58,27 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
 
   const handleClose = useCallback(() => {
     stopCamera();
+
     setError("");
     setMode("chooser");
     setCapturing(false);
+
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (params.has("detect")) {
+      params.delete("detect");
+
+      const nextUrl = params.toString()
+        ? `${pathname}?${params.toString()}`
+        : pathname;
+
+      router.replace(nextUrl, { scroll: false });
+    }
+
     onClose();
-  }, [stopCamera, onClose]);
+  }, [stopCamera, onClose, pathname, router, searchParams]);
 
   const startCamera = async () => {
-
     if (!navigator?.mediaDevices?.getUserMedia) {
       setError("Camera API not available — check HTTPS.");
       return;

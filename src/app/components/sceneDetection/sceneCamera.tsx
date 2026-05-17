@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import SceneCameraModal from "./cameraModal";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 export default function SceneCamera() {
@@ -34,7 +35,9 @@ export default function SceneCamera() {
         </svg>
       </button>
 
-      <SceneCameraModal open={open} onClose={() => setOpen(false)} />
+      <Suspense fallback={null}>
+        <SceneCameraModal open={open} onClose={() => setOpen(false)} />
+      </Suspense>
     </>
   );
 }

@@ -627,6 +627,31 @@ body::after {
   background: linear-gradient(270deg, transparent, #bdd4e7);
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+@keyframes mcFloatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  55% {
+    opacity: 0.9;
+    transform: translateY(-38px) scale(1.35);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-68px) scale(0.85);
+  }
+}
+
 @keyframes shootingStar {
   0% {
     transform: rotate(315deg) translateX(0);

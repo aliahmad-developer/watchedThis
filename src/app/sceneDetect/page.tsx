@@ -1,5 +1,5 @@
 "use client";
-
+import { Suspense } from "react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -451,16 +451,18 @@ export default function SceneDetectPage() {
         >
           Try again
         </button>
-        <SceneCameraModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSuccess={() => {
-            setModalOpen(false);
-            setTimedOut(false);
-            loadResults();
-            document.scrollingElement?.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        />
+        <Suspense fallback={null}>
+          <SceneCameraModal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onSuccess={() => {
+              setModalOpen(false);
+              setTimedOut(false);
+              loadResults();
+              document.scrollingElement?.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -527,15 +529,17 @@ export default function SceneDetectPage() {
         )}
       </div>
 
-      <SceneCameraModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSuccess={() => {
-          setModalOpen(false);
-          loadResults();
-          document.scrollingElement?.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-      />
+      <Suspense fallback={null}>
+        <SceneCameraModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSuccess={() => {
+            setModalOpen(false);
+            loadResults();
+            document.scrollingElement?.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

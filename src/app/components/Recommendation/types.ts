@@ -32,9 +32,8 @@ export interface FindFilterSnapshot {
 
 export interface UserBehaviour {
   clickLog: Array<{ id: number; media_type: "movie" | "tv" }>;
-
   searchHistory: string[];
-  findFilters?: FindFilterSnapshot[];
+  findFilters: FindFilterSnapshot[];
   updatedAt?: number;
 }
 

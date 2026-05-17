@@ -29,15 +29,15 @@ const W = {
   // 2. Search history
   SEARCH_TITLE: 18,
   SEARCH_GENRE: 9,
-  SEARCH_RECENCY: 5,       // bonus for last 3 searches
-  SEARCH_TOKEN: 4,         // per token match in overview (improvement ⑤)
+  SEARCH_RECENCY: 5, // bonus for last 3 searches
+  SEARCH_TOKEN: 4, // per token match in overview (improvement ⑤)
 
   // 3. Library
   LIB_GENRE_MATCH: 8,
 
   // 4. Clicks
-  CLICK_DIRECT: 5,         // per click, capped at 3
-  CLICK_RECENCY: 6,        // in last 5 clicks
+  CLICK_DIRECT: 5, // per click, capped at 3
+  CLICK_RECENCY: 6, // in last 5 clicks
   CLICK_GENRE: 3,
 
   // 5. Find filters
@@ -109,10 +109,53 @@ function fuzzy(text: string, query: string): boolean {
 //  Stop words are filtered so "what to watch tonight" doesn't pollute scores.
 
 const STOP_WORDS = new Set([
-  "a","an","the","and","or","but","in","on","at","to","for","of","with",
-  "is","it","its","this","that","was","are","be","been","have","has","do",
-  "i","me","my","we","you","your","what","how","why","when","where","who",
-  "watch","find","show","movies","movie","tv","series","good","best","top",
+  "a",
+  "an",
+  "the",
+  "and",
+  "or",
+  "but",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "is",
+  "it",
+  "its",
+  "this",
+  "that",
+  "was",
+  "are",
+  "be",
+  "been",
+  "have",
+  "has",
+  "do",
+  "i",
+  "me",
+  "my",
+  "we",
+  "you",
+  "your",
+  "what",
+  "how",
+  "why",
+  "when",
+  "where",
+  "who",
+  "watch",
+  "find",
+  "show",
+  "movies",
+  "movie",
+  "tv",
+  "series",
+  "good",
+  "best",
+  "top",
 ]);
 
 function tokenMatch(item: MediaItem, query: string): number {
@@ -123,11 +166,7 @@ function tokenMatch(item: MediaItem, query: string): number {
 
   if (!tokens.length) return 0;
 
-  const haystack = [
-    item.title ?? "",
-    item.name ?? "",
-    item.overview ?? "",
-  ]
+  const haystack = [item.title ?? "", item.name ?? "", item.overview ?? ""]
     .join(" ")
     .toLowerCase();
 
@@ -142,6 +181,13 @@ function collectGenres(ids: number[], allMedia: MediaItem[]): string[] {
         .flatMap((m) => deriveGenres(m)),
     ),
   ];
+}
+
+function normalizeScore(rawScore: number, maxRawScore: number): number {
+  return Math.max(
+    0,
+    Math.min(100, Number(((rawScore / maxRawScore) * 100).toFixed(1))),
+  );
 }
 
 // ── Genre concentration weights (improvement ①) ───────────────
@@ -210,8 +256,14 @@ export function scoreItem(
   profile: RecommendationProfile,
   genreWeights: Record<string, number> = {},
 ): { total: number; breakdown: Record<string, number> } {
-  const { favouriteIds, libraryIds, clickLog, searchHistory, allMedia, watchedIds } =
-    profile;
+  const {
+    favouriteIds,
+    libraryIds,
+    clickLog,
+    searchHistory,
+    allMedia,
+    watchedIds,
+  } = profile;
 
   const breakdown: Record<string, number> = {};
   let total = 0;
@@ -234,8 +286,10 @@ export function scoreItem(
   const favGenres = collectGenres(favouriteIds, allMedia);
   const favDecay =
     favouriteIds.length > 0
-      ? favouriteIds.reduce((sum, id) => sum + recencyDecay(savedAtMap[id]), 0) /
-        favouriteIds.length
+      ? favouriteIds.reduce(
+          (sum, id) => sum + recencyDecay(savedAtMap[id]),
+          0,
+        ) / favouriteIds.length
       : 0.75;
 
   add(
@@ -306,7 +360,11 @@ export function scoreItem(
       const snapGenreNames = snap.genres
         .map((id) => TMDB_GENRES[id])
         .filter(Boolean) as string[];
-      const genreHits = weightedOverlap(itemGenres, snapGenreNames, genreWeights);
+      const genreHits = weightedOverlap(
+        itemGenres,
+        snapGenreNames,
+        genreWeights,
+      );
       if (genreHits > 0)
         add("find_genre", genreHits * (W.FIND_GENRE_MATCH + recencyBonus));
 
@@ -448,15 +506,24 @@ export function getRecommendations(
     return true;
   });
 
-  const scored: ScoredItem[] = candidates.map((item) => {
+  const rawScored = candidates.map((item) => {
     const { total, breakdown } = scoreItem(item, profile, genreWeights);
+
     return {
       ...item,
-      score: total,
+      rawScore: total,
       breakdown,
       reason: getPrimaryReason(breakdown, item, profile),
     };
   });
+
+  // Find highest score in current recommendation batch
+  const highestScore = Math.max(...rawScored.map((i) => i.rawScore), 1);
+
+  const scored: ScoredItem[] = rawScored.map((item) => ({
+    ...item,
+    score: normalizeScore(item.rawScore, highestScore),
+  }));
 
   const sorted = scored.sort((a, b) => b.score - a.score);
 

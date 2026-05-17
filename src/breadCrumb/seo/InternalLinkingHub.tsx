@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ScanSearch, Shuffle, Tv2, ArrowUpRight } from "lucide-react";
+import { ScanSearch, Shuffle, Tv2, ArrowUpRight,LoaderPinwheel } from "lucide-react";
 import React from "react";
 
 /* ----------------------------- DATA ----------------------------- */
@@ -28,7 +28,8 @@ const FEATURED_GENRES = [
 const FEATURE_LINKS = [
   { href: "/find?detect=1", text: "Scene Detection", Icon: ScanSearch },
   { href: "/random", text: "Random Picker", Icon: Shuffle },
-  { href: "/echo", text: "Series like this", Icon: Tv2 },
+  { href: "/echo", text: "Series Like This", Icon: Tv2 },
+  { href: "/spinner", text: "Spin the Wheel", Icon: LoaderPinwheel },
 ];
 
 /* ----------------------------- UI HELPERS ----------------------------- */
