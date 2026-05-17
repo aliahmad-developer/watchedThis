@@ -67,10 +67,46 @@ export async function GET(req: NextRequest) {
     fetchBuffer(`${APP_URL}/watchedthis-logo.png`),
   ]);
 
+  // Layout constants
+  const HEADER_H = 80;
+  const POSTER_LEFT = 40;
+  const POSTER_WIDTH = 340;
+  const POSTER_MAX_H = H - 40; // full height with margin when no header needed
+  const hasPoster = !!posterBuffer;
+
+  // Text starts after poster if present, otherwise full width
+  const TEXT_START_X = hasPoster ? POSTER_LEFT + POSTER_WIDTH + 40 : 60;
+  const TEXT_MAX_W = W - TEXT_START_X - 40;
+
+  // Title/subtitle wrap widths scale with available space
+  const titleMaxChars = hasPoster ? 38 : 55;
+  const subtitleMaxChars = hasPoster ? 72 : 100;
+
   const composites: sharp.OverlayOptions[] = [];
 
-  // Logo (top left, but above poster area)
-  if (logoBuffer) {
+  // 1. Poster (full height, no header reservation needed)
+  if (posterBuffer) {
+    try {
+      const posterImg = await sharp(posterBuffer)
+        .resize(POSTER_WIDTH, POSTER_MAX_H, {
+          fit: "contain",
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
+        .png()
+        .toBuffer();
+
+      const meta = await sharp(posterImg).metadata();
+      const actualH = meta.height || POSTER_MAX_H;
+      const top = Math.round((H - actualH) / 2);
+
+      composites.push({ input: posterImg, top, left: POSTER_LEFT });
+    } catch (err) {
+      console.error("Poster error:", err);
+    }
+  }
+
+  // 2. Logo — only shown as fallback when there is no poster
+  if (!hasPoster && logoBuffer) {
     try {
       const logoImg = await sharp(logoBuffer)
         .resize(150, 50, {
@@ -79,57 +115,31 @@ export async function GET(req: NextRequest) {
         })
         .png()
         .toBuffer();
-      composites.push({ input: logoImg, top: 30, left: 30 });
+      composites.push({
+        input: logoImg,
+        top: Math.round((HEADER_H - 50) / 2),
+        left: 30,
+      });
     } catch (err) {
       console.error("Logo error:", err);
     }
   }
 
-  // Poster (left-aligned, no gaps around it)
-  let posterHeight = 0;
-  if (posterBuffer) {
-    try {
-      const POSTER_WIDTH = 360; // fixed width
-      const MAX_POSTER_HEIGHT = 560; // fit within canvas (630 - margins)
+  // Text layout
+  const FONT = `"DejaVu Sans", sans-serif`;
+  const titleLines = wrapText(title, titleMaxChars);
+  const subtitleLines = wrapText(subtitle, subtitleMaxChars);
+  const titleLineH = 52;
+  const subtitleLineH = 34;
 
-      let posterImg = await sharp(posterBuffer)
-        .resize(POSTER_WIDTH, MAX_POSTER_HEIGHT, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .png()
-        .toBuffer();
+  const blockH =
+    titleLines.length * titleLineH + subtitleLines.length * subtitleLineH + 24;
 
-      const meta = await sharp(posterImg).metadata();
-      const actualWidth = meta.width || POSTER_WIDTH;
-      const actualHeight = meta.height || MAX_POSTER_HEIGHT;
-      posterHeight = actualHeight;
-
-      // Left margin: 40px, vertically centered (or slightly offset)
-      const left = 40;
-      const top = Math.round((H - actualHeight) / 2);
-
-      composites.push({ input: posterImg, top, left });
-    } catch (err) {
-      console.error("Poster error:", err);
-    }
-  }
-
-  // Text area (right side, starting after poster + margin)
-  const textStartX = 440; // 40 (poster left) + 360 (poster width) + 40 (gap)
-  const textMaxWidth = W - textStartX - 40; // ~720px
-
-  // Wrap text to fit the right column (more characters because wider)
-  const titleLines = wrapText(title, 45);
-  const subtitleLines = wrapText(subtitle, 85);
-
-  // Vertical start: align with poster's vertical center
-  const titleStartY = Math.max(
-    140,
-    (H - (titleLines.length * 48 + subtitleLines.length * 34 + 40)) / 2,
-  );
-  const titleLineHeight = 52;
-  const subtitleLineHeight = 34;
+  // When no poster: push text below logo header; otherwise center in full height
+  const contentAreaTop = hasPoster ? 0 : HEADER_H;
+  const contentAreaH = H - contentAreaTop;
+  const titleStartY =
+    contentAreaTop + Math.round((contentAreaH - blockH) / 2) + titleLineH;
 
   let svgHtml = `
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
@@ -139,58 +149,59 @@ export async function GET(req: NextRequest) {
       <stop offset="100%" stop-color="${COLORS.card}"/>
     </linearGradient>
   </defs>
+
+  <!-- Background -->
   <rect width="${W}" height="${H}" fill="url(#bgGrad)"/>
+
+  <!-- Top accent stripe -->
   <rect width="${W}" height="4" fill="${COLORS.accent}"/>
+
+  ${
+    !hasPoster
+      ? `<!-- Header separator shown only in logo/no-poster layout -->
+  <rect x="0" y="${HEADER_H}" width="${W}" height="1" fill="${COLORS.accent}" opacity="0.3"/>`
+      : ""
+  }
 `;
 
-  // Title (right side)
+  // Title
   titleLines.forEach((line, i) => {
     svgHtml += `
-<text
-  x="${textStartX}"
-  y="${titleStartY + i * titleLineHeight}"
-  font-size="44"
-  font-weight="700"
-  fill="${COLORS.title}"
-  font-family="Arial, Helvetica, sans-serif"
->
-  ${line}
-</text>
-`;
+  <text
+    x="${TEXT_START_X}"
+    y="${titleStartY + i * titleLineH}"
+    font-size="44"
+    font-weight="700"
+    fill="${COLORS.title}"
+    font-family=${FONT}
+  >${line}</text>`;
   });
 
-  // Subtitle (right side)
-  const subtitleStartY = titleStartY + titleLines.length * titleLineHeight + 20;
+  // Subtitle
+  const subtitleStartY = titleStartY + titleLines.length * titleLineH + 20;
   subtitleLines.forEach((line, i) => {
     svgHtml += `
-<text
-  x="${textStartX}"
-  y="${subtitleStartY + i * subtitleLineHeight}"
-  font-size="24"
-  font-weight="400"
-  fill="${COLORS.subtitle}"
-  font-family="Arial, Helvetica, sans-serif"
->
-  ${line}
-</text>
-`;
+  <text
+    x="${TEXT_START_X}"
+    y="${subtitleStartY + i * subtitleLineH}"
+    font-size="24"
+    font-weight="400"
+    fill="${COLORS.subtitle}"
+    font-family=${FONT}
+  >${line}</text>`;
   });
 
-  // Footer (bottom right)
+  // Footer
   svgHtml += `
-<text
-  x="${W - 30}"
-  y="${H - 25}"
-  text-anchor="end"
-  font-size="14"
-  fill="${COLORS.footer}"
-  font-family="Arial, Helvetica, sans-serif"
->
-  watchedthis.com
-</text>
-`;
-
-  svgHtml += `</svg>`;
+  <text
+    x="${W - 30}"
+    y="${H - 20}"
+    text-anchor="end"
+    font-size="14"
+    fill="${COLORS.footer}"
+    font-family=${FONT}
+  >watchedthis.com</text>
+</svg>`;
 
   const png = await sharp(Buffer.from(svgHtml))
     .composite(composites)
