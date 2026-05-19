@@ -16,7 +16,6 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
-
 async function setSessionCookie(user: User): Promise<void> {
   const token = await user.getIdToken();
   const res = await fetch("/api/auth/session", {
@@ -30,7 +29,11 @@ async function setSessionCookie(user: User): Promise<void> {
 async function clearSessionCookie(): Promise<void> {
   await fetch("/api/auth/session", { method: "DELETE" });
 }
-
+function notifyAuthChange() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-updated"));
+  }
+}
 // ─── Friendly error messages ───────────────────────────────────────────────
 const friendlyAuthError = (
   code: string,
@@ -128,12 +131,13 @@ export const login = async (email: string, password: string) => {
       email,
       password,
     );
+
     await setSessionCookie(userCredential.user);
+
+    notifyAuthChange();
 
     return { success: true, message: "Login successful!" };
   } catch (error: any) {
-    // setSessionCookie throws a generic Error (not a Firebase error),
-    // so check for Firebase error code first.
     if (error.code) {
       const { message, noAccount } = friendlyAuthError(error.code);
       return { success: false, message, noAccount };
@@ -148,9 +152,10 @@ export const logout = async () => {
     const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
     const auth = await getFirebaseAuth();
 
-    // Clear server-side cookie first, then revoke Firebase session.
     await clearSessionCookie();
     await signOut(auth);
+
+    notifyAuthChange();
 
     return { success: true, message: "Logged out successfully!" };
   } catch {
@@ -167,12 +172,15 @@ async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
     const result = await signInWithPopup(auth, provider);
     await setSessionCookie(result.user);
 
+    notifyAuthChange();
+
     return { success: true, redirect: false, user: result.user };
   } catch (error: any) {
     if (error.code) {
       const { message } = friendlyAuthError(error.code);
       return { success: false, redirect: false, user: null, message };
     }
+
     return {
       success: false,
       redirect: false,

@@ -391,6 +391,7 @@ export default function AuthPage() {
               const uid = authRef.current?.currentUser?.uid;
               if (uid) userInfoCache.delete(uid);
               await logout();
+              window.dispatchEvent(new Event("auth-updated"));
               setUser(null);
               setIsVerified(false);
               setCreatedDate(null);

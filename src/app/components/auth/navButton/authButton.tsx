@@ -1,140 +1,123 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import AuthModal from "../authModal";
 
+type SessionUser = {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+};
+
 export default function AuthButton() {
-  const [user, setUser] = useState<any>(null);
-  const [displayLetter, setDisplayLetter] = useState<string>("");
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [displayLetter, setDisplayLetter] = useState("");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+
   const pathname = usePathname();
+  const router = useRouter();
+
   const isAuthPage =
     pathname === "/user/profile" || pathname === "/user/library";
 
-  const syncUser = (u: any) => {
-    if (!u) return;
+  const syncUser = useCallback((u: SessionUser | null) => {
+    if (!u) {
+      setUser(null);
+      setPhotoURL(null);
+      setDisplayLetter("");
+      setImgError(false);
+      return;
+    }
+
     setUser(u);
     setImgError(false);
     setPhotoURL(u.photoURL ?? null);
+
     const name = u.displayName?.trim();
-    const email = u.email?.split("@")[0] || "";
+    const email = u.email?.split("@")[0] ?? "";
     setDisplayLetter((name ? name.charAt(0) : email.charAt(0)).toUpperCase());
-  };
-
-  const [authInstance, setAuthInstance] = useState<any>(null);
-  const [firebaseAuth, setFirebaseAuth] = useState<any>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const fbAuth = await import("firebase/auth");
-      const fbConfig = await import("../../../firebase/firebaseConfig");
-      const instance = await fbConfig.getFirebaseAuth();
-      if (!cancelled) {
-        setAuthInstance(instance);
-        setFirebaseAuth(fbAuth);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  const forceReload = async () => {
-    if (!authInstance?.currentUser) return;
-    await authInstance.currentUser.reload();
-    syncUser(authInstance.currentUser);
-  };
+  const syncFromSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        syncUser(null);
+        return;
+      }
+
+      const data: SessionUser = await res.json();
+      syncUser(data);
+    } catch {
+      syncUser(null);
+    }
+  }, [syncUser]);
 
   useEffect(() => {
-    if (!authInstance || !firebaseAuth) return;
+    syncFromSession();
 
-    const unsubscribe = firebaseAuth.onAuthStateChanged(
-      authInstance,
-      async (currentUser: any) => {
-        if (currentUser) {
-          await currentUser.reload();
-          syncUser(authInstance.currentUser);
-        } else {
-          setUser(null);
-          setDisplayLetter("");
-          setPhotoURL(null);
-        }
-      },
-    );
-
-    window.addEventListener("signup-username-ready", forceReload);
-    window.addEventListener("user-photo-updated", forceReload);
-
-    return () => {
-      unsubscribe();
-      window.removeEventListener("signup-username-ready", forceReload);
-      window.removeEventListener("user-photo-updated", forceReload);
+    const handler = () => {
+      syncFromSession();
+      router.refresh();
     };
-  }, [authInstance, firebaseAuth]);
 
-  // Re-sync when profile changes externally
-  useEffect(() => {
-    if (user) syncUser(user);
-  }, [user?.displayName, user?.email, user?.photoURL]);
+    window.addEventListener("auth-updated", handler);
+    return () => window.removeEventListener("auth-updated", handler);
+  }, [syncFromSession, router]);
 
   const showPhoto = !!photoURL && !imgError;
-
-  const avatar = showPhoto ? (
-    <Image
-      src={photoURL!}
-      alt="Profile"
-      width={36}
-      height={36}
-      className="select-none rounded-full object-cover w-9 h-9 ring-2 ring-transparent group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
-      onError={() => setImgError(true)}
-      referrerPolicy="no-referrer"
-    />
-  ) : (
-    <span
-      className="select-none w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold
-      bg-light-accent/15 dark:bg-dark-accent/15
-      text-light-accent dark:text-dark-accent
-      ring-2 ring-light-accent/30 dark:ring-dark-accent/30
-      group-hover:ring-light-accent dark:group-hover:ring-dark-accent
-      transition-all duration-200"
-    >
-      {displayLetter}
-    </span>
-  );
 
   return (
     <>
       {user ? (
         <Link
           href="/user/profile"
-          className="group flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-light-accent/8 dark:hover:bg-dark-accent/8"
-          title={user.displayName || user.email || ""}
+          className="group flex items-center gap-1.5 px-2 py-1 rounded-lg"
         >
-          {avatar}
+          {showPhoto ? (
+            <Image
+              src={photoURL!}
+              alt="Profile"
+              width={36}
+              height={36}
+              className="w-9 h-9 rounded-full object-cover"
+              onError={() => setImgError(true)}
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <span className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-200 text-sm font-medium">
+              {displayLetter}
+            </span>
+          )}
         </Link>
       ) : (
         <button
-          onClick={() => {
-            if (!isAuthPage) setModalOpen(true);
-          }}
-          className={`px-2 rounded-lg text-sm font-medium transition-colors
-            ${
-              isAuthPage
-                ? "bg-light-accent dark:bg-dark-accent text-white dark:text-dark-card shadow-md cursor-default"
-                : "bg-transparent text-light-btn-text dark:text-white hover:text-light-accent dark:hover:text-dark-accent"
-            }`}
+          onClick={() => !isAuthPage && setModalOpen(true)}
+          className="px-2 text-sm"
         >
           Login
         </button>
       )}
 
       {modalOpen && (
-        <AuthModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+        <AuthModal
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            syncFromSession();
+            router.refresh();
+          }}
+        />
       )}
     </>
   );

@@ -124,35 +124,21 @@ export default function GoogleOneTap() {
     };
   }, []);
 
-  async function handleCredentialResponse(
-    response: CredentialResponse,
-  ): Promise<void> {
+  async function handleCredentialResponse(response: CredentialResponse) {
     try {
-      const res = await fetch("/api/auth/session", {
+      await fetch("/api/auth/session", {
         method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-
         body: JSON.stringify({
           idToken: response.credential,
         }),
       });
 
-      if (!res.ok) {
-        window.google?.accounts?.id?.disableAutoSelect?.();
-
-        return;
-      }
-
-      window.location.reload();
+      window.dispatchEvent(new Event("auth-updated"));
     } catch {
-      return;
+      console.error("Login failed");
     }
   }
-
   return null;
 }

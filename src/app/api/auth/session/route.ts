@@ -2,47 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
-// ─── Input validation ─────────────────────────────────────────────────────────
+// ─── validation ─────────────────────────────────────────────
 const bodySchema = z.object({
-  idToken: z
-    .string()
-    .min(1)
-    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, {
-      message: "Invalid token format",
-    }),
+  idToken: z.string().min(1),
 });
 
-// ─── Cookie config ────────────────────────────────────────────────────────────
+// ─── cookies ────────────────────────────────────────────────
 const COOKIE_NAME = "__session";
-const MAX_AGE = 3600; // 1 hour — matches Firebase ID token lifetime
+const MAX_AGE = 3600;
 
-// HttpOnly session cookie — never readable by JS.
-function sessionCookie(token: string): string {
+function sessionCookie(token: string) {
   return `${COOKIE_NAME}=${token}; Path=/; Max-Age=${MAX_AGE}; HttpOnly; Secure; SameSite=Strict`;
 }
 
-// Non-HttpOnly indicator cookie — no sensitive data, lets client code
-// (e.g. Google One Tap) know a session exists without reading the token.
-function indicatorCookie(): string {
+function indicatorCookie() {
   return `signed-in=1; Path=/; Max-Age=${MAX_AGE}; Secure; SameSite=Strict`;
 }
 
-function clearedSessionCookie(): string {
-  return `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`;
-}
-
-function clearedIndicatorCookie(): string {
-  return `signed-in=; Path=/; Max-Age=0; Secure; SameSite=Strict`;
-}
-
-// ─── Normalized error helper ──────────────────────────────────────────────────
-function err(message: string, status: number): NextResponse {
+function err(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
-// ─── POST — sign in ───────────────────────────────────────────────────────────
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  let body: unknown;
+// ─── POST login ─────────────────────────────────────────────
+export async function POST(req: NextRequest) {
+  let body;
+
   try {
     body = await req.json();
   } catch {
@@ -50,30 +34,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const parsed = bodySchema.safeParse(body);
-  if (!parsed.success) return err("Invalid token format", 400);
+  if (!parsed.success) return err("Invalid token", 400);
 
   try {
-    // Cryptographically verify the token and check it hasn't been revoked.
-    await adminAuth.verifyIdToken(
-      parsed.data.idToken,
-      /* checkRevoked= */ true,
-    );
+    await adminAuth.verifyIdToken(parsed.data.idToken, true);
   } catch {
-    // Never echo the Firebase error — it can contain credential fragments.
     return err("Authentication failed", 401);
   }
 
   const res = NextResponse.json({ ok: true });
-  // Set both cookies in a single response via append
+
   res.headers.set("Set-Cookie", sessionCookie(parsed.data.idToken));
   res.headers.append("Set-Cookie", indicatorCookie());
+
   return res;
 }
 
-// ─── DELETE — sign out ────────────────────────────────────────────────────────
-export async function DELETE(): Promise<NextResponse> {
+// ─── DELETE logout ──────────────────────────────────────────
+export async function DELETE() {
   const res = NextResponse.json({ ok: true });
-  res.headers.set("Set-Cookie", clearedSessionCookie());
-  res.headers.append("Set-Cookie", clearedIndicatorCookie());
+
+  res.headers.set(
+    "Set-Cookie",
+    `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`,
+  );
+
+  res.headers.append(
+    "Set-Cookie",
+    `signed-in=; Path=/; Max-Age=0; Secure; SameSite=Strict`,
+  );
+
   return res;
 }
