@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cache, TTL } from "@/lib/cache";
 
-const API_KEY = process.env.TMDB_API_KEY;
+const API_KEY = process.env.TMDB_ACCESS_TOKEN;
 const CACHE_KEY = "trending:all:week";
 
 export async function GET() {
