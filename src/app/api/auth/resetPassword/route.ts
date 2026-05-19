@@ -13,7 +13,6 @@ function hashToken(token: string): string {
     .digest("hex");
 }
 
-// ─── Input validation ─────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateEmail(v: unknown): string | null {
@@ -23,8 +22,6 @@ function validateEmail(v: unknown): string | null {
   return null;
 }
 
-// Generic success message returned regardless of whether the email exists.
-// This prevents user enumeration — an attacker cannot tell valid from invalid.
 const SAFE_SUCCESS = {
   success: true,
   message: "If that email is registered, a reset link has been sent.",
@@ -62,13 +59,11 @@ export async function POST(req: NextRequest) {
   const cleanEmail = (email as string).trim().toLowerCase();
 
   try {
-    // FIX (enumeration): check if user exists but return the same response
-    // either way — don't tell the caller whether the email is registered.
+
     try {
       await adminAuth.getUserByEmail(cleanEmail);
     } catch (e: any) {
       if (e.code === "auth/user-not-found") {
-        // Return success-shaped response so the caller can't enumerate users.
         return NextResponse.json(SAFE_SUCCESS);
       }
       throw e;
@@ -97,7 +92,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      // Log error type only — not the email address (PII)
       console.error("[resetPassword] resend error:", error.name);
       return NextResponse.json(
         { error: "Failed to send email." },

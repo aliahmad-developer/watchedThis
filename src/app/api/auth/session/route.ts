@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid token" }, { status: 400 });
     }
 
-    const idToken = parsed.data.idToken;
+    const { idToken } = parsed.data;
 
     await adminAuth.verifyIdToken(idToken);
 
@@ -31,20 +31,23 @@ export async function POST(req: NextRequest) {
 
     res.cookies.set(COOKIE_NAME, sessionCookie, {
       httpOnly: true,
-      secure: true,
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", 
       path: "/",
       maxAge: expiresIn / 1000,
     });
 
     return res;
-  } catch {
+  } catch (err) {
+    console.error("[auth/session] error:", err);
+
     return NextResponse.json(
       { error: "Authentication failed" },
       { status: 401 }
     );
   }
 }
+
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
 

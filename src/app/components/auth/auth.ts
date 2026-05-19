@@ -17,14 +17,19 @@ appleProvider.addScope("email");
 appleProvider.addScope("name");
 
 async function setSessionCookie(user: User): Promise<void> {
-  const token = await user.getIdToken();
+  const token = await user.getIdToken(true);
+
   const res = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({ idToken: token }),
   });
-  if (!res.ok) throw new Error("Failed to create server session.");
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || "Failed to create server session");
+  }
 }
 
 async function clearSessionCookie(): Promise<void> {
@@ -138,6 +143,7 @@ export const login = async (email: string, password: string) => {
     notifyAuthChange();
 
     return { success: true, message: "Login successful!" };
+    
   } catch (error: any) {
     if (error.code) {
       const { message, noAccount } = friendlyAuthError(error.code);
@@ -152,12 +158,16 @@ export const logout = async () => {
   try {
     const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
     const auth = await getFirebaseAuth();
-    await signOut(auth);
 
+    // Always clear server session first (fast + reliable)
     await fetch("/api/auth/session", {
       method: "DELETE",
       credentials: "include",
     });
+
+    // Then Firebase logout
+    await signOut(auth);
+
     notifyAuthChange();
 
     return { success: true, message: "Logged out successfully!" };
