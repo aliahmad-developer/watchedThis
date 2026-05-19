@@ -15,7 +15,7 @@ function hashToken(token: string): string {
     .digest("hex");
 }
 
-function validatePassword(password: string): string | null {
+function validatePassword(password: unknown): string | null {
   if (typeof password !== "string") return "Invalid password.";
   if (password.length < 8) return "Password must be at least 8 characters.";
   if (password.length > 128) return "Password is too long.";
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   let body: unknown;
+
   try {
     body = await req.json();
   } catch {
@@ -57,11 +58,12 @@ export async function POST(req: NextRequest) {
     newPassword?: unknown;
   };
 
+  // ── validate inputs
   const tokenError = validateToken(token);
   if (tokenError)
     return NextResponse.json({ error: tokenError }, { status: 400 });
 
-  const passwordError = validatePassword(newPassword as string);
+  const passwordError = validatePassword(newPassword);
   if (passwordError)
     return NextResponse.json({ error: passwordError }, { status: 400 });
 
@@ -69,7 +71,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const docRef = adminDb.collection("passwordResetTokens").doc(hashedToken);
-
     const doc = await docRef.get();
 
     if (!doc.exists) {
@@ -97,18 +98,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔥 prevent reuse FIRST
-    await docRef.update({ used: true });
-
     const user = await adminAuth.getUserByEmail(data.email);
 
     await adminAuth.updateUser(user.uid, {
       password: newPassword as string,
     });
+    await docRef.update({
+      used: true,
+      usedAt: new Date(),
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[resetPassword] unexpected error", err);
+    console.error("[resetPassword] error", err);
 
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
