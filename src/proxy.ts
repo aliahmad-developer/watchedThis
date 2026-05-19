@@ -103,15 +103,8 @@ export default function middleware(req: NextRequest) {
     const origin = req.headers.get("origin");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
-    // Only validate origin if it's provided and NEXT_PUBLIC_APP_URL is set
-    if (origin && appUrl) {
-      const normalizedOrigin = new URL(origin).hostname;
-      const normalizedApp = new URL(appUrl).hostname.replace(/^www\./, "");
-      const normalizedOriginBase = normalizedOrigin.replace(/^www\./, "");
-
-      if (normalizedOriginBase !== normalizedApp) {
-        return new NextResponse("Forbidden", { status: 403 });
-      }
+    if (origin && appUrl && origin !== appUrl) {
+      return new NextResponse("Forbidden", { status: 403 });
     }
   }
 
