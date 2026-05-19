@@ -58,6 +58,13 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
 export default function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
 
+  // In middleware.ts, before any other checks:
+  if (pathname.startsWith("/api/") && pathname.endsWith("/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.slice(0, -1);
+    return NextResponse.redirect(url, 307);
+  }
+
   // 1. Allow static + Next internals
   if (
     pathname.startsWith("/_next") ||
