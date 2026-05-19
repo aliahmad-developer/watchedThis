@@ -384,7 +384,7 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
           fill
           draggable={false}
           crossOrigin="anonymous"
-          className={`transition-transform duration-700 scale-100 group-hover:scale-102 object-cover ${hasBackdrop ? "object-center" : "object-top"}`}
+          className={`select-none transition-transform duration-700 scale-100 group-hover:scale-102 object-cover ${hasBackdrop ? "object-center" : "object-top"}`}
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 66vw"
         />
@@ -473,7 +473,7 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
           alt={item.title || "Media"}
           fill
           crossOrigin="anonymous"
-          className="transition-transform duration-700 group-hover:scale-105 object-cover object-center"
+          className="select-none transition-transform duration-700 group-hover:scale-105 object-cover object-center"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
         <div

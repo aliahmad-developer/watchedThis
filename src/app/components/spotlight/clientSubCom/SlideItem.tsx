@@ -45,7 +45,7 @@ const SlideItem = ({
               src={tmdbImage(item.backdrop_path, tmdbSize)!}
                 alt={item.title || item.name || "Media backdrop"}
                 fill
-                className="object-cover"
+                className="select-none object-cover"
                 sizes="100vw"
                 priority={shouldPrioritize}
               />

@@ -101,7 +101,7 @@ const DesktopContent = ({
               src={tmdbImage(item.backdrop_path, "w1280")!}
               alt={item.title || item.name || "Media backdrop"}
               fill
-              className="object-cover object-right"
+              className="select-none object-cover object-right"
               sizes="40vw"
               priority={shouldPrioritize}
             />

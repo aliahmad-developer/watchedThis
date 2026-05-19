@@ -90,13 +90,13 @@ export default function AuthButton() {
       alt="Profile"
       width={36}
       height={36}
-      className="rounded-full object-cover w-9 h-9 ring-2 ring-transparent group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
+      className="select-none rounded-full object-cover w-9 h-9 ring-2 ring-transparent group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
       onError={() => setImgError(true)}
       referrerPolicy="no-referrer"
     />
   ) : (
     <span
-      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold
+      className="select-none w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold
       bg-light-accent/15 dark:bg-dark-accent/15
       text-light-accent dark:text-dark-accent
       ring-2 ring-light-accent/30 dark:ring-dark-accent/30
