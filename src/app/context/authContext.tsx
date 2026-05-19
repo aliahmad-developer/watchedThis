@@ -20,8 +20,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const auth = await getFirebaseAuth();
 
-      if (mounted) {
-        setUser(auth.currentUser ?? null);
+      if (mounted && auth.currentUser) {
+        setUser(auth.currentUser);
       }
 
       unsub = onIdTokenChanged(auth, (u) => {
