@@ -1,5 +1,6 @@
 "use client";
-
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import { getFirebaseAuth } from "../../../firebase/firebaseConfig";
 import { useEffect, useRef } from "react";
 
 declare global {
@@ -96,15 +97,12 @@ export default function GoogleOneTap() {
 
       google.accounts.id.initialize({
         client_id: clientId,
-
         callback: handleCredentialResponse,
 
-        auto_select: true,
+        auto_select: false,
 
         cancel_on_tap_outside: true,
-
         context: "signin",
-
         use_fedcm_for_prompt: true,
       });
 
@@ -126,18 +124,32 @@ export default function GoogleOneTap() {
 
   async function handleCredentialResponse(response: CredentialResponse) {
     try {
-      await fetch("/api/auth/session", {
+      const auth = await getFirebaseAuth();
+
+      const credential = GoogleAuthProvider.credential(response.credential);
+
+      const userCred = await signInWithCredential(auth, credential);
+
+      const idToken = await userCred.user.getIdToken();
+
+      const res = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          idToken: response.credential,
-        }),
+        body: JSON.stringify({ idToken }),
       });
 
+      if (!res.ok) {
+        console.error("Session creation failed");
+        return;
+      }
+
+      await new Promise((r) => setTimeout(r, 150));
+
+      await res.json();
       window.dispatchEvent(new Event("auth-updated"));
-    } catch {
-      console.error("Login failed");
+    } catch (err) {
+      console.error("One Tap login failed", err);
     }
   }
   return null;

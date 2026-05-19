@@ -2,67 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
-// ─── validation ─────────────────────────────────────────────
 const bodySchema = z.object({
   idToken: z.string().min(1),
 });
 
-// ─── cookies ────────────────────────────────────────────────
 const COOKIE_NAME = "__session";
-const MAX_AGE = 3600;
 
-function sessionCookie(token: string) {
-  return `${COOKIE_NAME}=${token}; Path=/; Max-Age=${MAX_AGE}; HttpOnly; Secure; SameSite=Strict`;
-}
-
-function indicatorCookie() {
-  return `signed-in=1; Path=/; Max-Age=${MAX_AGE}; Secure; SameSite=Strict`;
-}
-
-function err(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
-}
-
-// ─── POST login ─────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  let body;
-
   try {
-    body = await req.json();
+    const body = await req.json();
+    const parsed = bodySchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+    }
+
+    const idToken = parsed.data.idToken;
+
+    await adminAuth.verifyIdToken(idToken);
+
+    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+      expiresIn,
+    });
+
+    const res = NextResponse.json({ ok: true });
+
+    res.cookies.set(COOKIE_NAME, sessionCookie, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // 🔥 FIX
+      sameSite: "lax",
+      path: "/",
+      maxAge: expiresIn / 1000,
+    });
+
+    return res;
   } catch {
-    return err("Invalid request body", 400);
+    return NextResponse.json(
+      { error: "Authentication failed" },
+      { status: 401 }
+    );
   }
-
-  const parsed = bodySchema.safeParse(body);
-  if (!parsed.success) return err("Invalid token", 400);
-
-  try {
-    await adminAuth.verifyIdToken(parsed.data.idToken, true);
-  } catch {
-    return err("Authentication failed", 401);
-  }
-
-  const res = NextResponse.json({ ok: true });
-
-  res.headers.set("Set-Cookie", sessionCookie(parsed.data.idToken));
-  res.headers.append("Set-Cookie", indicatorCookie());
-
-  return res;
 }
-
-// ─── DELETE logout ──────────────────────────────────────────
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
 
-  res.headers.set(
-    "Set-Cookie",
-    `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`,
-  );
-
-  res.headers.append(
-    "Set-Cookie",
-    `signed-in=; Path=/; Max-Age=0; Secure; SameSite=Strict`,
-  );
+  res.cookies.set(COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 
   return res;
 }

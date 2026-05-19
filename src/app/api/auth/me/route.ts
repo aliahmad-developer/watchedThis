@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
 export async function GET(req: NextRequest) {
-  const token = req.cookies.get("__session")?.value;
+  const sessionCookie = req.cookies.get("__session")?.value;
 
-  if (!token) {
+  if (!sessionCookie) {
     return NextResponse.json({ error: "No session" }, { status: 401 });
   }
 
   try {
-    const decoded = await adminAuth.verifyIdToken(token);
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
 
     return NextResponse.json({
       uid: decoded.uid,
