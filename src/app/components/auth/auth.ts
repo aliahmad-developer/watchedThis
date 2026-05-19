@@ -21,6 +21,7 @@ async function setSessionCookie(user: User): Promise<void> {
   const res = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ idToken: token }),
   });
   if (!res.ok) throw new Error("Failed to create server session.");
@@ -151,15 +152,20 @@ export const logout = async () => {
   try {
     const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
     const auth = await getFirebaseAuth();
-
-    await clearSessionCookie();
     await signOut(auth);
 
+    await fetch("/api/auth/session", {
+      method: "DELETE",
+      credentials: "include",
+    });
     notifyAuthChange();
 
     return { success: true, message: "Logged out successfully!" };
   } catch {
-    return { success: false, message: "Logout failed. Please try again." };
+    return {
+      success: false,
+      message: "Logout failed. Please try again.",
+    };
   }
 };
 
