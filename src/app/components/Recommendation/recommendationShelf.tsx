@@ -552,17 +552,13 @@ export default function RecommendationShelf({
   |--------------------------------------------------------------------------
   */
 
-  if (isLoggedIn === null) {
-    return <ShelfSkeleton />;
-  }
+  if (isLoggedIn === null) return <ShelfSkeleton />; // auth loading
 
-  if (!isLoggedIn) {
-    return <GuestCTA />;
-  }
+  if (!isLoggedIn) return <GuestCTA />; // not logged in
 
-  if (!isLoading && error) return null;
+  if (isLoading) return <ShelfSkeleton />; // recs loading
 
-  if (!isLoading && recommendations.length === 0) return <ShelfSkeleton />;
+  if (error || recommendations.length === 0) return null; // failed or empty — not skeleton
 
   /*
   |--------------------------------------------------------------------------
@@ -650,25 +646,15 @@ export default function RecommendationShelf({
         <div
           ref={scrollRef}
           onScroll={onScroll}
-          className="
-            no-scrollbar
-            flex gap-4
-            overflow-x-auto
-            pb-2
-            scroll-smooth
-          "
+          className="no-scrollbar flex gap-4 overflow-x-auto pb-2 scroll-smooth"
         >
-          {isLoading
-            ? Array.from({
-                length: 8,
-              }).map((_, i) => <SkeletonCard key={i} />)
-            : recommendations.map((item) => (
-                <ScoredCard
-                  key={`${item.id}-${item.media_type}`}
-                  item={item}
-                  onCardClick={onCardClick}
-                />
-              ))}
+          {recommendations.map((item) => (
+            <ScoredCard
+              key={`${item.id}-${item.media_type}`}
+              item={item}
+              onCardClick={onCardClick}
+            />
+          ))}
         </div>
 
         {/* LEFT FADE */}

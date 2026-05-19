@@ -185,8 +185,10 @@ export function useRecommendations(
   const [tick, setTick] = useState(0);
 
   const abortRef = useRef(false);
+  const loadingTimeoutRef = useRef<number | null>(null);
 
   const excludeIdsKey = useMemo(() => excludeIds.join(","), [excludeIds]);
+
 
   const refresh = useCallback(() => {
     setTick((t) => t + 1);
@@ -230,11 +232,14 @@ export function useRecommendations(
     setError(null);
 
     // Production safety: never get stuck in loading forever.
-    const loadingTimeout = window.setTimeout(() => {
+    loadingTimeoutRef.current = window.setTimeout(() => {
+
       if (abortRef.current) return;
       console.warn("[recs] loading timeout reached; forcing stop");
       setIsLoading(false);
     }, 12000);
+
+
 
     (async () => {
       try {
@@ -322,6 +327,7 @@ export function useRecommendations(
         const topGenreIds = topGenreNames
           .map((n) => nameToId[n])
           .filter(Boolean) as number[];
+
 
         const candidates = await fetchCandidates(topGenreIds);
         console.log(
@@ -423,7 +429,11 @@ export function useRecommendations(
 
     return () => {
       abortRef.current = true;
+      if (loadingTimeoutRef.current) {
+        window.clearTimeout(loadingTimeoutRef.current);
+      }
     };
+
   }, [
     tick,
     uid,

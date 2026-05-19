@@ -105,11 +105,11 @@ export default function middleware(req: NextRequest) {
 
     // Only validate origin if it's provided and NEXT_PUBLIC_APP_URL is set
     if (origin && appUrl) {
-      // Normalize URLs for comparison (remove trailing slash)
-      const normalizedOrigin = origin.replace(/\/$/, "");
-      const normalizedAppUrl = appUrl.replace(/\/$/, "");
+      const normalizedOrigin = new URL(origin).hostname;
+      const normalizedApp = new URL(appUrl).hostname.replace(/^www\./, "");
+      const normalizedOriginBase = normalizedOrigin.replace(/^www\./, "");
 
-      if (normalizedOrigin !== normalizedAppUrl) {
+      if (normalizedOriginBase !== normalizedApp) {
         return new NextResponse("Forbidden", { status: 403 });
       }
     }
