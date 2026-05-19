@@ -3,10 +3,3 @@ runConfig:
   memoryMiB: 1024
   timeoutSeconds: 60
   concurrency: 80
-
-# Add this:
-headers:
-  - glob: "/api/**"
-    headers:
-      - key: "Cache-Control"
-        value: "no-store"

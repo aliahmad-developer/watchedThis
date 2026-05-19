@@ -24,144 +24,270 @@ const ALLOWED_CONTENT_TYPES = new Set([
   "image/svg+xml",
 ]);
 
-// ─── Rate limiting ─────────────────────────────────────────────────────────────
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS =
+  process.env.NODE_ENV === "production"
+    ? ["https://watchedthis.com"]
+    : ["https://watchedthis.com", "http://localhost:3000"];
+
+function getCorsOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+
+  if (!origin) {
+    return ALLOWED_ORIGINS[0];
+  }
+
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+const rateLimitMap = new Map<
+  string,
+  {
+    count: number;
+    resetAt: number;
+  }
+>();
+
 const RATE_LIMIT = 500;
 const RATE_WINDOW_MS = 60_000;
 const CLEANUP_INTERVAL_MS = 5 * 60_000;
 
 function pruneRateLimitMap() {
   const now = Date.now();
-  for (const [ip, entry] of rateLimitMap) {
-    if (now > entry.resetAt) rateLimitMap.delete(ip);
+
+  for (const [ip, entry] of rateLimitMap.entries()) {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(ip);
+    }
   }
 }
-setInterval(pruneRateLimitMap, CLEANUP_INTERVAL_MS);
+
+if (typeof globalThis !== "undefined") {
+  const key = "__image_proxy_cleanup__";
+
+  if (!(globalThis as Record<string, unknown>)[key]) {
+    setInterval(pruneRateLimitMap, CLEANUP_INTERVAL_MS);
+    (globalThis as Record<string, unknown>)[key] = true;
+  }
+}
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
+
   const entry = rateLimitMap.get(ip);
+
   if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    rateLimitMap.set(ip, {
+      count: 1,
+      resetAt: now + RATE_WINDOW_MS,
+    });
+
     return false;
   }
-  if (entry.count >= RATE_LIMIT) return true;
+
+  if (entry.count >= RATE_LIMIT) {
+    return true;
+  }
+
   entry.count++;
+
   return false;
 }
 
-// ─── Handler ──────────────────────────────────────────────────────────────────
+// ─── OPTIONS (CORS preflight) ────────────────────────────────────────────────
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": getCorsOrigin(request),
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
+      Vary: "Origin",
+    },
+  });
+}
+
+// ─── Handler ─────────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown";
 
   if (isRateLimited(ip)) {
-    return new NextResponse("Too many requests", { status: 429 });
+    return new NextResponse("Too many requests", {
+      status: 429,
+      headers: {
+        "Access-Control-Allow-Origin": getCorsOrigin(request),
+      },
+    });
   }
 
   const { searchParams } = request.nextUrl;
+
   const raw = searchParams.get("url");
 
   if (!raw) {
-    return new NextResponse("Missing url param", { status: 400 });
+    return new NextResponse("Missing url param", {
+      status: 400,
+      headers: {
+        "Access-Control-Allow-Origin": getCorsOrigin(request),
+      },
+    });
   }
 
   let parsed: URL;
+
   try {
     parsed = new URL(raw);
   } catch {
-    return new NextResponse("Invalid url", { status: 400 });
-  }
-
-  if (parsed.hostname !== ALLOWED_HOSTNAME) {
-    return new NextResponse("Forbidden", { status: 403 });
+    return new NextResponse("Invalid url", {
+      status: 400,
+      headers: {
+        "Access-Control-Allow-Origin": getCorsOrigin(request),
+      },
+    });
   }
 
   if (parsed.protocol !== "https:") {
-    return new NextResponse("Forbidden", { status: 403 });
+    return new NextResponse("Forbidden", {
+      status: 403,
+    });
+  }
+
+  if (parsed.hostname !== ALLOWED_HOSTNAME) {
+    return new NextResponse("Forbidden", {
+      status: 403,
+    });
   }
 
   if (!parsed.pathname.startsWith(ALLOWED_PATH_PREFIX)) {
-    return new NextResponse("Forbidden", { status: 403 });
+    return new NextResponse("Forbidden", {
+      status: 403,
+    });
   }
 
   if (parsed.pathname.includes("..") || parsed.pathname.includes("//")) {
-    return new NextResponse("Forbidden", { status: 403 });
+    return new NextResponse("Forbidden", {
+      status: 403,
+    });
   }
 
   const afterPrefix = parsed.pathname.slice(ALLOWED_PATH_PREFIX.length);
+
   const size = afterPrefix.split("/")[0];
+
   if (!ALLOWED_SIZES.has(size)) {
-    return new NextResponse("Forbidden", { status: 403 });
+    return new NextResponse("Forbidden", {
+      status: 403,
+    });
   }
 
   const cleanUrl = `https://${ALLOWED_HOSTNAME}${parsed.pathname}`;
 
   try {
     const upstream = await fetch(cleanUrl, {
+      signal: AbortSignal.timeout(8000),
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; WatchedThis-Proxy/1.0)",
       },
-      credentials: "omit",
-      referrerPolicy: "no-referrer",
-      signal: AbortSignal.timeout(8000),
     });
 
     if (!upstream.ok) {
-      return new NextResponse("Upstream error", { status: upstream.status });
+      return new NextResponse("Upstream error", {
+        status: upstream.status,
+        headers: {
+          "Access-Control-Allow-Origin": getCorsOrigin(request),
+        },
+      });
     }
 
     const contentType = upstream.headers.get("content-type") ?? "";
-    const baseType = contentType.split(";")[0].trim();
+
+    const baseType = contentType.split(";")[0].trim().toLowerCase();
 
     if (!ALLOWED_CONTENT_TYPES.has(baseType)) {
-      return new NextResponse("Unexpected content type", { status: 502 });
+      return new NextResponse("Unexpected content type", {
+        status: 502,
+        headers: {
+          "Access-Control-Allow-Origin": getCorsOrigin(request),
+        },
+      });
     }
 
     const buffer = await upstream.arrayBuffer();
 
     if (buffer.byteLength > 5 * 1024 * 1024) {
-      return new NextResponse("Image too large", { status: 502 });
+      return new NextResponse("Image too large", {
+        status: 502,
+        headers: {
+          "Access-Control-Allow-Origin": getCorsOrigin(request),
+        },
+      });
     }
 
-    // ─── WebP conversion ──────────────────────────────────────────────────────
-    const acceptsWebP = request.headers.get("accept")?.includes("image/webp");
+    const acceptsWebP =
+      request.headers.get("accept")?.includes("image/webp") ?? false;
+
     const isSVG = baseType === "image/svg+xml";
 
     let responseBuffer: ArrayBuffer;
-    let responseContentType: string;
+    let responseType: string;
 
     if (acceptsWebP && !isSVG) {
-      const webpBuffer = await sharp(Buffer.from(buffer))
-        .webp({ quality: 82 }) // ~30–50% smaller than JPEG at same visual quality
+      const converted = await sharp(Buffer.from(buffer))
+        .webp({
+          quality: 82,
+          effort: 4,
+        })
         .toBuffer();
 
-      responseBuffer = webpBuffer.buffer.slice(
-        webpBuffer.byteOffset,
-        webpBuffer.byteOffset + webpBuffer.byteLength,
+      responseBuffer = converted.buffer.slice(
+        converted.byteOffset,
+        converted.byteOffset + converted.byteLength,
       ) as ArrayBuffer;
-      responseContentType = "image/webp";
+
+      responseType = "image/webp";
     } else {
       responseBuffer = buffer;
-      responseContentType = baseType;
+      responseType = baseType;
     }
-    // ─────────────────────────────────────────────────────────────────────────
 
     return new NextResponse(responseBuffer, {
       status: 200,
       headers: {
-        "Content-Type": responseContentType,
+        "Content-Type": responseType,
+
         "Cache-Control": "public, max-age=31536000, immutable",
+
         "X-Content-Type-Options": "nosniff",
-        "Access-Control-Allow-Origin": "https://watchedthis.com",
-        // Accept added so CDN caches WebP and JPEG as separate entries
+
+        "Access-Control-Allow-Origin": getCorsOrigin(request),
+
         Vary: "Origin, Accept",
       },
     });
-  } catch (err) {
-    if (err instanceof Error && err.name === "TimeoutError") {
-      return new NextResponse("Upstream timed out", { status: 504 });
+  } catch (error) {
+    const message = error instanceof Error ? error.name : "";
+
+    if (message === "TimeoutError" || message === "AbortError") {
+      return new NextResponse("Upstream timed out", {
+        status: 504,
+        headers: {
+          "Access-Control-Allow-Origin": getCorsOrigin(request),
+        },
+      });
     }
-    return new NextResponse("Failed to fetch image", { status: 502 });
+
+    return new NextResponse("Failed to fetch image", {
+      status: 502,
+      headers: {
+        "Access-Control-Allow-Origin": getCorsOrigin(request),
+      },
+    });
   }
 }

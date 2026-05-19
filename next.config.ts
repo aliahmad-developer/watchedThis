@@ -52,38 +52,50 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  images: {
-    formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60 * 60 * 24 * 31,
-    deviceSizes: [640, 750, 828, 1080, 1200],
-    imageSizes: [64, 128, 256, 500],
-    qualities: [55, 75],
-    remotePatterns: [
-      { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
-      { protocol: "https", hostname: "fyp-movie-4d46d.firebasestorage.app" },
-      ...(process.env.NODE_ENV === "development"
-        ? [
-            {
-              protocol: "https" as const,
-              hostname: "image.tmdb.org",
-              pathname: "/**",
-            },
-          ]
-        : []),
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "3000",
-        pathname: "/api/image-proxy/**",
-      },
-      {
-        protocol: "https",
-        hostname: "watchedthis.com",
-        pathname: "/api/image-proxy/**",
-      },
-    ],
-  },
+ images: {
+  dangerouslyAllowLocalIP: true,
+
+  formats: ["image/avif", "image/webp"],
+  minimumCacheTTL: 60 * 60 * 24 * 31,
+
+  deviceSizes: [640, 750, 828, 1080, 1200],
+  imageSizes: [64, 128, 256, 500],
+
+  qualities: [55, 75],
+
+  remotePatterns: [
+    { protocol: "https", hostname: "lh3.googleusercontent.com" },
+
+    {
+      protocol: "https",
+      hostname: "firebasestorage.googleapis.com",
+    },
+
+    {
+      protocol: "https",
+      hostname: "fyp-movie-4d46d.firebasestorage.app",
+    },
+
+    {
+      protocol: "https",
+      hostname: "image.tmdb.org",
+      pathname: "/**",
+    },
+
+    {
+      protocol: "http",
+      hostname: "localhost",
+      port: "3000",
+      pathname: "/api/image-proxy/**",
+    },
+
+    {
+      protocol: "https",
+      hostname: "watchedthis.com",
+      pathname: "/api/image-proxy/**",
+    },
+  ],
+},
 
   experimental: {
     optimizePackageImports: [
@@ -95,14 +107,6 @@ const nextConfig: NextConfig = {
       "@heroicons/react",
     ],
   },
-
-  compiler: {
-    removeConsole:
-      process.env.NODE_ENV === "production"
-        ? { exclude: ["error", "warn"] }
-        : false,
-  },
-
   // Single redirects function — merged both into one array
   async redirects() {
     return [
