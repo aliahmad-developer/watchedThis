@@ -46,11 +46,6 @@ interface MediaCardProps {
 }
 
 function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
-  /*
-  |--------------------------------------------------------------------------
-  | MEMOIZED VALUES
-  |--------------------------------------------------------------------------
-  */
 
   const title = useMemo(
     () => item.title || item.name || "Untitled",
@@ -86,21 +81,10 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
     return `${Math.min(index * 40, 300)}ms`;
   }, [index]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | STATE
-  |--------------------------------------------------------------------------
-  */
 
   const [showTrailer, setShowTrailer] = useState(false);
 
   const particleContainerRef = useRef<HTMLDivElement>(null);
-
-  /*
-  |--------------------------------------------------------------------------
-  | USER LIST
-  |--------------------------------------------------------------------------
-  */
 
   const { currentStatus, saveToList, loading, isAuthenticated } = useUserList({
     mediaId: item.id,
@@ -110,12 +94,6 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
   });
 
   const isFavourited = currentStatus === "favourite";
-
-  /*
-  |--------------------------------------------------------------------------
-  | DERIVED FLAGS
-  |--------------------------------------------------------------------------
-  */
 
   const hasOverview = Boolean(item.overview?.trim());
 
@@ -128,12 +106,6 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
   }, [mediaType, item.number_of_seasons, item.number_of_episodes, duration]);
 
   const hasHoverContent = hasOverview || hasRating || hasMeta;
-
-  /*
-  |--------------------------------------------------------------------------
-  | PARTICLES
-  |--------------------------------------------------------------------------
-  */
 
   const spawnParticles = useCallback((emoji: string, count = 2) => {
     const container = particleContainerRef.current;

@@ -30,7 +30,8 @@ async function tmdbGet<T>(
     if (!res.ok) return null;
 
     return res.json() as Promise<T>;
-  } catch {
+  } catch (e) {
+    console.error("[tmdb] fetch failed:", path, e);
     return null;
   }
 }
@@ -134,7 +135,11 @@ interface ListDoc {
 
 async function fetchUserList(uid: string): Promise<ListDoc[]> {
   const { getDocs, collection } = await import("firebase/firestore");
-
+  const [listDocs, behaviour] = await Promise.all([
+    fetchUserList(uid),
+    loadBehaviour(uid),
+  ]);
+  console.log("[recs] listDocs:", listDocs.length, "uid:", uid);
   const firebase = await import("../../firebase/firebaseConfig");
 
   const db = firebase.getFirebaseDB();
@@ -320,6 +325,12 @@ export function useRecommendations(
           .filter(Boolean) as number[];
 
         const candidates = await fetchCandidates(topGenreIds);
+        console.log(
+          "[recs] candidates:",
+          candidates.length,
+          "topGenreIds:",
+          topGenreIds,
+        );
 
         if (abortRef.current) return;
 
@@ -362,10 +373,12 @@ export function useRecommendations(
                 tasteProfile: tasteProfileData,
               }),
             );
-          } catch {}
+          } catch (e) {
+            console.error("[recs] fetchUserList failed:", e);
+            return [];
+          }
         }
-        
-
+        console.log("[recs] final recs:", recs.length);
         try {
           localStorage.setItem(
             cacheKey,

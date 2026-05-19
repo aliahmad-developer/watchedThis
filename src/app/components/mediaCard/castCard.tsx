@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { tmdbImage } from "@/lib/imageTmdb";
+import { Film } from "lucide-react";
 
 export default function CastCard({
   actor,
@@ -31,8 +32,9 @@ export default function CastCard({
           .join(", ");
 
   const delay = `${Math.min(index * 40, 320)}ms`;
-
   const href = `/person/${slug}/${actor.id}`;
+
+  const badgeText = mediaType === "tv" ? "TV Cast" : "Movie Cast";
 
   return (
     <Link
@@ -41,7 +43,7 @@ export default function CastCard({
       style={{ animationDelay: delay }}
       role="listitem"
     >
-      {/* IMAGE / PLACEHOLDER */}
+      {/* IMAGE WRAPPER */}
       <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-light-border dark:bg-dark-border">
         {actor.profile_path ? (
           <>
@@ -54,7 +56,6 @@ export default function CastCard({
                 sizes="(max-width: 640px) 112px, 128px"
               />
 
-              {/* Hover overlay */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-300 pointer-events-none" />
             </div>
 
@@ -63,8 +64,16 @@ export default function CastCard({
             )}
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs text-center px-2 text-light-body-text dark:text-dark-body-text">
-            No Image
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center">
+            <Film className="w-5 h-5 text-light-disabled dark:text-dark-disabled" />
+
+            <span className="text-xs font-medium leading-snug line-clamp-2 text-light-secondary-text dark:text-dark-secondary-text">
+              {actorName}
+            </span>
+
+            <span className="text-[10px] uppercase tracking-widest text-light-disabled dark:text-dark-disabled">
+              {badgeText}
+            </span>
           </div>
         )}
       </div>
