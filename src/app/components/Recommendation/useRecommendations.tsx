@@ -135,24 +135,16 @@ interface ListDoc {
 
 async function fetchUserList(uid: string): Promise<ListDoc[]> {
   const { getDocs, collection } = await import("firebase/firestore");
-  const [listDocs, behaviour] = await Promise.all([
-    fetchUserList(uid),
-    loadBehaviour(uid),
-  ]);
-  console.log("[recs] listDocs:", listDocs.length, "uid:", uid);
   const firebase = await import("../../firebase/firebaseConfig");
-
   const db = firebase.getFirebaseDB();
 
   try {
     const snap = await getDocs(collection(db, "users", uid, "lists"));
-
     return snap.docs.map((d) => d.data() as ListDoc);
   } catch {
     return [];
   }
 }
-
 interface UseRecommendationsOptions {
   limit?: number;
   excludeWatched?: boolean;
@@ -409,11 +401,14 @@ export function useRecommendations(
             );
           });
         }
-      } catch {
+      } catch (err) {
+        console.error("[recs] error:", err); // ← add so you can see what's throwing
         if (!abortRef.current) {
           setError("Could not load recommendations.");
-
-          setIsLoading(false);
+        }
+      } finally {
+        if (!abortRef.current) {
+          setIsLoading(false); 
         }
       }
     })();
