@@ -6,13 +6,16 @@ const CACHE_KEY = "trending:all:week";
 
 export async function GET() {
   const cached = cache.get<{ results: unknown[] }>(CACHE_KEY, TTL.MEDIUM);
-  if (cached) {
-    return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } });
+
+  if (cached?.results && Array.isArray(cached.results)) {
+    return NextResponse.json(cached, {
+      headers: { "X-Cache": "HIT" },
+    });
   }
 
   try {
     if (!API_KEY) {
-      throw new Error("TMDB_API_KEY is not configured");
+      throw new Error("TMDB_ACCESS_TOKEN is not configured");
     }
 
     // API key passed as Bearer token — keeps it out of server logs and proxy URLs
@@ -28,8 +31,9 @@ export async function GET() {
     }
 
     const data = await res.json();
-    const result = { results: data.results.slice(0, 10) };
-
+    const result = {
+      results: Array.isArray(data?.results) ? data.results.slice(0, 10) : [],
+    };
     cache.set(CACHE_KEY, result);
 
     return NextResponse.json(result, { headers: { "X-Cache": "MISS" } });

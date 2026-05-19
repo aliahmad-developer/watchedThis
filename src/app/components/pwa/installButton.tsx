@@ -6,9 +6,7 @@ import { faMobileScreenButton } from "@fortawesome/free-solid-svg-icons";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
-  userChoice: Promise<{
-    outcome: "accepted" | "dismissed";
-  }>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 export default function InstallButton() {
@@ -21,46 +19,47 @@ export default function InstallButton() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Already installed
-    if (
+    // Already installed check
+    const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone
-    ) {
+      (window.navigator as any).standalone;
+
+    if (isStandalone) {
       setIsInstalled(true);
       return;
     }
 
-    const beforeInstallPromptHandler = (event: Event) => {
+    // Avoid repeated prompts in same session
+    const dismissed = sessionStorage.getItem("pwa-install-dismissed");
+
+    const handleBeforeInstall = (event: Event) => {
       event.preventDefault();
 
       deferredPrompt.current = event as BeforeInstallPromptEvent;
 
-      setIsAvailable(true);
+      if (!dismissed) {
+        setIsAvailable(true);
+      }
     };
 
-    const appInstalledHandler = () => {
+    const handleInstalled = () => {
       setIsInstalled(true);
       setIsAvailable(false);
       deferredPrompt.current = null;
+      sessionStorage.removeItem("pwa-install-dismissed");
     };
 
-    window.addEventListener("beforeinstallprompt", beforeInstallPromptHandler);
-
-    window.addEventListener("appinstalled", appInstalledHandler);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    window.addEventListener("appinstalled", handleInstalled);
 
     return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        beforeInstallPromptHandler,
-      );
-
-      window.removeEventListener("appinstalled", appInstalledHandler);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.removeEventListener("appinstalled", handleInstalled);
     };
   }, []);
 
   const handleInstall = async () => {
     const promptEvent = deferredPrompt.current;
-
     if (!promptEvent) return;
 
     setIsInstalling(true);
@@ -68,16 +67,18 @@ export default function InstallButton() {
     try {
       await promptEvent.prompt();
 
-      const choiceResult = await promptEvent.userChoice;
+      const choice = await promptEvent.userChoice;
 
-      if (choiceResult.outcome === "accepted") {
+      if (choice.outcome === "accepted") {
         setIsInstalled(true);
+      } else {
+        sessionStorage.setItem("pwa-install-dismissed", "true");
       }
 
       deferredPrompt.current = null;
       setIsAvailable(false);
-    } catch (error) {
-      console.error("Install prompt failed:", error);
+    } catch (err) {
+      console.error("Install failed:", err);
     } finally {
       setIsInstalling(false);
     }
@@ -90,7 +91,7 @@ export default function InstallButton() {
       type="button"
       onClick={handleInstall}
       disabled={isInstalling}
-      aria-label="Install WatchedThis app"
+      aria-label="Install app"
       className="
         group flex items-center gap-2
         px-3 py-1.5 rounded-md
@@ -105,7 +106,7 @@ export default function InstallButton() {
       {isInstalling ? (
         <>
           <svg
-            className="animate-spin shrink-0"
+            className="animate-spin"
             width="14"
             height="14"
             viewBox="0 0 24 24"
@@ -122,11 +123,7 @@ export default function InstallButton() {
         <>
           <FontAwesomeIcon
             icon={faMobileScreenButton}
-            className="
-              text-sm
-              group-hover:-translate-y-px
-              transition-transform duration-200
-            "
+            className="text-sm transition-transform group-hover:-translate-y-px"
           />
           Install App
         </>
