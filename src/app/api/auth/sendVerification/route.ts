@@ -7,10 +7,8 @@ import { Resend } from "resend";
 import * as crypto from "crypto";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
 const HMAC_SECRET = process.env.RANDOM_HMAC_SECRET!;
 
-// Derive a 32-byte AES key from the HMAC secret (one env var, two uses)
 function deriveKey(): Buffer {
   return crypto.scryptSync(HMAC_SECRET, "pendingSignup", 32);
 }
@@ -29,46 +27,85 @@ function encrypt(text: string): string {
   return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
 }
 
+// ─── Input validation ─────────────────────────────────────────────────────────
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateEmail(v: unknown): string | null {
+  if (typeof v !== "string" || !v.trim()) return "Email is required.";
+  if (!EMAIL_RE.test(v.trim())) return "Please enter a valid email address.";
+  if (v.length > 254) return "Email address is too long.";
+  return null;
+}
+
+function validateUsername(v: unknown): string | null {
+  if (typeof v !== "string" || !v.trim()) return "Username is required.";
+  const u = v.trim();
+  if (u.length < 3) return "Username must be at least 3 characters.";
+  if (u.length > 30) return "Username must be 30 characters or fewer.";
+  if (!/^[a-zA-Z0-9_-]+$/.test(u))
+    return "Username may only contain letters, numbers, underscores, and hyphens.";
+  return null;
+}
+
+function validatePassword(v: unknown): string | null {
+  if (typeof v !== "string" || !v) return "Password is required.";
+  if (v.length < 8) return "Password must be at least 8 characters.";
+  if (v.length > 128) return "Password is too long.";
+  if (!/[0-9]/.test(v)) return "Password must include a number.";
+  if (!/[^a-zA-Z0-9]/.test(v))
+    return "Password must include a special character.";
+  return null;
+}
+
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 export async function POST(req: NextRequest) {
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
     return NextResponse.json(
-      { error: "Email service not configured" },
+      { error: "Email service not configured." },
       { status: 503 },
     );
   }
   if (!HMAC_SECRET) {
     return NextResponse.json(
-      { error: "Server misconfigured" },
+      { error: "Server misconfigured." },
       { status: 503 },
     );
   }
 
-  let email: string, password: string, username: string;
+  let body: unknown;
   try {
-    const body = await req.json();
-    ({ email, password, username } = body ?? {});
+    body = await req.json();
   } catch {
     return NextResponse.json(
-      { error: "Invalid request body" },
+      { error: "Invalid request body." },
       { status: 400 },
     );
   }
 
-  if (!email || !password || !username) {
-    return NextResponse.json(
-      { error: "email, password, and username are required" },
-      { status: 400 },
-    );
-  }
+  const { email, password, username } = (body ?? {}) as Record<string, unknown>;
+
+  // Validate all fields before touching Firebase
+  const emailErr = validateEmail(email);
+  if (emailErr) return NextResponse.json({ error: emailErr }, { status: 400 });
+
+  const usernameErr = validateUsername(username);
+  if (usernameErr)
+    return NextResponse.json({ error: usernameErr }, { status: 400 });
+
+  const passwordErr = validatePassword(password);
+  if (passwordErr)
+    return NextResponse.json({ error: passwordErr }, { status: 400 });
+
+  const cleanEmail = (email as string).trim().toLowerCase();
+  const cleanUsername = (username as string).trim();
 
   try {
     const auth = getAuth(adminApp);
     const db = getFirestore(adminApp);
 
     try {
-      await auth.getUserByEmail(email);
+      await auth.getUserByEmail(cleanEmail);
       return NextResponse.json(
         { error: "An account with this email already exists." },
         { status: 409 },
@@ -77,7 +114,6 @@ export async function POST(req: NextRequest) {
       if (e.code !== "auth/user-not-found") throw e;
     }
 
-    // id goes in Firestore; sig goes in the URL — neither alone is valid
     const id = crypto.randomBytes(32).toString("hex");
     const sig = signToken(id);
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
@@ -86,9 +122,9 @@ export async function POST(req: NextRequest) {
       .collection("pendingSignups")
       .doc(id)
       .set({
-        email,
-        username,
-        passwordEncrypted: encrypt(password),
+        email: cleanEmail,
+        username: cleanUsername,
+        passwordEncrypted: encrypt(password as string),
         expiresAt,
         createdAt: Date.now(),
       });
@@ -97,14 +133,13 @@ export async function POST(req: NextRequest) {
 
     await resend.emails.send({
       from: process.env.EMAIL_FROM!,
-      to: email,
+      to: cleanEmail,
       subject: "Verify your email address",
       html: getEmailVerificationTemplate(confirmUrl),
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[send-verification]", error?.code, error?.message);
+  } catch {    
     return NextResponse.json(
       { error: "Failed to send verification email." },
       { status: 500 },

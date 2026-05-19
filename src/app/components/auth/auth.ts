@@ -16,20 +16,19 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
-// ─── Session cookie helpers ────────────────────────────────────────────────
-const SESSION_COOKIE = "firebase-auth-token";
 
-async function setSessionCookie(user: User) {
-  try {
-    const token = await user.getIdToken();
-    document.cookie = `${SESSION_COOKIE}=${token}; path=/; SameSite=Strict; Secure; max-age=3600`;
-  } catch {
-    // non-critical
-  }
+async function setSessionCookie(user: User): Promise<void> {
+  const token = await user.getIdToken();
+  const res = await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken: token }),
+  });
+  if (!res.ok) throw new Error("Failed to create server session.");
 }
 
-function clearSessionCookie() {
-  document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Strict; Secure`;
+async function clearSessionCookie(): Promise<void> {
+  await fetch("/api/auth/session", { method: "DELETE" });
 }
 
 // ─── Friendly error messages ───────────────────────────────────────────────
@@ -74,6 +73,7 @@ const friendlyAuthError = (
   }
 };
 
+// ─── Sign up ───────────────────────────────────────────────────────────────
 export async function signup(
   email: string,
   password: string,
@@ -100,11 +100,10 @@ export async function signup(
     return {
       success: true,
       message: `Verification email sent to ${email}. Please check your inbox.`,
-      // No user object — account doesn't exist yet
       user: null,
       username,
     };
-  } catch (error: any) {
+  } catch {
     return { success: false, message: "Sign up failed. Please try again." };
   }
 }
@@ -133,8 +132,13 @@ export const login = async (email: string, password: string) => {
 
     return { success: true, message: "Login successful!" };
   } catch (error: any) {
-    const { message, noAccount } = friendlyAuthError(error.code);
-    return { success: false, message, noAccount };
+    // setSessionCookie throws a generic Error (not a Firebase error),
+    // so check for Firebase error code first.
+    if (error.code) {
+      const { message, noAccount } = friendlyAuthError(error.code);
+      return { success: false, message, noAccount };
+    }
+    return { success: false, message: "Login failed. Please try again." };
   }
 };
 
@@ -144,12 +148,13 @@ export const logout = async () => {
     const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
     const auth = await getFirebaseAuth();
 
-    clearSessionCookie();
+    // Clear server-side cookie first, then revoke Firebase session.
+    await clearSessionCookie();
     await signOut(auth);
 
     return { success: true, message: "Logged out successfully!" };
-  } catch (error: any) {
-    return { success: false, message: error.message };
+  } catch {
+    return { success: false, message: "Logout failed. Please try again." };
   }
 };
 
@@ -164,8 +169,16 @@ async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
 
     return { success: true, redirect: false, user: result.user };
   } catch (error: any) {
-    const { message } = friendlyAuthError(error.code);
-    return { success: false, redirect: false, user: null, message };
+    if (error.code) {
+      const { message } = friendlyAuthError(error.code);
+      return { success: false, redirect: false, user: null, message };
+    }
+    return {
+      success: false,
+      redirect: false,
+      user: null,
+      message: "Sign-in failed. Please try again.",
+    };
   }
 }
 
@@ -195,6 +208,9 @@ export async function forgotPassword(email: string) {
 
     return { success: true, message: "Password reset email sent!" };
   } catch (error: any) {
-    return { success: false, message: error.message };
+    return {
+      success: false,
+      message: "Failed to send reset email. Please try again.",
+    };
   }
 }

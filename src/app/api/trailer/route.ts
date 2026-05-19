@@ -1,20 +1,56 @@
-// src/app/api/trailer/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
+import { tmdbFetch } from "@/lib/tmdbRequest";
 
-const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-
-const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
+const TRAILER_CACHE_HEADER = "s-maxage=86400, stale-while-revalidate";
+
+interface TMDBVideo {
+  key: string;
+  site: string;
+  type: string;
+  official: boolean;
+  published_at: string;
+}
+
+interface TMDBVideosResponse {
+  results?: TMDBVideo[];
+}
+
+interface YouTubeItem {
+  id: { videoId: string };
+  snippet: { title: string };
+}
+
+interface YouTubeSearchResponse {
+  items?: YouTubeItem[];
+}
+
+// Key in header, never in the URL — keeps it out of server logs and proxy traces
+async function youtubeSearch(
+  query: string,
+): Promise<YouTubeSearchResponse | null> {
+  if (!YOUTUBE_API_KEY) return null;
+  try {
+    const url =
+      `${YOUTUBE_SEARCH_URL}?part=snippet&type=video&maxResults=5` +
+      `&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: { "X-Goog-Api-Key": YOUTUBE_API_KEY },
+    });
+    if (!res.ok) return null;
+    return res.json() as Promise<YouTubeSearchResponse>;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-
-  const mediaId = url.searchParams.get("mediaId");
-  const mediaType = url.searchParams.get("mediaType");
-  const title = url.searchParams.get("title");
-  const year = url.searchParams.get("year");
+  const { searchParams } = new URL(req.url);
+  const mediaId = searchParams.get("mediaId");
+  const mediaType = searchParams.get("mediaType");
+  const title = searchParams.get("title");
+  const year = searchParams.get("year");
 
   if (!mediaId || !mediaType) {
     return NextResponse.json(
@@ -23,117 +59,67 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (!TMDB_API_KEY) {
-    return NextResponse.json(
-      { error: "TMDB API key is missing" },
-      { status: 500 },
-    );
-  }
-
   try {
-    // =========================
-    // 1. TMDB FETCH (IMPORTANT FIX)
-    // =========================
-    const tmdbUrl = `${TMDB_BASE_URL}/${mediaType}/${mediaId}/videos?api_key=${TMDB_API_KEY}`;
+    // ── 1. TMDB videos ────────────────────────────────────────────────────────
+    const tmdbData = await tmdbFetch<TMDBVideosResponse>(
+      `/${mediaType}/${mediaId}/videos`,
+    );
 
-    const tmdbRes = await fetch(tmdbUrl);
-    const tmdbData = await tmdbRes.json();
-
-    const videos = tmdbData.results || [];
-
-    // ✅ DO NOT over-filter like before
-    const youtubeVideos = videos.filter(
-      (v: any) => v.site === "YouTube" && v.key,
+    const youtubeVideos = (tmdbData.results ?? []).filter(
+      (v) => v.site === "YouTube" && v.key,
     );
 
     if (youtubeVideos.length > 0) {
-      const scored = youtubeVideos
-        .map((v: any) => {
+      const best = youtubeVideos
+        .map((v) => {
           let score = 0;
-
-          // prioritize official content
           if (v.official) score += 3;
-
-          // type importance (match TMDB behavior)
           if (v.type === "Trailer") score += 3;
           else if (v.type === "Teaser") score += 2;
           else if (v.type === "Featurette") score += 2;
           else if (v.type === "Clip") score += 1;
-
-          // recency boost
-          if (v.published_at) {
+          if (v.published_at)
             score += new Date(v.published_at).getTime() / 1e12;
-          }
-
           return { ...v, score };
         })
-        .sort((a: any, b: any) => b.score - a.score);
-
-      const best = scored[0];
+        .sort((a, b) => b.score - a.score)[0];
 
       return NextResponse.json(
-        {
-          key: best.key,
-          source: "tmdb",
-          type: best.type,
-        },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control": "s-maxage=86400, stale-while-revalidate",
-          },
-        },
+        { key: best.key, source: "tmdb", type: best.type },
+        { status: 200, headers: { "Cache-Control": TRAILER_CACHE_HEADER } },
       );
     }
 
-    // =========================
-    // 2. YOUTUBE FALLBACK
-    // =========================
+    // ── 2. YouTube fallback ───────────────────────────────────────────────────
     if (YOUTUBE_API_KEY && title) {
       const queries = [
-        `${title} ${year || ""} official trailer`,
+        `${title} ${year ?? ""} official trailer`,
         `${title} official trailer`,
         `${title} trailer`,
         `${title} teaser`,
       ];
 
       for (const q of queries) {
-        const ytUrl = `${YOUTUBE_SEARCH_URL}?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(
-          q,
-        )}&key=${YOUTUBE_API_KEY}`;
-
-        const ytRes = await fetch(ytUrl);
-        const ytData = await ytRes.json();
-
-        if (ytData.items?.length) {
-          const bestMatch =
-            ytData.items.find((item: any) =>
+        const ytData = await youtubeSearch(q);
+        if (ytData?.items?.length) {
+          const best =
+            ytData.items.find((item) =>
               item.snippet?.title?.toLowerCase().includes("trailer"),
-            ) || ytData.items[0];
+            ) ?? ytData.items[0];
 
           return NextResponse.json(
-            {
-              key: bestMatch.id.videoId,
-              source: "youtube_fallback",
-            },
-            {
-              status: 200,
-              headers: {
-                "Cache-Control": "s-maxage=86400, stale-while-revalidate",
-              },
-            },
+            { key: best.id.videoId, source: "youtube_fallback" },
+            { status: 200, headers: { "Cache-Control": TRAILER_CACHE_HEADER } },
           );
         }
       }
     }
 
     return NextResponse.json({ error: "No trailer found" }, { status: 404 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("[/api/trailer]", err);
     return NextResponse.json(
-      {
-        error: "Failed to fetch trailer",
-        detail: err.message,
-      },
+      { error: "Failed to fetch trailer" },
       { status: 500 },
     );
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
 // ─── Allowlist ────────────────────────────────────────────────────────────────
 const ALLOWED_HOSTNAME = "image.tmdb.org";
@@ -14,7 +15,6 @@ const ALLOWED_SIZES = new Set([
   "w1280",
   "h632",
   "w300",
-  // "original" removed — can be 10–30 MB TIFFs; the specific sizes above cover all UI needs
 ]);
 
 const ALLOWED_CONTENT_TYPES = new Set([
@@ -28,9 +28,8 @@ const ALLOWED_CONTENT_TYPES = new Set([
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 500;
 const RATE_WINDOW_MS = 60_000;
-const CLEANUP_INTERVAL_MS = 5 * 60_000; // prune expired entries every 5 min
+const CLEANUP_INTERVAL_MS = 5 * 60_000;
 
-// FIX: prune stale entries so the map doesn't grow unbounded in long-running processes
 function pruneRateLimitMap() {
   const now = Date.now();
   for (const [ip, entry] of rateLimitMap) {
@@ -55,6 +54,7 @@ function isRateLimited(ip: string): boolean {
 export async function GET(request: NextRequest) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
   if (isRateLimited(ip)) {
     return new NextResponse("Too many requests", { status: 429 });
   }
@@ -103,7 +103,6 @@ export async function GET(request: NextRequest) {
         "User-Agent": "Mozilla/5.0 (compatible; WatchedThis-Proxy/1.0)",
       },
       credentials: "omit",
-      // FIX: don't leak your server's URL to TMDB in the Referer header
       referrerPolicy: "no-referrer",
       signal: AbortSignal.timeout(8000),
     });
@@ -114,28 +113,49 @@ export async function GET(request: NextRequest) {
 
     const contentType = upstream.headers.get("content-type") ?? "";
     const baseType = contentType.split(";")[0].trim();
+
     if (!ALLOWED_CONTENT_TYPES.has(baseType)) {
       return new NextResponse("Unexpected content type", { status: 502 });
     }
 
-    const contentLength = Number(upstream.headers.get("content-length") ?? 0);
-    if (contentLength > 5 * 1024 * 1024) {
-      return new NextResponse("Image too large", { status: 502 });
-    }
-
     const buffer = await upstream.arrayBuffer();
+
     if (buffer.byteLength > 5 * 1024 * 1024) {
       return new NextResponse("Image too large", { status: 502 });
     }
 
-    return new NextResponse(buffer, {
+    // ─── WebP conversion ──────────────────────────────────────────────────────
+    const acceptsWebP = request.headers.get("accept")?.includes("image/webp");
+    const isSVG = baseType === "image/svg+xml";
+
+    let responseBuffer: ArrayBuffer;
+    let responseContentType: string;
+
+    if (acceptsWebP && !isSVG) {
+      const webpBuffer = await sharp(Buffer.from(buffer))
+        .webp({ quality: 82 }) // ~30–50% smaller than JPEG at same visual quality
+        .toBuffer();
+
+      responseBuffer = webpBuffer.buffer.slice(
+        webpBuffer.byteOffset,
+        webpBuffer.byteOffset + webpBuffer.byteLength,
+      ) as ArrayBuffer;
+      responseContentType = "image/webp";
+    } else {
+      responseBuffer = buffer;
+      responseContentType = baseType;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    return new NextResponse(responseBuffer, {
       status: 200,
       headers: {
-        "Content-Type": baseType,
+        "Content-Type": responseContentType,
         "Cache-Control": "public, max-age=31536000, immutable",
         "X-Content-Type-Options": "nosniff",
         "Access-Control-Allow-Origin": "https://watchedthis.com",
-        Vary: "Origin",
+        // Accept added so CDN caches WebP and JPEG as separate entries
+        Vary: "Origin, Accept",
       },
     });
   } catch (err) {

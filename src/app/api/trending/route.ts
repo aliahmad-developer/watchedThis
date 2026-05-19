@@ -15,9 +15,13 @@ export async function GET() {
       throw new Error("TMDB_API_KEY is not configured");
     }
 
-    const res = await fetch(
-      `https://api.themoviedb.org/3/trending/all/week?api_key=${API_KEY}`,
-    );
+    // API key passed as Bearer token — keeps it out of server logs and proxy URLs
+    const res = await fetch(`https://api.themoviedb.org/3/trending/all/week`, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     if (!res.ok) {
       throw new Error(`TMDB responded with ${res.status}`);

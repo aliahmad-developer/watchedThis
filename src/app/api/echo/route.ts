@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { tmdbImage } from "@/lib/imageTmdb";
-
-const BASE = "https://api.themoviedb.org/3";
-const KEY = process.env.TMDB_API_KEY;
+import { tmdbFetch } from "@/lib/tmdbRequest";
 
 interface TMDBItem {
   id: number;
@@ -26,14 +23,32 @@ interface TMDBCrew {
   name: string;
 }
 
-export async function GET(req: NextRequest) {
-  if (!KEY) {
-    return NextResponse.json(
-      { error: "TMDB_API_KEY not set" },
-      { status: 500 },
-    );
-  }
+interface TMDBPagedResponse {
+  results: TMDBItem[];
+  total_pages?: number;
+}
 
+interface TMDBDetailResponse {
+  id: number;
+  title?: string;
+  name?: string;
+  release_date?: string;
+  first_air_date?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  vote_average?: number;
+  overview?: string;
+  genres?: { name: string }[];
+  runtime?: number | null;
+  episode_run_time?: number[];
+}
+
+interface TMDBCreditsResponse {
+  cast?: TMDBCast[];
+  crew?: TMDBCrew[];
+}
+
+export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("query");
   const id = searchParams.get("id");
@@ -44,12 +59,11 @@ export async function GET(req: NextRequest) {
   try {
     // ── Trending ──────────────────────────────────────────────────────────────
     if (trending) {
-      const res = await fetch(
-        `${BASE}/trending/all/week?api_key=${KEY}&page=${page}`,
+      const data = await tmdbFetch<TMDBPagedResponse>(
+        `/trending/all/week?page=${page}`,
       );
-      const data = await res.json();
 
-      const all = ((data.results as TMDBItem[]) ?? []).filter(
+      const all = (data.results ?? []).filter(
         (i) => i.media_type === "movie" || i.media_type === "tv",
       );
 
@@ -59,8 +73,8 @@ export async function GET(req: NextRequest) {
         title: item.title ?? item.name ?? "",
         type: (item.media_type ?? "movie") as "movie" | "tv",
         year: (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
-        poster: item.poster_path ?? null, // raw path — client uses tmdbImage()
-        backdrop: item.backdrop_path ?? null, // raw path — client uses tmdbImage()
+        poster: item.poster_path ?? null,
+        backdrop: item.backdrop_path ?? null,
         vote: item.vote_average ?? 0,
         overview: item.overview ?? "",
         genre_ids: item.genre_ids ?? [],
@@ -76,43 +90,38 @@ export async function GET(req: NextRequest) {
 
     // ── Search ────────────────────────────────────────────────────────────────
     if (query && !id) {
-      const [mRes, tRes] = await Promise.all([
-        fetch(
-          `${BASE}/search/movie?api_key=${KEY}&query=${encodeURIComponent(query)}&page=1`,
-        ),
-        fetch(
-          `${BASE}/search/tv?api_key=${KEY}&query=${encodeURIComponent(query)}&page=1`,
-        ),
+      const encoded = encodeURIComponent(query);
+
+      const [mData, tData] = await Promise.all([
+        tmdbFetch<TMDBPagedResponse>(`/search/movie?query=${encoded}&page=1`),
+        tmdbFetch<TMDBPagedResponse>(`/search/tv?query=${encoded}&page=1`),
       ]);
-      const [mData, tData] = await Promise.all([mRes.json(), tRes.json()]);
 
-      const movies = ((mData.results as TMDBItem[]) ?? [])
-        .slice(0, 5)
-        .map((m) => ({
-          id: m.id,
-          title: m.title ?? m.name ?? "",
-          type: "movie" as const,
-          year: (m.release_date ?? "").slice(0, 4),
-          // pass through image-proxy route (client expects tmdbImage-style behavior)
-          poster: m.poster_path
-            ? `${process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com"}/api/image-proxy/?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w92${m.poster_path}`)}`
-            : null,
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com";
 
-          vote: m.vote_average ?? 0,
-        }));
+      const proxyPoster = (path: string) =>
+        `${appUrl}/api/image-proxy/?url=${encodeURIComponent(
+          `https://image.tmdb.org/t/p/w92${path}`,
+        )}`;
 
-      const shows = ((tData.results as TMDBItem[]) ?? [])
-        .slice(0, 5)
-        .map((t) => ({
-          id: t.id,
-          title: t.name ?? t.title ?? "",
-          type: "tv" as const,
-          year: (t.first_air_date ?? "").slice(0, 4),
-          poster: t.poster_path
-            ? `${process.env.NEXT_PUBLIC_APP_URL ?? "https://watchedthis.com"}/api/image-proxy/?url=${encodeURIComponent(`https://image.tmdb.org/t/p/w92${t.poster_path}`)}`
-            : null,
-          vote: t.vote_average ?? 0,
-        }));
+      const movies = (mData.results ?? []).slice(0, 5).map((m) => ({
+        id: m.id,
+        title: m.title ?? m.name ?? "",
+        type: "movie" as const,
+        year: (m.release_date ?? "").slice(0, 4),
+        poster: m.poster_path ? proxyPoster(m.poster_path) : null,
+        vote: m.vote_average ?? 0,
+      }));
+
+      const shows = (tData.results ?? []).slice(0, 5).map((t) => ({
+        id: t.id,
+        title: t.name ?? t.title ?? "",
+        type: "tv" as const,
+        year: (t.first_air_date ?? "").slice(0, 4),
+        poster: t.poster_path ? proxyPoster(t.poster_path) : null,
+        vote: t.vote_average ?? 0,
+      }));
 
       const results = [...movies, ...shows]
         .sort((a, b) => b.vote - a.vote)
@@ -123,24 +132,16 @@ export async function GET(req: NextRequest) {
 
     // ── Similar ───────────────────────────────────────────────────────────────
     if (id && type) {
-      const [detRes, simRes, credRes] = await Promise.all([
-        fetch(`${BASE}/${type}/${id}?api_key=${KEY}`),
-        fetch(`${BASE}/${type}/${id}/similar?api_key=${KEY}&page=${page}`),
-        fetch(`${BASE}/${type}/${id}/credits?api_key=${KEY}`),
-      ]);
       const [det, sim, cred] = await Promise.all([
-        detRes.json(),
-        simRes.json(),
-        credRes.json(),
+        tmdbFetch<TMDBDetailResponse>(`/${type}/${id}`),
+        tmdbFetch<TMDBPagedResponse>(`/${type}/${id}/similar?page=${page}`),
+        tmdbFetch<TMDBCreditsResponse>(`/${type}/${id}/credits`),
       ]);
 
-      const cast: string[] = (cred.cast ?? [])
-        .slice(0, 5)
-        .map((c: TMDBCast) => c.name);
+      const cast: string[] = (cred.cast ?? []).slice(0, 5).map((c) => c.name);
       const director: string | null =
         type === "movie"
-          ? (((cred.crew ?? []) as TMDBCrew[]).find((c) => c.job === "Director")
-              ?.name ?? null)
+          ? ((cred.crew ?? []).find((c) => c.job === "Director")?.name ?? null)
           : null;
 
       const source =
@@ -150,12 +151,10 @@ export async function GET(req: NextRequest) {
               title: det.title ?? det.name ?? "",
               type,
               year: (det.release_date ?? det.first_air_date ?? "").slice(0, 4),
-              poster: det.poster_path ?? null, // raw path — used by OG route directly
-              backdrop: det.backdrop_path ?? null, // raw path — used by OG route directly
+              poster: det.poster_path ?? null,
+              backdrop: det.backdrop_path ?? null,
               overview: det.overview ?? "",
-              genres: (det.genres ?? []).map(
-                (g: { name: string }) => g.name,
-              ) as string[],
+              genres: (det.genres ?? []).map((g) => g.name) as string[],
               vote: det.vote_average ?? 0,
               runtime: det.runtime ?? det.episode_run_time?.[0] ?? null,
               cast,
@@ -163,13 +162,13 @@ export async function GET(req: NextRequest) {
             }
           : undefined;
 
-      const similar = ((sim.results as TMDBItem[]) ?? []).map((item) => ({
+      const similar = (sim.results ?? []).map((item) => ({
         id: item.id,
         title: item.title ?? item.name ?? "",
         type,
         year: (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
-        poster: item.poster_path ?? null, // raw path — client uses tmdbImage()
-        backdrop: item.backdrop_path ?? null, // raw path — client uses tmdbImage()
+        poster: item.poster_path ?? null,
+        backdrop: item.backdrop_path ?? null,
         vote: item.vote_average ?? 0,
         overview: item.overview ?? "",
         genre_ids: item.genre_ids ?? [],

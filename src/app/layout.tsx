@@ -4,6 +4,7 @@ import ClientProviders from "./components/utilities/clientProvider/clientProvide
 import BackButton from "./components/utilities/backButton";
 import Navbar from "./components/navbar/navBar";
 import Footer from "./components/footer/footer";
+import GoogleOneTap from "./components/utilities/googleOneTap/oneTap";
 import { Metadata } from "next";
 import { Suspense } from "react";
 import Script from "next/script";
@@ -27,7 +28,6 @@ export const metadata: Metadata = {
     title: "WatchedThis - Movie & TV Discovery",
     description:
       "Discover movies and TV shows instantly with AI-powered recommendations.",
-
     images: [
       {
         url: "/og",
@@ -46,10 +46,7 @@ export const metadata: Metadata = {
     images: ["/og"],
   },
 
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 
   icons: {
     shortcut: "/favicon.ico?v=2",
@@ -113,7 +110,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Google Tag Manager (must be in head but NOT via next/script) */}
+        {/* Google Tag Manager */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -130,12 +127,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             __html: JSON.stringify(organizationSchema),
           }}
         />
-
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(websiteSchema),
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
 
         <meta name="theme-color" content="#1f2937" />
@@ -166,11 +160,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           />
         </noscript>
 
+        {/*
+          Google Sign-In (GSI) script — loaded with strategy="afterInteractive"
+          so it doesn't block page render. GoogleOneTap initializes after this.
+          Add https://accounts.google.com to your CSP connect-src and script-src
+          if you haven't already (accounts.google.com is already in frame-src).
+        */}
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
+        />
+
         <ClientProviders>
           <Suspense fallback={null}>
             <Navbar />
           </Suspense>
-
+          <GoogleOneTap />
           <div className="relative">
             <div className="absolute top-2 left-3 z-40">
               <BackButton />

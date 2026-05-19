@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import type { TMDBPersonCredit } from "@/types/tmdb";
 
-const API_KEY = process.env.TMDB_API_KEY;
-const BASE_URL = process.env.TMDB_BASE_URL || "https://api.themoviedb.org/3";
+import { tmdbFetch } from "@/lib/tmdbRequest";
 
 export const revalidate = 86400;
 
 async function fetchRuntime(id: number, media_type: string) {
   try {
-    const res = await fetch(
-      `${BASE_URL}/${media_type}/${id}?api_key=${API_KEY}&language=en-US`,
-    );
-    if (!res.ok) return {};
-    const data = await res.json();
+    const data = await tmdbFetch<any>(`/${media_type}/${id}?language=en-US`);
 
     if (media_type === "movie") {
       return {
@@ -47,30 +42,15 @@ export async function GET(
   }
 
   try {
-    // Fetch person details, credits, and images
-    const [detailsRes, creditsRes, imagesRes] = await Promise.all([
-      fetch(`${BASE_URL}/person/${id}?api_key=${API_KEY}&language=en-US`),
-      fetch(
-        `${BASE_URL}/person/${id}/combined_credits?api_key=${API_KEY}&language=en-US`,
-      ),
-      fetch(`${BASE_URL}/person/${id}/images?api_key=${API_KEY}`),
-    ]);
-
-    if (!detailsRes.ok) {
-      if (detailsRes.status === 404) {
-        return NextResponse.json(
-          { error: "Person not found" },
-          { status: 404 },
-        );
-      }
-      throw new Error(`TMDB API error: ${detailsRes.status}`);
-    }
-
+    // Fetch person details, credits, and images (no api_key in URL)
     const [details, credits, imagesData] = await Promise.all([
-      detailsRes.json(),
-      creditsRes.ok ? creditsRes.json() : Promise.resolve(null),
-      imagesRes.ok ? imagesRes.json() : Promise.resolve(null),
+      tmdbFetch<any>(`/person/${id}?language=en-US`),
+      tmdbFetch<any>(`/person/${id}/combined_credits?language=en-US`),
+      tmdbFetch<any>(`/person/${id}/images`),
     ]);
+
+    // If tmdbFetch throws, we handle it in the catch below.
+    // (We no longer have access to HTTP status from a separate Response object here.)
 
     // Process credits
     let filteredCredits = null;
@@ -142,9 +122,13 @@ export async function GET(
       endpoint: "/api/person/[id]",
       message: (error as Error).message,
     });
+
+    const msg = (error as Error).message || "";
+    const status = msg.includes("404") ? 404 : 500;
+
     return NextResponse.json(
-      { error: "Failed to fetch person data" },
-      { status: 500 },
+      { error: status === 404 ? "Person not found" : "Failed to fetch person data" },
+      { status },
     );
   }
 }

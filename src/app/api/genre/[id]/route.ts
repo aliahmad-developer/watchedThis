@@ -1,33 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const API_KEY = process.env.TMDB_API_KEY;
-const BASE_URL = "https://api.themoviedb.org/3";
+import { tmdbFetch } from "@/lib/tmdbRequest";
 
 interface TMDBMediaItem {
   id: number;
-
   genre_ids?: number[];
-
   title?: string;
   name?: string;
-
   poster_path?: string | null;
   backdrop_path?: string | null;
-
   release_date?: string;
   first_air_date?: string;
-
   media_type?: "movie" | "tv";
-
   runtime?: number | null;
-
   episode_run_time?: number[];
-
   vote_average?: number;
   vote_count?: number;
-
   overview?: string;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+}
 
+interface TMDBDiscoverResponse {
+  page: number;
+  total_pages: number;
+  total_results: number;
+  results: TMDBMediaItem[];
+}
+
+interface TMDBDetailResponse extends TMDBMediaItem {
+  runtime?: number | null;
+  episode_run_time?: number[];
+  vote_average?: number;
+  vote_count?: number;
+  overview?: string;
   number_of_seasons?: number;
   number_of_episodes?: number;
 }
@@ -55,7 +60,6 @@ const GENRE_IDS = {
     War: 10752,
     Western: 37,
   },
-
   tv: {
     Action: 10759,
     Adventure: 10759,
@@ -88,11 +92,9 @@ function parseIds(idParam: string): number[] {
 
 function namesForIds(mediaType: "movie" | "tv", ids: number[]): string[] {
   const map = mediaType === "movie" ? GENRE_IDS.movie : GENRE_IDS.tv;
-
   const entries = Object.entries(map);
-
   return ids
-    .map((id) => entries.find(([_, v]) => v === id)?.[0])
+    .map((id) => entries.find(([, v]) => v === id)?.[0])
     .filter(Boolean) as string[];
 }
 
@@ -103,27 +105,15 @@ export async function GET(
 ) {
   try {
     const { id: idParam } = await context.params;
-
-    const mediaType = (req.nextUrl.searchParams.get("media_type") || "") as
+    const mediaType = (req.nextUrl.searchParams.get("media_type") ?? "") as
       | "movie"
       | "tv";
-
-    const page = parseInt(req.nextUrl.searchParams.get("page") || "1", 10);
-
+    const page = parseInt(req.nextUrl.searchParams.get("page") ?? "1", 10);
     const strict = ["true", "1", "yes"].includes(
-      (req.nextUrl.searchParams.get("strict") || "false").toLowerCase(),
+      (req.nextUrl.searchParams.get("strict") ?? "false").toLowerCase(),
     );
 
-    // ── Validation ───────────────────────────────────────────────────────────
-    if (!API_KEY) {
-      return NextResponse.json(
-        { error: "TMDB API key not configured" },
-        { status: 500 },
-      );
-    }
-
     const ids = parseIds(idParam);
-
     if (!mediaType || ids.length === 0) {
       return NextResponse.json(
         { error: "Invalid media type or genre IDs" },
@@ -132,52 +122,28 @@ export async function GET(
     }
 
     // ── Discover ─────────────────────────────────────────────────────────────
-    const withGenres = ids.join("|");
-
-    const discoverUrl = new URL(`${BASE_URL}/discover/${mediaType}`);
-
-    discoverUrl.searchParams.set("api_key", API_KEY);
-
-    discoverUrl.searchParams.set("with_genres", withGenres);
-
-    discoverUrl.searchParams.set("sort_by", "popularity.desc");
-
-    discoverUrl.searchParams.set("page", String(page));
-
-    discoverUrl.searchParams.set("with_watch_monetization_types", "flatrate");
-
-    const discoverRes = await fetch(discoverUrl.toString(), {
-      next: {
-        revalidate: 60,
-      },
+    const params = new URLSearchParams({
+      with_genres: ids.join("|"),
+      sort_by: "popularity.desc",
+      page: String(page),
+      with_watch_monetization_types: "flatrate",
     });
 
-    if (!discoverRes.ok) {
-      console.error("TMDB Discover API Error:", await discoverRes.text());
-
-      return NextResponse.json({ error: "TMDB API error" }, { status: 502 });
-    }
-
-    const pageData = await discoverRes.json();
+    const pageData = await tmdbFetch<TMDBDiscoverResponse>(
+      `/discover/${mediaType}?${params.toString()}`,
+      { next: { revalidate: 60 } },
+    );
 
     // ── Filter ───────────────────────────────────────────────────────────────
-    const filteredResults: TMDBMediaItem[] = (pageData.results || [])
-      .filter(
-        (item: TMDBMediaItem) =>
-          item.poster_path && Array.isArray(item.genre_ids),
-      )
-
-      .filter((item: TMDBMediaItem) =>
+    const filteredResults: TMDBMediaItem[] = (pageData.results ?? [])
+      .filter((item) => item.poster_path && Array.isArray(item.genre_ids))
+      .filter((item) =>
         strict
           ? ids.every((gid) => item.genre_ids!.includes(gid))
           : ids.some((gid) => item.genre_ids!.includes(gid)),
       )
-
-      .reduce((acc: TMDBMediaItem[], item: TMDBMediaItem) => {
-        if (!acc.some((i) => i.id === item.id)) {
-          acc.push(item);
-        }
-
+      .reduce((acc: TMDBMediaItem[], item) => {
+        if (!acc.some((i) => i.id === item.id)) acc.push(item);
         return acc;
       }, []);
 
@@ -185,50 +151,30 @@ export async function GET(
     const enrichedResults = await Promise.all(
       filteredResults.map(async (item) => {
         try {
-          const detailUrl =
-            `${BASE_URL}/${mediaType}/${item.id}` +
-            `?api_key=${API_KEY}&language=en-US`;
+          const detail = await tmdbFetch<TMDBDetailResponse>(
+            `/${mediaType}/${item.id}?language=en-US`,
+            { next: { revalidate: 60 } },
+          );
 
-          const detailRes = await fetch(detailUrl, {
-            next: {
-              revalidate: 60,
-            },
-          });
-
-          if (!detailRes.ok) {
-            throw new Error("Failed to fetch details");
-          }
-
-          const detailData = await detailRes.json();
-
-          // ── Runtime Fix ────────────────────────────────────────────────────
           const runtime =
             mediaType === "movie"
-              ? (detailData.runtime ?? null)
-              : (detailData.episode_run_time?.find((v: number) => v > 0) ??
-                detailData.runtime ??
+              ? (detail.runtime ?? null)
+              : (detail.episode_run_time?.find((v) => v > 0) ??
+                detail.runtime ??
                 null);
 
           return {
             ...item,
-
             runtime,
-
-            episode_run_time: detailData.episode_run_time ?? [],
-
-            vote_average: detailData.vote_average ?? item.vote_average ?? 0,
-
-            vote_count: detailData.vote_count ?? item.vote_count ?? 0,
-
-            overview: detailData.overview ?? item.overview ?? "",
-
-            number_of_seasons: detailData.number_of_seasons,
-
-            number_of_episodes: detailData.number_of_episodes,
+            episode_run_time: detail.episode_run_time ?? [],
+            vote_average: detail.vote_average ?? item.vote_average ?? 0,
+            vote_count: detail.vote_count ?? item.vote_count ?? 0,
+            overview: detail.overview ?? item.overview ?? "",
+            number_of_seasons: detail.number_of_seasons,
+            number_of_episodes: detail.number_of_episodes,
           };
         } catch (err) {
           console.error("Detail fetch failed for", item.id, err);
-
           return item;
         }
       }),
@@ -236,7 +182,6 @@ export async function GET(
 
     // ── Genre Label ──────────────────────────────────────────────────────────
     const genreNames = namesForIds(mediaType, ids);
-
     const genreLabel =
       genreNames.length > 0
         ? strict
@@ -247,22 +192,15 @@ export async function GET(
     // ── Response ─────────────────────────────────────────────────────────────
     return NextResponse.json({
       results: enrichedResults,
-
       genreName: genreLabel,
-
       page: pageData.page,
-
       total_pages: pageData.total_pages,
-
       total_results: pageData.total_results,
-
       strict,
-
       ids,
     });
   } catch (error) {
     console.error("Genre API error:", error);
-
     return NextResponse.json(
       { error: "Failed to fetch genre content" },
       { status: 500 },

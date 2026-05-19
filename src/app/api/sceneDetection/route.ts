@@ -3,9 +3,34 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from "next/server";
+import { tmdbFetch } from "@/lib/tmdbRequest";
 
 const HF_URL = "https://missypenguin-movie-scene-detector.hf.space/predict";
-const TMDB_BASE = "https://api.themoviedb.org/3";
+
+interface TMDBSearchResult {
+  id: number;
+  title?: string;
+  name?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  overview?: string;
+  vote_average?: number;
+}
+
+interface TMDBDetailResponse {
+  genres?: { name: string }[];
+}
+
+interface TMDBKeywordsResponse {
+  keywords?: { name: string }[];
+  results?: { name: string }[];
+}
+
+interface TMDBSearchResponse {
+  results?: TMDBSearchResult[];
+}
 
 function cleanTitle(title: string): string {
   return title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
@@ -13,7 +38,7 @@ function cleanTitle(title: string): string {
 
 async function fetchWithWakeup(formData: FormData): Promise<Response> {
   const attempt = await fetch(HF_URL, { method: "POST", body: formData });
-  const contentType = attempt.headers.get("content-type") || "";
+  const contentType = attempt.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
     await new Promise((r) => setTimeout(r, 8000));
     return fetch(HF_URL, { method: "POST", body: formData });
@@ -22,29 +47,24 @@ async function fetchWithWakeup(formData: FormData): Promise<Response> {
 }
 
 // ── Enrich a movie result ─────────────────────────────────────────────────────
-async function enrichMovie(title: string, votes: number, key: string) {
+async function enrichMovie(title: string, votes: number) {
   const cleanedTitle = cleanTitle(title);
   try {
-    const searchRes = await fetch(
-      `${TMDB_BASE}/search/movie?query=${encodeURIComponent(cleanedTitle)}&api_key=${key}`,
+    const searchData = await tmdbFetch<TMDBSearchResponse>(
+      `/search/movie?query=${encodeURIComponent(cleanedTitle)}`,
     );
-    const searchData = await searchRes.json();
     const match = searchData.results?.[0];
     if (!match) throw new Error("no match");
 
-    const [detailRes, kwRes] = await Promise.all([
-      fetch(`${TMDB_BASE}/movie/${match.id}?api_key=${key}`),
-      fetch(`${TMDB_BASE}/movie/${match.id}/keywords?api_key=${key}`),
+    const [detail, kwData] = await Promise.all([
+      tmdbFetch<TMDBDetailResponse>(`/movie/${match.id}`),
+      tmdbFetch<TMDBKeywordsResponse>(`/movie/${match.id}/keywords`),
     ]);
-    const detail = await detailRes.json();
-    const kwData = await kwRes.json();
 
-    const genres: string[] = (detail.genres ?? []).map(
-      (g: { name: string }) => g.name,
-    );
+    const genres: string[] = (detail.genres ?? []).map((g) => g.name);
     const keywords: string[] = (kwData.keywords ?? [])
       .slice(0, 5)
-      .map((k: { name: string }) => k.name);
+      .map((k) => k.name);
 
     return {
       id: match.id,
@@ -73,29 +93,24 @@ async function enrichMovie(title: string, votes: number, key: string) {
 }
 
 // ── Enrich a TV result ────────────────────────────────────────────────────────
-async function enrichTV(title: string, votes: number, key: string) {
+async function enrichTV(title: string, votes: number) {
   const cleanedTitle = cleanTitle(title);
   try {
-    const searchRes = await fetch(
-      `${TMDB_BASE}/search/tv?query=${encodeURIComponent(cleanedTitle)}&api_key=${key}`,
+    const searchData = await tmdbFetch<TMDBSearchResponse>(
+      `/search/tv?query=${encodeURIComponent(cleanedTitle)}`,
     );
-    const searchData = await searchRes.json();
     const match = searchData.results?.[0];
     if (!match) throw new Error("no match");
 
-    const [detailRes, kwRes] = await Promise.all([
-      fetch(`${TMDB_BASE}/tv/${match.id}?api_key=${key}`),
-      fetch(`${TMDB_BASE}/tv/${match.id}/keywords?api_key=${key}`),
+    const [detail, kwData] = await Promise.all([
+      tmdbFetch<TMDBDetailResponse>(`/tv/${match.id}`),
+      tmdbFetch<TMDBKeywordsResponse>(`/tv/${match.id}/keywords`),
     ]);
-    const detail = await detailRes.json();
-    const kwData = await kwRes.json();
 
-    const genres: string[] = (detail.genres ?? []).map(
-      (g: { name: string }) => g.name,
-    );
-    const keywords: string[] = (kwData.keywords ?? [])
+    const genres: string[] = (detail.genres ?? []).map((g) => g.name);
+    const keywords: string[] = (kwData.results ?? [])
       .slice(0, 5)
-      .map((k: { name: string }) => k.name);
+      .map((k) => k.name);
 
     return {
       id: match.id,
@@ -141,7 +156,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const contentType = response.headers.get("content-type") || "";
+    const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
       return NextResponse.json(
         { error: "Model server is waking up. Please try again in 30 seconds." },
@@ -158,25 +173,22 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    const key = process.env.TMDB_API_KEY;
 
     const enriched = await Promise.all(
       data.movies.map(
         async (item: { title: string; media_type: string; votes: number }) => {
-          const mediaType = item.media_type ?? "movie";
-          if (mediaType === "tv") {
-            return enrichTV(item.title, item.votes, key!);
-          }
-          return enrichMovie(item.title, item.votes, key!);
+          return item.media_type === "tv"
+            ? enrichTV(item.title, item.votes)
+            : enrichMovie(item.title, item.votes);
         },
       ),
     );
 
     return NextResponse.json({ movies: enriched });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("sceneDetection route error:", err);
     return NextResponse.json(
-      { error: err.message || "Something went wrong" },
+      { error: err instanceof Error ? err.message : "Something went wrong" },
       { status: 500 },
     );
   }

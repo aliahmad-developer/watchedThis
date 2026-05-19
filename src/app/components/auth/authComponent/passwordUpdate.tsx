@@ -180,8 +180,8 @@ export default function PasswordUpdate({ handlePasswordUpdate }: Props) {
                         key={r.key}
                         className={`flex items-center gap-1 text-[11px] ${
                           ok
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-gray-400"
+                            ? "text-accent dark:text-dark-accent"
+                            : "text-light-secondary-text dark:text-dark-secondary-text"
                         }`}
                       >
                         <FontAwesomeIcon

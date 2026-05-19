@@ -15,7 +15,6 @@ function verifyToken(id: string, sig: string): boolean {
     .createHmac("sha256", HMAC_SECRET)
     .update(id)
     .digest("hex");
-  // Constant-time compare — prevents timing attacks
   return crypto.timingSafeEqual(
     Buffer.from(sig, "hex"),
     Buffer.from(expected, "hex"),
@@ -33,10 +32,30 @@ function decrypt(text: string): string {
   return decrypted.toString("utf8");
 }
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
+// ─── Cookie helper ────────────────────────────────────────────────────────────
+// FIX: The original route redirected to /auth/confirmed?token=<customToken>
+// which put a sensitive token in the URL (visible in server logs, browser
+// history, and Referer headers). Instead we exchange the custom token for an
+// ID token server-side and set the HttpOnly session cookie here directly,
+// then redirect cleanly with no token in the URL.
+function buildSessionCookie(token: string): string {
+  return [
+    `__session=${token}`,
+    `Path=/`,
+    `Max-Age=3600`,
+    `HttpOnly`,
+    `Secure`,
+    `SameSite=Strict`,
+  ].join("; ");
+}
+
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 export async function GET(req: NextRequest) {
+  if (!HMAC_SECRET) {
+    return NextResponse.redirect(`${baseUrl}/user/profile?error=server_error`);
+  }
+
   const rawToken = new URL(req.url).searchParams.get("token");
 
   if (!rawToken || !rawToken.includes(".")) {
@@ -47,17 +66,17 @@ export async function GET(req: NextRequest) {
   const id = rawToken.slice(0, lastDot);
   const sig = rawToken.slice(lastDot + 1);
 
-  // Reject immediately if the signature doesn't match — no DB call needed
   if (!id || !sig || sig.length !== 64) {
     return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
 
   try {
     if (!verifyToken(id, sig)) {
-      return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
+      return NextResponse.redirect(
+        `${baseUrl}/user/profile?error=invalid_token`,
+      );
     }
   } catch {
-    // timingSafeEqual throws if buffers differ in length
     return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
 
@@ -69,23 +88,29 @@ export async function GET(req: NextRequest) {
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
-      return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
+      return NextResponse.redirect(
+        `${baseUrl}/user/profile?error=invalid_token`,
+      );
     }
 
     const data = docSnap.data()!;
 
     if (Date.now() > data.expiresAt) {
       await docRef.delete();
-      return NextResponse.redirect(`${baseUrl}/user/profile?error=expired_token`);
+      return NextResponse.redirect(
+        `${baseUrl}/user/profile?error=expired_token`,
+      );
     }
 
     const { email, username, passwordEncrypted } = data;
     const password = decrypt(passwordEncrypted);
 
-    // Double-click / retry protection
+    // Double-click / retry protection — user already exists
     try {
       await auth.getUserByEmail(email);
       await docRef.delete();
+      // User exists — redirect to profile as already confirmed, set no new cookie
+      // (they will need to sign in normally if they have no active session)
       return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
     } catch (e: any) {
       if (e.code !== "auth/user-not-found") throw e;
@@ -106,16 +131,47 @@ export async function GET(req: NextRequest) {
 
     await docRef.delete();
 
-    // Create a custom token so the user is automatically signed in after clicking the confirmation link.
+    // FIX: Create a custom token, then sign it in via the REST API to get an
+    // ID token we can store as an HttpOnly cookie — never expose the custom
+    // token in the URL where it would appear in logs and browser history.
     const customToken = await auth.createCustomToken(userRecord.uid);
-    const redirectTo = encodeURIComponent(`${baseUrl}/user/profile`);
 
-    return NextResponse.redirect(
-      `${baseUrl}/auth/confirmed?token=${encodeURIComponent(customToken)}&redirect=${redirectTo}`,
+    // Exchange custom token → ID token via Firebase REST API
+    const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (!firebaseApiKey)
+      throw new Error("Missing NEXT_PUBLIC_FIREBASE_API_KEY");
+
+    const exchangeRes = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${firebaseApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: customToken, returnSecureToken: true }),
+      },
     );
 
-  } catch (error: any) {
-    console.error("[confirmSignup]", error?.code, error?.message);
+    if (!exchangeRes.ok) {
+      // Can't set the session cookie — redirect to profile page so the user
+      // can sign in manually. Account was created successfully.
+      console.error(
+        "[confirmSignUp] token exchange failed:",
+        exchangeRes.status,
+      );
+      return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
+    }
+
+    const { idToken } = (await exchangeRes.json()) as { idToken: string };
+
+    // Verify the ID token we just got (confirms it's well-formed and not tampered)
+    await auth.verifyIdToken(idToken, true);
+
+    const response = NextResponse.redirect(
+      `${baseUrl}/user/profile?verified=true`,
+    );
+    response.headers.set("Set-Cookie", buildSessionCookie(idToken));
+    return response;
+  } catch {
+    console.error("[confirmSignUp] unexpected error");
     return NextResponse.redirect(`${baseUrl}/user/profile?error=server_error`);
   }
 }

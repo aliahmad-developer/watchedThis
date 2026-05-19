@@ -318,7 +318,7 @@ export default function LoginForm({
               onClick={onSwitchToSignup}
               className="block mt-1 underline font-medium bg-transparent text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors"
             >
-              Create an account →
+              Create an account
             </button>
           )}
         </div>

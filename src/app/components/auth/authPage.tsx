@@ -292,7 +292,6 @@ export default function AuthPage() {
         await updatePassword(currentUser, newPassword);
         await currentUser.getIdToken(true);
         resetFields();
-        showMessage("Password updated successfully!");
       } catch (err: any) {
         throw err;
       }

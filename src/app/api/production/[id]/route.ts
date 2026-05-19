@@ -1,37 +1,25 @@
 import { NextResponse } from "next/server";
+import { tmdbFetch } from "@/lib/tmdbRequest";
 
-const TMDB_BASE = "https://api.themoviedb.org/3";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 const cache = new Map<string, { data: unknown; expires: number }>();
 
-async function cachedFetch<T>(url: string): Promise<T> {
+async function cachedTmdbFetch<T>(path: string): Promise<T> {
   const now = Date.now();
-  const cached = cache.get(url);
-  if (cached && now < cached.expires) return cached.data as T;
+  const hit = cache.get(path);
+  if (hit && now < hit.expires) return hit.data as T;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TMDB request failed: ${res.status}`);
-
-  const data = await res.json();
-  cache.set(url, { data, expires: now + CACHE_TTL_MS });
-  return data as T;
-}
-
-async function fetchFromTMDB<T>(endpoint: string): Promise<T> {
-  const apiKey = process.env.TMDB_API_KEY;
-  if (!apiKey) throw new Error("Missing TMDB API key");
-
-  const sep = endpoint.includes("?") ? "&" : "?";
-  const url = `${TMDB_BASE}${endpoint}${sep}api_key=${apiKey}`;
-  return cachedFetch<T>(url);
+  const data = await tmdbFetch<T>(path);
+  cache.set(path, { data, expires: now + CACHE_TTL_MS });
+  return data;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface TMDBDiscoverResponse {
   page: number;
-  results: any[];
+  results: unknown[];
   total_pages: number;
 }
 
@@ -52,6 +40,15 @@ interface TMDBDetail {
   overview?: string;
 }
 
+interface DiscoverItem {
+  id: number;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  vote_average?: number;
+  overview?: string;
+  [key: string]: unknown;
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function GET(
   req: Request,
@@ -59,24 +56,23 @@ export async function GET(
 ) {
   const { id } = await context.params;
   const { searchParams } = new URL(req.url);
-  const mediaType = searchParams.get("mediaType") || "movie";
-  const page = searchParams.get("page") || "1";
+  const mediaType = searchParams.get("mediaType") ?? "movie";
+  const page = searchParams.get("page") ?? "1";
 
   try {
     const [media, company] = await Promise.all([
-      fetchFromTMDB<TMDBDiscoverResponse>(
+      cachedTmdbFetch<TMDBDiscoverResponse>(
         `/discover/${mediaType}?with_companies=${id}&sort_by=popularity.desc&language=en-US&page=${page}`,
       ),
       page === "1"
-        ? fetchFromTMDB<TMDBCompany>(`/company/${id}`)
+        ? cachedTmdbFetch<TMDBCompany>(`/company/${id}`)
         : Promise.resolve(null),
     ]);
 
-    // Fetch all runtimes in parallel — all cached after first load
     const resultsWithRuntime = await Promise.all(
-      media.results.map(async (item) => {
+      (media.results as DiscoverItem[]).map(async (item) => {
         try {
-          const detail = await fetchFromTMDB<TMDBDetail>(
+          const detail = await cachedTmdbFetch<TMDBDetail>(
             `/${mediaType}/${item.id}`,
           );
           return {
@@ -103,7 +99,10 @@ export async function GET(
       results: resultsWithRuntime,
       total_pages: media.total_pages,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
   }
 }

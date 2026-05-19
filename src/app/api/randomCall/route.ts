@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-
-const TMDB_API_KEY = process.env.TMDB_API_KEY;
-if (!TMDB_API_KEY) throw new Error("TMDB_API_KEY missing");
+import { tmdbFetch } from "@/lib/tmdbRequest";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -16,6 +14,16 @@ interface MediaItem {
   first_air_date?: string;
 }
 
+interface NormalizedItem {
+  media_type: string;
+  id: number;
+  title: string;
+  overview: string;
+  poster_path: string | null;
+  vote_average: number;
+  release_date: string;
+}
+
 interface Era {
   min: number;
   max: number;
@@ -28,7 +36,6 @@ interface Era {
 
 const POOL_SIZE = 20;
 const POOL_REFILL_AT = 5;
-const FETCH_TIMEOUT_MS = 5000;
 const FETCH_BATCH = 5;
 
 const MOVIE_ERAS: Era[] = [
@@ -140,7 +147,7 @@ const SORT_ORDERS = ["popularity.desc", "vote_average.desc", "vote_count.desc"];
 
 // ─── Pool ─────────────────────────────────────────────────────────────────────
 
-const pool: any[] = [];
+const pool: NormalizedItem[] = [];
 const seenIds = new Set<number>();
 let refilling = false;
 
@@ -156,8 +163,8 @@ function pickWeighted(eras: Era[]): Era {
   return eras[eras.length - 1];
 }
 
-function normalize(item: any, media_type: string) {
-  const title = item.title || item.name;
+function normalize(item: MediaItem, media_type: string): NormalizedItem | null {
+  const title = item.title ?? item.name;
   if (!item?.id || !title) return null;
   return {
     media_type,
@@ -166,56 +173,42 @@ function normalize(item: any, media_type: string) {
     overview: item.overview ?? "",
     poster_path: item.poster_path ?? null,
     vote_average: item.vote_average ?? 0,
-    release_date: item.release_date || item.first_air_date || "",
+    release_date: item.release_date ?? item.first_air_date ?? "",
   };
 }
 
-async function tmdbFetch(url: string): Promise<any | null> {
+// ─── Single random fetch ──────────────────────────────────────────────────────
+
+async function fetchOneRandom(): Promise<NormalizedItem | null> {
+  const media_type = Math.random() < 0.55 ? "movie" : "tv";
+  const eras = media_type === "movie" ? MOVIE_ERAS : TV_ERAS;
+  const genres = media_type === "movie" ? MOVIE_GENRES : TV_GENRES;
+  const era = pickWeighted(eras);
+  const year = Math.floor(Math.random() * (era.max - era.min + 1)) + era.min;
+  const genre = genres[Math.floor(Math.random() * genres.length)];
+  const sort = SORT_ORDERS[Math.floor(Math.random() * SORT_ORDERS.length)];
+  const page = Math.floor(Math.random() * 10) + 1;
+
   try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) return null;
-    return await res.json();
+    const data = await tmdbFetch<{ results?: MediaItem[] }>(
+      `/discover/${media_type}?language=en-US&sort_by=${sort}&${era.dateParam}=${year}` +
+        `&with_genres=${genre}&vote_count.gte=${era.minVotes}&page=${page}`,
+    );
+
+    if (!data?.results?.length) return null;
+
+    const valid = data.results.filter(
+      (i) => i.poster_path && (i.vote_average ?? 0) > 5 && !seenIds.has(i.id),
+    );
+
+    if (!valid.length) return null;
+
+    const item = valid[Math.floor(Math.random() * valid.length)];
+    seenIds.add(item.id);
+    return normalize(item, media_type);
   } catch {
     return null;
   }
-}
-
-// ─── Single random fetch (one round trip only) ────────────────────────────────
-
-async function fetchOneRandom(): Promise<any | null> {
-  const media_type = Math.random() < 0.55 ? "movie" : "tv";
-  const eras = media_type === "movie" ? MOVIE_ERAS : TV_ERAS;
-  const era = pickWeighted(eras);
-  const year = Math.floor(Math.random() * (era.max - era.min + 1)) + era.min;
-  const genre = (media_type === "movie" ? MOVIE_GENRES : TV_GENRES)[
-    Math.floor(
-      Math.random() *
-        (media_type === "movie" ? MOVIE_GENRES : TV_GENRES).length,
-    )
-  ];
-  const sort = SORT_ORDERS[Math.floor(Math.random() * SORT_ORDERS.length)];
-  const page = Math.floor(Math.random() * 10) + 1; // skip probe, just pick a page
-
-  const url =
-    `https://api.themoviedb.org/3/discover/${media_type}?api_key=${TMDB_API_KEY}` +
-    `&language=en-US&sort_by=${sort}&${era.dateParam}=${year}` +
-    `&with_genres=${genre}&vote_count.gte=${era.minVotes}&page=${page}`;
-
-  const data = await tmdbFetch(url);
-  if (!data?.results?.length) return null;
-
-  const valid = data.results.filter(
-    (i: MediaItem) =>
-      i.poster_path && (i.vote_average ?? 0) > 5 && !seenIds.has(i.id),
-  );
-
-  if (!valid.length) return null;
-
-  const item = valid[Math.floor(Math.random() * valid.length)];
-  seenIds.add(item.id);
-  return normalize(item, media_type);
 }
 
 // ─── Pool refill (fire and forget) ───────────────────────────────────────────
@@ -223,14 +216,12 @@ async function fetchOneRandom(): Promise<any | null> {
 async function refillPool() {
   if (refilling) return;
   refilling = true;
-
   try {
     while (pool.length < POOL_SIZE) {
       const batch = await Promise.all(
         Array.from({ length: FETCH_BATCH }, () => fetchOneRandom()),
       );
-      const valid = batch.filter(Boolean);
-      pool.push(...valid);
+      pool.push(...batch.filter((x): x is NormalizedItem => x !== null));
     }
   } finally {
     refilling = false;
@@ -239,17 +230,21 @@ async function refillPool() {
 
 // ─── Fallback: trending ───────────────────────────────────────────────────────
 
-async function fetchTrending(): Promise<any | null> {
+async function fetchTrending(): Promise<NormalizedItem | null> {
   const media_type = Math.random() < 0.55 ? "movie" : "tv";
-  const data = await tmdbFetch(
-    `https://api.themoviedb.org/3/trending/${media_type}/week?api_key=${TMDB_API_KEY}`,
-  );
-  if (!data?.results?.length) return null;
-  const unseen = data.results.filter((i: MediaItem) => !seenIds.has(i.id));
-  const item = unseen.length
-    ? unseen[Math.floor(Math.random() * unseen.length)]
-    : data.results[0];
-  return normalize(item, media_type);
+  try {
+    const data = await tmdbFetch<{ results?: MediaItem[] }>(
+      `/trending/${media_type}/week`,
+    );
+    if (!data?.results?.length) return null;
+    const unseen = data.results.filter((i) => !seenIds.has(i.id));
+    const item = unseen.length
+      ? unseen[Math.floor(Math.random() * unseen.length)]
+      : data.results[0];
+    return normalize(item, media_type);
+  } catch {
+    return null;
+  }
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -258,15 +253,11 @@ export async function GET() {
   if (pool.length > 0) {
     const idx = Math.floor(Math.random() * pool.length);
     const [item] = pool.splice(idx, 1);
-
-    if (pool.length < POOL_REFILL_AT) {
-      refillPool();
-    }
-
+    if (pool.length < POOL_REFILL_AT) refillPool();
     return NextResponse.json([item]);
   }
 
-  refillPool(); // start filling in background
+  refillPool();
 
   const item = (await fetchOneRandom()) ?? (await fetchTrending());
 
