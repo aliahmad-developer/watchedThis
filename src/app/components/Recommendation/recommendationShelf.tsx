@@ -2,13 +2,7 @@
 
 import AuthModal from "../auth/authModal";
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -37,113 +31,75 @@ const REASON_META: Record<
   }
 > = {
   favourite: {
-    pill:
-      "bg-red-500/10 text-red-400 border-red-500/20",
+    pill: "bg-red-500/10 text-red-400 border-red-500/20",
     dot: "bg-red-400",
-    desc:
-      "This matches genres or tags from titles you've favourited.",
+    desc: "This matches genres or tags from titles you've favourited.",
   },
 
   genre: {
-    pill:
-      "bg-teal-500/10 text-teal-400 border-teal-500/20",
+    pill: "bg-teal-500/10 text-teal-400 border-teal-500/20",
     dot: "bg-teal-400",
-    desc:
-      "This fits the genres you watch most.",
+    desc: "This fits the genres you watch most.",
   },
 
   search: {
-    pill:
-      "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    pill: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     dot: "bg-blue-400",
-    desc:
-      "This matched one of your recent search queries.",
+    desc: "This matched one of your recent search queries.",
   },
 
   library: {
-    pill:
-      "bg-violet-500/10 text-violet-400 border-violet-500/20",
+    pill: "bg-violet-500/10 text-violet-400 border-violet-500/20",
     dot: "bg-violet-400",
-    desc:
-      "Similar to titles already saved in your library.",
+    desc: "Similar to titles already saved in your library.",
   },
 
   click: {
-    pill:
-      "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    pill: "bg-amber-500/10 text-amber-400 border-amber-500/20",
     dot: "bg-amber-400",
-    desc:
-      "You recently clicked or explored something like this.",
+    desc: "You recently clicked or explored something like this.",
   },
 
   algo: {
-    pill:
-      "bg-gray-500/10 text-gray-400 border-gray-500/20",
+    pill: "bg-gray-500/10 text-gray-400 border-gray-500/20",
     dot: "bg-gray-400",
-    desc:
-      "Picked based on your overall taste profile.",
+    desc: "Picked based on your overall taste profile.",
   },
 };
 
-
-const WhyTooltip = memo(function WhyTooltip({
-  item,
-}: {
-  item: ScoredItem;
-}) {
+const WhyTooltip = memo(function WhyTooltip({ item }: { item: ScoredItem }) {
   const [open, setOpen] = useState(false);
 
-  const [dir, setDir] = useState<
-    "left" | "right"
-  >("left");
+  const [dir, setDir] = useState<"left" | "right">("left");
 
   const ref = useRef<HTMLDivElement>(null);
 
-  const btnRef =
-    useRef<HTMLButtonElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
-  const meta =
-    REASON_META[item.reason.type] ??
-    REASON_META.algo;
+  const meta = REASON_META[item.reason.type] ?? REASON_META.algo;
 
   useEffect(() => {
     if (!open) return;
 
     const handler = (e: MouseEvent) => {
-      if (
-        ref.current &&
-        !ref.current.contains(
-          e.target as Node,
-        )
-      ) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
 
-    document.addEventListener(
-      "mousedown",
-      handler,
-    );
+    document.addEventListener("mousedown", handler);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handler,
-      );
+      document.removeEventListener("mousedown", handler);
     };
   }, [open]);
 
   const calcDir = useCallback(() => {
     if (!btnRef.current) return;
 
-    const rect =
-      btnRef.current.getBoundingClientRect();
+    const rect = btnRef.current.getBoundingClientRect();
 
-    setDir(
-      window.innerWidth - rect.right < 200
-        ? "right"
-        : "left",
-    );
+    setDir(window.innerWidth - rect.right < 200 ? "right" : "left");
   }, []);
 
   const handleOpen = useCallback(() => {
@@ -153,11 +109,7 @@ const WhyTooltip = memo(function WhyTooltip({
   }, [calcDir]);
 
   return (
-    <div
-      ref={ref}
-      className="relative"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         ref={btnRef}
         onMouseEnter={() => {
@@ -165,8 +117,7 @@ const WhyTooltip = memo(function WhyTooltip({
           setOpen(true);
         }}
         onMouseLeave={(e) => {
-          if ((e as any).pointerType === "touch")
-            return;
+          if ((e as any).pointerType === "touch") return;
 
           setOpen(false);
         }}
@@ -197,11 +148,7 @@ const WhyTooltip = memo(function WhyTooltip({
             bg-light-bg dark:bg-dark-card
             border border-light-border dark:border-dark-border
 
-            ${
-              dir === "left"
-                ? "left-0"
-                : "right-0"
-            }
+            ${dir === "left" ? "left-0" : "right-0"}
           `}
         >
           <div
@@ -214,11 +161,7 @@ const WhyTooltip = memo(function WhyTooltip({
               border-r border-b
               border-light-border dark:border-dark-border
 
-              ${
-                dir === "left"
-                  ? "left-3"
-                  : "right-3"
-              }
+              ${dir === "left" ? "left-3" : "right-3"}
             `}
           />
 
@@ -326,11 +269,9 @@ const ShelfSkeleton = memo(function ShelfSkeleton() {
       </div>
 
       <div className="flex gap-4 overflow-hidden pb-2">
-        {Array.from({ length: 8 }).map(
-          (_, i) => (
-            <SkeletonCard key={i} />
-          ),
-        )}
+        {Array.from({ length: 8 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
       </div>
     </section>
   );
@@ -348,9 +289,7 @@ const ScoredCard = memo(function ScoredCard({
 }: {
   item: ScoredItem;
 
-  onCardClick?: (
-    item: ScoredItem,
-  ) => void;
+  onCardClick?: (item: ScoredItem) => void;
 }) {
   const handleClick = useCallback(() => {
     onCardClick?.(item);
@@ -374,9 +313,7 @@ const ScoredCard = memo(function ScoredCard({
           gap-1.5 mt-1
           relative z-10
         "
-        onClick={(e) =>
-          e.stopPropagation()
-        }
+        onClick={(e) => e.stopPropagation()}
       >
         <WhyTooltip item={item} />
       </div>
@@ -391,8 +328,7 @@ const ScoredCard = memo(function ScoredCard({
 */
 
 const GuestCTA = memo(function GuestCTA() {
-  const [authOpen, setAuthOpen] =
-    useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
@@ -476,11 +412,8 @@ const GuestCTA = memo(function GuestCTA() {
               dark:text-dark-secondary-text
             "
           >
-            Create a free account and
-            we'll learn your taste ,
-            suggesting movies and shows
-            based on what you search,
-            save, and watch.
+            Create a free account and we'll learn your taste , suggesting movies
+            and shows based on what you search, save, and watch.
           </p>
         </div>
 
@@ -507,20 +440,11 @@ const GuestCTA = memo(function GuestCTA() {
             whitespace-nowrap
           "
         >
-          <FontAwesomeIcon
-            icon={faUserPlus}
-            className="h-3.5 w-3.5"
-          />
-
+          <FontAwesomeIcon icon={faUserPlus} className="h-3.5 w-3.5" />
           Create Account
         </button>
 
-        <AuthModal
-          isOpen={authOpen}
-          onClose={() =>
-            setAuthOpen(false)
-          }
-        />
+        <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
       </div>
     </section>
   );
@@ -541,9 +465,7 @@ interface RecommendationShelfProps {
 
   excludeIds?: number[];
 
-  onCardClick?: (
-    item: ScoredItem,
-  ) => void;
+  onCardClick?: (item: ScoredItem) => void;
 }
 
 export default function RecommendationShelf({
@@ -563,10 +485,9 @@ export default function RecommendationShelf({
   |--------------------------------------------------------------------------
   */
 
- const user = useAuth();
+  const user = useAuth();
 
-const isLoggedIn =
-  user === undefined ? null : !!user;
+  const isLoggedIn = user === undefined ? null : !!user;
 
   /*
   |--------------------------------------------------------------------------
@@ -574,11 +495,7 @@ const isLoggedIn =
   |--------------------------------------------------------------------------
   */
 
-  const {
-    recommendations,
-    isLoading,
-    error,
-  } = useRecommendations({
+  const { recommendations, isLoading, error } = useRecommendations({
     limit,
     excludeWatched,
     excludeIds,
@@ -590,61 +507,44 @@ const isLoggedIn =
   |--------------------------------------------------------------------------
   */
 
-  const scrollRef =
-    useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const frame =
-    useRef<number | null>(null);
+  const frame = useRef<number | null>(null);
 
-  const [atStart, setAtStart] =
-    useState(true);
+  const [atStart, setAtStart] = useState(true);
 
-  const [atEnd, setAtEnd] =
-    useState(false);
+  const [atEnd, setAtEnd] = useState(false);
 
-  const updateScrollState =
-    useCallback(() => {
-      const el = scrollRef.current;
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
 
-      if (!el) return;
+    if (!el) return;
 
-      setAtStart(el.scrollLeft <= 8);
+    setAtStart(el.scrollLeft <= 8);
 
-      setAtEnd(
-        el.scrollLeft >=
-          el.scrollWidth -
-            el.clientWidth -
-            8,
-      );
-    }, []);
+    setAtEnd(el.scrollLeft >= el.scrollWidth - el.clientWidth - 8);
+  }, []);
 
   const onScroll = useCallback(() => {
     if (frame.current) return;
 
-    frame.current =
-      requestAnimationFrame(() => {
-        updateScrollState();
+    frame.current = requestAnimationFrame(() => {
+      updateScrollState();
 
-        frame.current = null;
-      });
+      frame.current = null;
+    });
   }, [updateScrollState]);
 
-  const scroll = useCallback(
-    (dir: 1 | -1) => {
-      scrollRef.current?.scrollBy({
-        left: dir * 480,
-        behavior: "smooth",
-      });
-    },
-    [],
-  );
+  const scroll = useCallback((dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({
+      left: dir * 480,
+      behavior: "smooth",
+    });
+  }, []);
 
   useEffect(() => {
     updateScrollState();
-  }, [
-    recommendations,
-    updateScrollState,
-  ]);
+  }, [recommendations, updateScrollState]);
 
   /*
   |--------------------------------------------------------------------------
@@ -660,13 +560,9 @@ const isLoggedIn =
     return <GuestCTA />;
   }
 
-  if (
-    !isLoading &&
-    (error ||
-      recommendations.length === 0)
-  ) {
-    return null;
-  }
+  if (!isLoading && error) return null;
+
+  if (!isLoading && recommendations.length === 0) return <ShelfSkeleton />;
 
   /*
   |--------------------------------------------------------------------------
@@ -715,10 +611,7 @@ const isLoggedIn =
               transition
             "
           >
-            <FontAwesomeIcon
-              icon={faChevronLeft}
-              className="h-3 w-3"
-            />
+            <FontAwesomeIcon icon={faChevronLeft} className="h-3 w-3" />
           </button>
 
           <button
@@ -747,10 +640,7 @@ const isLoggedIn =
               transition
             "
           >
-            <FontAwesomeIcon
-              icon={faChevronRight}
-              className="h-3 w-3"
-            />
+            <FontAwesomeIcon icon={faChevronRight} className="h-3 w-3" />
           </button>
         </div>
       </div>
@@ -771,20 +661,14 @@ const isLoggedIn =
           {isLoading
             ? Array.from({
                 length: 8,
-              }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))
-            : recommendations.map(
-                (item) => (
-                  <ScoredCard
-                    key={`${item.id}-${item.media_type}`}
-                    item={item}
-                    onCardClick={
-                      onCardClick
-                    }
-                  />
-                ),
-              )}
+              }).map((_, i) => <SkeletonCard key={i} />)
+            : recommendations.map((item) => (
+                <ScoredCard
+                  key={`${item.id}-${item.media_type}`}
+                  item={item}
+                  onCardClick={onCardClick}
+                />
+              ))}
         </div>
 
         {/* LEFT FADE */}
@@ -804,10 +688,9 @@ const isLoggedIn =
         )}
 
         {/* RIGHT FADE */}
-        {!atEnd &&
-          recommendations.length > 0 && (
-            <div
-              className="
+        {!atEnd && recommendations.length > 0 && (
+          <div
+            className="
                 pointer-events-none
                 absolute right-0 top-0 bottom-2
                 w-10
@@ -817,8 +700,8 @@ const isLoggedIn =
                 dark:from-dark-bg
                 to-transparent
               "
-            />
-          )}
+          />
+        )}
       </div>
     </section>
   );

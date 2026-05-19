@@ -411,7 +411,6 @@ export function useRecommendations(
   }, [
     tick,
     uid,
-    user,
     limit,
     excludeWatched,
     excludeIdsKey,
