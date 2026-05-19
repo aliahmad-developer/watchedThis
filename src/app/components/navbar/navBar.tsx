@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Fuse from "fuse.js";
-import { createSlug } from "../utilities/createSlug";
 import { trackSearch } from "../Recommendation/behaviourTracker";
 import AuthButton from "../auth/navButton/authButton";
 import {
@@ -397,7 +396,7 @@ export default function Navbar() {
                 <FontAwesomeIcon icon={faBars} className="h-4 w-4" />
               </button>
 
-              <Link href="/" className="shrink-0 flex items-center">
+              <Link href="/" className="shrink-0 flex items-center select-none">
                 {/* Mobile row logo — constrained width so it doesn't stretch */}
                 <Image
                   src="/watchedthis.svg"
@@ -425,7 +424,7 @@ export default function Navbar() {
             <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center h-14 px-6">
               {/* Col 1 — Logo */}
               <div className="flex items-center">
-                <Link href="/" className="flex items-center">
+                <Link href="/" className="flex items-center select-none">
                   <Image
                     src="/watchedthis.svg"
                     alt="WatchedThis"
@@ -560,7 +559,7 @@ export default function Navbar() {
             <div className="bg-light-nav dark:bg-dark-nav flex items-center justify-between px-3 py-3.5 border-b border-light-border dark:border-dark-border">
               <Link
                 href="/"
-                className="flex items-center"
+                className="flex items-center select-none"
                 onClick={() => setDrawerOpen(false)}
               >
                 <Image
