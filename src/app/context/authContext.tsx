@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 
 import type { User } from "firebase/auth";
 
@@ -8,6 +8,7 @@ const AuthContext = createContext<User | null | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const nullTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let unsub: (() => void) | undefined;
@@ -25,13 +26,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       unsub = onIdTokenChanged(auth, (u) => {
         if (!mounted) return;
-        setUser(u ?? null);
+        if (u) {
+          if (nullTimer.current) clearTimeout(nullTimer.current);
+          setUser(u);
+        } else {
+          nullTimer.current = setTimeout(() => {
+            if (mounted) setUser(null);
+          }, 1000);
+        }
       });
     })();
 
     return () => {
       mounted = false;
       unsub?.();
+      if (nullTimer.current) clearTimeout(nullTimer.current);
     };
   }, []);
 
