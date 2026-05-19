@@ -59,7 +59,7 @@ export default function CastCard({
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-300 pointer-events-none" />
             </div>
 
-            {showGradient && (
+            {showGradient && actor.profile_path && (
               <div className="absolute inset-y-0 right-0 w-2/3 z-10 pointer-events-none bg-linear-to-l from-light-bg dark:from-dark-bg to-transparent" />
             )}
           </>
