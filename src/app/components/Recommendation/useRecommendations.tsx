@@ -353,6 +353,18 @@ export function useRecommendations(
         setTasteProfile(tasteProfileData);
 
         setIsLoading(false);
+        if (recs.length > 0) {
+          try {
+            localStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                recommendations: recs,
+                tasteProfile: tasteProfileData,
+              }),
+            );
+          } catch {}
+        }
+        
 
         try {
           localStorage.setItem(
