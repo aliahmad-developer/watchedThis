@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 import crypto from "crypto";
 
-// FIX: Runtime guard instead of relying solely on the non-null assertion (!).
-// If the secret is missing the HMAC will silently use "undefined" as the key,
-// producing valid-looking but worthless hashes.
 function getHmacSecret(): string {
   const secret = process.env.RANDOM_HMAC_SECRET;
   if (!secret) throw new Error("RANDOM_HMAC_SECRET is not set.");
@@ -36,7 +33,6 @@ function validateToken(token: unknown): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  // Fail fast if server is misconfigured — before touching any user input.
   try {
     getHmacSecret();
   } catch {
@@ -62,33 +58,28 @@ export async function POST(req: NextRequest) {
   };
 
   const tokenError = validateToken(token);
-  if (tokenError) {
+  if (tokenError)
     return NextResponse.json({ error: tokenError }, { status: 400 });
-  }
 
   const passwordError = validatePassword(newPassword as string);
-  if (passwordError) {
+  if (passwordError)
     return NextResponse.json({ error: passwordError }, { status: 400 });
-  }
 
   const hashedToken = hashToken((token as string).trim());
 
   try {
-    const snapshot = await adminDb
-      .collection("passwordResetTokens")
-      .where("token", "==", hashedToken)
-      .limit(1)
-      .get();
+    const docRef = adminDb.collection("passwordResetTokens").doc(hashedToken);
 
-    if (snapshot.empty) {
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
       return NextResponse.json(
         { error: "Invalid or expired reset link." },
         { status: 400 },
       );
     }
 
-    const doc = snapshot.docs[0];
-    const data = doc.data();
+    const data = doc.data()!;
 
     if (data.used) {
       return NextResponse.json(
@@ -97,31 +88,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (data.expiresAt.toDate() < new Date()) {
+    const expiresAt = data.expiresAt?.toDate?.() ?? new Date(0);
+
+    if (expiresAt < new Date()) {
       return NextResponse.json(
         { error: "This link has expired." },
         { status: 400 },
       );
     }
 
-    let user;
-    try {
-      user = await adminAuth.getUserByEmail(data.email);
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      if (code === "auth/user-not-found") {
-        return NextResponse.json({ error: "User not found." }, { status: 404 });
-      }
-      throw err;
-    }
+    // 🔥 prevent reuse FIRST
+    await docRef.update({ used: true });
 
-    await adminAuth.updateUser(user.uid, { password: newPassword as string });
-    await doc.ref.update({ used: true });
+    const user = await adminAuth.getUserByEmail(data.email);
+
+    await adminAuth.updateUser(user.uid, {
+      password: newPassword as string,
+    });
 
     return NextResponse.json({ success: true });
-  } catch {
-    // Never echo the caught error — it may contain email or internal paths.
-    console.error("[confirmReset] unexpected error");
+  } catch (err) {
+    console.error("[resetPassword] unexpected error", err);
+
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },
