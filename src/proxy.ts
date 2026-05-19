@@ -96,13 +96,22 @@ export default function middleware(req: NextRequest) {
     }
   }
 
-  // 5. CSRF protection (API only)
+  // 5. CSRF protection (API only) - but allow same-site requests
   const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
 
   if (isAPI && isMutating) {
     const origin = req.headers.get("origin");
-    if (origin && origin !== process.env.NEXT_PUBLIC_APP_URL) {
-      return new NextResponse("Forbidden", { status: 403 });
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    // Only validate origin if it's provided and NEXT_PUBLIC_APP_URL is set
+    if (origin && appUrl) {
+      // Normalize URLs for comparison (remove trailing slash)
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      const normalizedAppUrl = appUrl.replace(/\/$/, "");
+
+      if (normalizedOrigin !== normalizedAppUrl) {
+        return new NextResponse("Forbidden", { status: 403 });
+      }
     }
   }
 

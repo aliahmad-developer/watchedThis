@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
 
     res.cookies.set(COOKIE_NAME, sessionCookie, {
       httpOnly: true,
-      secure: true, // Firebase App Hosting is always HTTPS
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
       path: "/",
       maxAge: expiresIn / 1000,
     });
@@ -61,8 +61,8 @@ export async function DELETE() {
 
   res.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
-    secure: true,
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
     path: "/",
     maxAge: 0,
   });

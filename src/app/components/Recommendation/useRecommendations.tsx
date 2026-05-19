@@ -229,6 +229,13 @@ export function useRecommendations(
     setIsLoading(true);
     setError(null);
 
+    // Production safety: never get stuck in loading forever.
+    const loadingTimeout = window.setTimeout(() => {
+      if (abortRef.current) return;
+      console.warn("[recs] loading timeout reached; forcing stop");
+      setIsLoading(false);
+    }, 12000);
+
     (async () => {
       try {
         const cacheKey = getCacheKey(uid);
@@ -365,9 +372,8 @@ export function useRecommendations(
                 tasteProfile: tasteProfileData,
               }),
             );
-          } catch (e) {
-            console.error("[recs] fetchUserList failed:", e);
-            return [];
+          } catch {
+            // ignore localStorage errors
           }
         }
         console.log("[recs] final recs:", recs.length);
@@ -379,7 +385,9 @@ export function useRecommendations(
               tasteProfile: tasteProfileData,
             }),
           );
-        } catch {}
+        } catch {
+          // ignore localStorage errors
+        }
 
         if (enrichBatchSize > 0) {
           const enrichTargets = recs.slice(0, enrichBatchSize);
@@ -408,7 +416,7 @@ export function useRecommendations(
         }
       } finally {
         if (!abortRef.current) {
-          setIsLoading(false); 
+          setIsLoading(false);
         }
       }
     })();

@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
       );
       res.cookies.set(COOKIE_NAME, "", {
         httpOnly: true,
-        secure: true,
-        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
         path: "/",
         maxAge: 0,
       });
