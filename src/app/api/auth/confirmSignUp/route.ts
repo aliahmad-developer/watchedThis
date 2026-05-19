@@ -32,12 +32,6 @@ function decrypt(text: string): string {
   return decrypted.toString("utf8");
 }
 
-// ─── Cookie helper ────────────────────────────────────────────────────────────
-// FIX: The original route redirected to /auth/confirmed?token=<customToken>
-// which put a sensitive token in the URL (visible in server logs, browser
-// history, and Referer headers). Instead we exchange the custom token for an
-// ID token server-side and set the HttpOnly session cookie here directly,
-// then redirect cleanly with no token in the URL.
 function buildSessionCookie(token: string): string {
   return [
     `__session=${token}`,
