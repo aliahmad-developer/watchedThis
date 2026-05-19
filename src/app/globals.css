@@ -631,7 +631,9 @@ body::after {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-
+img{
+  user-select: none;
+}
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
