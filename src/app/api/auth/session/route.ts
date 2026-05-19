@@ -8,13 +8,21 @@ const bodySchema = z.object({
 
 const COOKIE_NAME = "__session";
 
+const noCacheHeaders = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "CDN-Cache-Control": "no-store",
+};
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid token" },
+        { status: 400, headers: noCacheHeaders },
+      );
     }
 
     const { idToken } = parsed.data;
@@ -27,12 +35,12 @@ export async function POST(req: NextRequest) {
       expiresIn,
     });
 
-    const res = NextResponse.json({ ok: true });
+    const res = NextResponse.json({ ok: true }, { headers: noCacheHeaders });
 
     res.cookies.set(COOKIE_NAME, sessionCookie, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", 
+      secure: true, // Firebase App Hosting is always HTTPS
+      sameSite: "lax",
       path: "/",
       maxAge: expiresIn / 1000,
     });
@@ -43,17 +51,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { error: "Authentication failed" },
-      { status: 401 }
+      { status: 401, headers: noCacheHeaders },
     );
   }
 }
 
 export async function DELETE() {
-  const res = NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true }, { headers: noCacheHeaders });
 
   res.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "lax",
     path: "/",
     maxAge: 0,

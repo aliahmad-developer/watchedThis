@@ -3,38 +3,46 @@ import { adminAuth } from "@/lib/firebaseAdmin";
 
 const COOKIE_NAME = "__session";
 
+const noCacheHeaders = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "CDN-Cache-Control": "no-store",
+};
+
 export async function GET(req: NextRequest) {
   try {
     const sessionCookie = req.cookies.get(COOKIE_NAME)?.value;
 
     if (!sessionCookie) {
       console.log("[auth/me] no cookie found");
-      return NextResponse.json({ error: "No session" }, { status: 401 });
+      return NextResponse.json(
+        { error: "No session" },
+        { status: 401, headers: noCacheHeaders },
+      );
     }
 
-    // checkRevoked: false — avoids live Firebase call on every request
-    // which can timeout on serverless cold starts and cause false 401s
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, false);
 
-    return NextResponse.json({
-      uid: decoded.uid,
-      email: decoded.email ?? null,
-      displayName: decoded.name || decoded.email || null,
-      photoURL: decoded.picture || null,
-    });
+    return NextResponse.json(
+      {
+        uid: decoded.uid,
+        email: decoded.email ?? null,
+        displayName: decoded.name || decoded.email || null,
+        photoURL: decoded.picture || null,
+      },
+      { headers: noCacheHeaders },
+    );
   } catch (err: unknown) {
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[auth/me] verifySessionCookie failed — code:", code, err);
 
-    // Expired session: clear the cookie so client stops retrying
     if (code === "auth/session-cookie-expired") {
       const res = NextResponse.json(
         { error: "Session expired" },
-        { status: 401 },
+        { status: 401, headers: noCacheHeaders },
       );
       res.cookies.set(COOKIE_NAME, "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "lax",
         path: "/",
         maxAge: 0,
@@ -42,6 +50,9 @@ export async function GET(req: NextRequest) {
       return res;
     }
 
-    return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Invalid session" },
+      { status: 401, headers: noCacheHeaders },
+    );
   }
 }
