@@ -5,14 +5,14 @@ import { memo, useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import {
   faPlay,
   faLock,
-  faHeart,
   faStar,
+  faHeart,
+  faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
-
+import { icon } from "@fortawesome/fontawesome-svg-core";
 import toast from "react-hot-toast";
 
 import MediaPoster from "../randomMedia/mediaPoster";
@@ -107,39 +107,43 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
 
   const hasHoverContent = hasOverview || hasRating || hasMeta;
 
-  const spawnParticles = useCallback((emoji: string, count = 2) => {
-    const container = particleContainerRef.current;
+  const spawnParticles = useCallback(
+    (type: "play" | "heart" | "trash", count = 2) => {
+      const container = particleContainerRef.current;
+      if (!container) return;
 
-    if (!container) return;
+      const iconMap = {
+        play: faPlay,
+        heart: faHeart,
+        trash: faTrashCan,
+      };
 
-    for (let i = 0; i < count; i++) {
-      window.setTimeout(() => {
-        const el = document.createElement("span");
+      for (let i = 0; i < count; i++) {
+        window.setTimeout(() => {
+          const el = document.createElement("span");
+          el.style.cssText = `
+        position: absolute;
+        pointer-events: none;
+        z-index: 50;
+        font-size: ${16 + Math.random() * 8}px;
+        left: ${38 + (Math.random() - 0.5) * 28}%;
+        bottom: 48px;
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        animation: mcFloatUp 0.8s ease-out forwards;
+        user-select: none;
+        will-change: transform, opacity;
+      `;
 
-        el.style.cssText = `
-            position: absolute;
-            pointer-events: none;
-            z-index: 50;
-            font-size: ${16 + Math.random() * 8}px;
-            left: ${38 + (Math.random() - 0.5) * 28}%;
-            bottom: 48px;
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            animation: mcFloatUp 0.8s ease-out forwards;
-            user-select: none;
-            will-change: transform, opacity;
-          `;
+          el.innerHTML = icon(iconMap[type], {}).html[0];
 
-        el.textContent = emoji;
-
-        container.appendChild(el);
-
-        el.addEventListener("animationend", () => {
-          el.remove();
-        });
-      }, i * 130);
-    }
-  }, []);
+          container.appendChild(el);
+          el.addEventListener("animationend", () => el.remove());
+        }, i * 130);
+      }
+    },
+    [],
+  );
 
   /*
   |--------------------------------------------------------------------------
@@ -156,7 +160,7 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
       e.preventDefault();
       e.stopPropagation();
 
-      spawnParticles("▶", 2);
+      spawnParticles("play", 2);
 
       setShowTrailer(true);
     },
@@ -174,13 +178,17 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
         await saveToList("favourite");
 
         if (!isFavourited) {
-          spawnParticles("❤️", 3);
+          spawnParticles("heart", 3);
         }
 
         toast.success(
           isFavourited ? "Removed from Favourites" : "Added to Favourites",
           {
-            icon: isFavourited ? "🗑️" : "❤️",
+            icon: isFavourited ? (
+              <FontAwesomeIcon icon={faTrashCan} />
+            ) : (
+              <FontAwesomeIcon icon={faHeart} color="red" beat/>
+            ),
           },
         );
       } catch {

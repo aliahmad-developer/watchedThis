@@ -2,6 +2,8 @@
 import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "next-themes";
+import toast from "react-hot-toast";
+import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider } from "../../../context/authContext";
@@ -18,8 +20,11 @@ export default function ClientProviders({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const { theme } = useTheme();
+  useEffect(() => {
+    toast.dismiss();
+  }, [theme]);
 
-  // Orientation classes
   useEffect(() => {
     const mediaQuery = window.matchMedia("(orientation: landscape)");
     const handler = (e: MediaQueryListEvent | MediaQueryList) => {
@@ -32,7 +37,6 @@ export default function ClientProviders({
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
-  // Email verification poller only — token cookie is handled by AuthProvider
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: any;
@@ -64,9 +68,7 @@ export default function ClientProviders({
                 document.cookie = `firebase-auth-token=${freshToken}; path=/; SameSite=Strict; Secure; max-age=3600`;
                 router.refresh();
               }
-            } catch {
-              // network blip — retry next tick
-            }
+            } catch {}
           }, 3000);
         } else {
           if (pollInterval) {
@@ -93,25 +95,24 @@ export default function ClientProviders({
           <PushUp />
           <Toaster
             position="bottom-center"
-            gutter={10}
+            gutter={6}
             toastOptions={{
-              duration: 3500,
+              duration: 2000,
               style: {
                 borderRadius: "0.75rem",
-                padding: "0.75rem 1rem",
+                padding: "0.6rem 1rem",
                 boxShadow: "0 4px 14px rgba(0, 0, 0, 0.25)",
+                background: "var(--toast-bg)",
+                color: "var(--toast-color)",
+                border: "1px solid var(--toast-border)",
+                fontSize: "0.875rem",
+                maxWidth: "320px",
               },
-              className:
-                "bg-light-card text-light-body-text border border-light-border dark:bg-dark-card dark:text-dark-body-text dark:border-dark-border",
               success: {
                 iconTheme: { primary: "#468189", secondary: "#ffffff" },
-                className:
-                  "bg-light-card text-light-body-text border border-light-border dark:bg-dark-card dark:text-dark-body-text dark:border-dark-border",
               },
               error: {
                 iconTheme: { primary: "#d9534f", secondary: "#ffffff" },
-                className:
-                  "bg-light-card text-light-body-text border border-light-border dark:bg-dark-card dark:text-dark-body-text dark:border-dark-border",
               },
             }}
           />
