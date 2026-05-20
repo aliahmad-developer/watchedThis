@@ -35,7 +35,6 @@ function isRateLimited(ip: string): boolean {
   return entry.count > RATE_LIMIT_MAX;
 }
 
-// ─── Security headers ────────────────────────────────────────────
 const SECURITY_HEADERS: Record<string, string> = {
   "X-DNS-Prefetch-Control": "on",
   "X-Frame-Options": "SAMEORIGIN",
@@ -46,7 +45,6 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────
 function applySecurityHeaders(res: NextResponse): NextResponse {
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
     res.headers.set(k, v);
@@ -54,18 +52,9 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
   return res;
 }
 
-// ─── Middleware ──────────────────────────────────────────────────
-export default function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
 
-  // In middleware.ts, before any other checks:
-  if (pathname.startsWith("/api/") && pathname.endsWith("/")) {
-    const url = req.nextUrl.clone();
-    url.pathname = pathname.slice(0, -1);
-    return NextResponse.redirect(url, 307);
-  }
-
-  // 1. Allow static + Next internals
   if (
     pathname.startsWith("/_next") ||
     pathname.includes(".") ||
@@ -74,21 +63,20 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Block bad bots (only for real page traffic)
+  // 2. Block bad bots
   if (isBadBot(req)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // 3. Skip ALL RSC requests (VERY IMPORTANT FIX)
+  // 3. Skip RSC requests
   const isRSC = req.headers.has("rsc") || searchParams.has("_rsc");
-
   if (isRSC) {
     return NextResponse.next();
   }
 
-  // 4. Rate limit ONLY API routes (CRITICAL FIX)
   const isAPI = pathname.startsWith("/api");
 
+  // 4. Rate limit API routes
   if (isAPI) {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
@@ -103,9 +91,8 @@ export default function middleware(req: NextRequest) {
     }
   }
 
-  // 5. CSRF protection (API only) - but allow same-site requests
+  // 5. CSRF protection for mutating API requests
   const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
-
   if (isAPI && isMutating) {
     const origin = req.headers.get("origin");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -118,7 +105,6 @@ export default function middleware(req: NextRequest) {
   return applySecurityHeaders(NextResponse.next());
 }
 
-// ─── Matcher ─────────────────────────────────────────────────────
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
