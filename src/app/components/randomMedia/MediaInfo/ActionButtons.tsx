@@ -17,6 +17,9 @@ interface ActionButtonsProps {
   mediaType: "movie" | "tv";
   title: string;
   poster_path?: string;
+  // Accept either format — detail pages return `genres`, list endpoints return `genre_ids`
+  genre_ids?: number[];
+  genres?: { id: number; name: string }[];
   onPlayTrailer: () => void;
 }
 
@@ -31,16 +34,23 @@ export default function ActionButtons({
   mediaType,
   title,
   poster_path,
+  genre_ids,
+  genres,
   onPlayTrailer,
 }: ActionButtonsProps) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Derive genre_ids from whichever format the parent provides
+  const resolvedGenreIds: number[] =
+    genre_ids ?? genres?.map((g) => g.id) ?? [];
 
   const { currentStatus, saveToList, loading, isAuthenticated } = useUserList({
     mediaId,
     mediaType,
     title,
     poster_path,
+    genre_ids: resolvedGenreIds,
   });
 
   useEffect(() => {

@@ -16,6 +16,8 @@ interface MediaInfoProps {
     tagline?: string;
     media_type?: "movie" | "tv";
     poster_path?: string;
+    genre_ids?: number[];
+    genres?: { id: number; name: string }[]; 
   };
   textScheme?: "light" | "dark";
   ambientText: AmbientTextColors;
@@ -32,6 +34,9 @@ export default function MediaInfo({
   const displayTitle = data.title || data.name || "Untitled";
   const overview = data.overview || "No overview available.";
   const mediaType = data.media_type || "movie";
+
+  const resolvedGenreIds =
+    data.genre_ids ?? data.genres?.map((g) => g.id) ?? [];
 
   return (
     <div className="flex flex-col gap-6" style={{ color: ambientText.primary }}>
@@ -50,6 +55,7 @@ export default function MediaInfo({
             mediaId={data.id}
             mediaType={mediaType}
             title={displayTitle}
+            genre_ids={resolvedGenreIds}
             poster_path={data.poster_path ?? ""}
             onPlayTrailer={() => setShowTrailer(true)}
           />

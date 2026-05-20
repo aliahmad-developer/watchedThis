@@ -16,7 +16,7 @@ interface MediaMeta {
   mediaType: "movie" | "tv";
   title: string;
   poster_path?: string;
-  genre_ids?: number[]; // add this
+  genre_ids?: number[];
 }
 export function useUserList(mediaMeta: MediaMeta) {
   const { user } = useAuth();
@@ -51,7 +51,7 @@ export function useUserList(mediaMeta: MediaMeta) {
           mediaType: mediaMeta.mediaType,
           title: mediaMeta.title,
           poster_path: mediaMeta.poster_path ?? null,
-          genre_ids: mediaMeta.genre_ids ?? [], // add this
+          genre_ids: mediaMeta.genre_ids ?? [], 
           status,
           addedAt: serverTimestamp(),
         });

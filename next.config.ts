@@ -105,17 +105,6 @@ const nextConfig: NextConfig = {
       "@heroicons/react",
     ],
   },
-  // Single redirects function — merged both into one array
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.watchedthis.com" }],
-        destination: "https://watchedthis.com/:path*",
-        permanent: true,
-      },
-    ];
-  },
 };
 
 export default nextConfig;

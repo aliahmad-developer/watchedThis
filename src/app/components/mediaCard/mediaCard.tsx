@@ -39,6 +39,7 @@ interface MediaCardProps {
     vote_count?: number;
     release_date?: string;
     first_air_date?: string;
+    genre_ids?: number[];
   };
 
   displayTitle?: string;
@@ -46,7 +47,6 @@ interface MediaCardProps {
 }
 
 function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
-
   const title = useMemo(
     () => item.title || item.name || "Untitled",
     [item.title, item.name],
@@ -81,7 +81,6 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
     return `${Math.min(index * 40, 300)}ms`;
   }, [index]);
 
-
   const [showTrailer, setShowTrailer] = useState(false);
 
   const particleContainerRef = useRef<HTMLDivElement>(null);
@@ -91,6 +90,7 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
     mediaType: mediaType as "movie" | "tv",
     title,
     poster_path: item.poster_path,
+    genre_ids: item.genre_ids,
   });
 
   const isFavourited = currentStatus === "favourite";

@@ -3,10 +3,6 @@ interface CacheEntry<T> {
   ts: number
 }
 
-interface CacheOptions {
-  ttl: number 
-}
-
 class ServerCache {
   private store = new Map<string, CacheEntry<unknown>>()
 
@@ -37,7 +33,7 @@ class ServerCache {
 export const cache = new ServerCache()
 
 export const TTL = {
-  SHORT:  1000 * 60 * 5,   // 5 min
-  MEDIUM: 1000 * 60 * 15,  // 15 min
-  LONG:   1000 * 60 * 60,  // 1 hour
+  SHORT:  1000 * 60 * 5,   
+  MEDIUM: 1000 * 60 * 15, 
+  LONG:   1000 * 60 * 60, 
 }
