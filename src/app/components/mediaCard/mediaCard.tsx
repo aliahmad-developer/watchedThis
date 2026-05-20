@@ -187,7 +187,7 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
             icon: isFavourited ? (
               <FontAwesomeIcon icon={faTrashCan} />
             ) : (
-              <FontAwesomeIcon icon={faHeart} color="red" beat/>
+              <FontAwesomeIcon icon={faHeart} color="red" beat />
             ),
           },
         );
@@ -434,7 +434,7 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
                           bg-transparent
                           transition-all duration-200
                           hover:scale-110
-                          text-light-accent
+                          text-light-secondary-text
                           dark:text-white
                         "
                       >
@@ -443,20 +443,21 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
 
                       <span
                         className="
-                          hidden md:block
-                          pointer-events-none
-                          absolute -top-8 left-1/2
-                          -translate-x-1/2
-                          whitespace-nowrap
-                          rounded-md
-                          bg-black/80
-                          px-2 py-1
-                          text-[10px]
-                          text-white
-                          opacity-0
-                          transition-opacity duration-200
-                          group-hover/play:opacity-100
-                        "
+                        hidden md:block
+                        pointer-events-none
+                        absolute -top-8 left-1/2
+                        -translate-x-1/2
+                        whitespace-nowrap
+                        rounded-md
+                        bg-light-card dark:bg-dark-card
+                        border border-light-border dark:border-dark-border
+                        px-2 py-1
+                        text-[10px]
+                        text-light-body-text dark:text-dark-body-text
+                        opacity-0
+                        transition-opacity duration-200
+                        group-hover/play:opacity-100
+                      "
                       >
                         Play Trailer
                       </span>
@@ -481,7 +482,7 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
                           ${
                             isFavourited
                               ? "text-red-500 dark:text-red-400"
-                              : "text-light-accent dark:text-white"
+                              : "text-light-secondary-text dark:text-white"
                           }
                         `}
                       >
@@ -493,20 +494,21 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
 
                       <span
                         className="
-                          hidden md:block
-                          pointer-events-none
-                          absolute -top-8 left-1/2
-                          -translate-x-1/2
-                          whitespace-nowrap
-                          rounded-md
-                          bg-black/80
-                          px-2 py-1
-                          text-[10px]
-                          text-white
-                          opacity-0
-                          transition-opacity duration-200
-                          group-hover/fav:opacity-100
-                        "
+    hidden md:block
+    pointer-events-none
+    absolute -top-8 left-1/2
+    -translate-x-1/2
+    whitespace-nowrap
+    rounded-md
+    bg-light-card dark:bg-dark-card
+    border border-light-border dark:border-dark-border
+    px-2 py-1
+    text-[10px]
+    text-light-body-text dark:text-dark-body-text
+    opacity-0
+    transition-opacity duration-200
+    group-hover/fav:opacity-100
+  "
                       >
                         {isAuthenticated
                           ? isFavourited
