@@ -45,19 +45,19 @@ declare global {
 }
 
 export default function GoogleOneTap() {
-  const user = useAuth();
+  const { user, authLoading } = useAuth();
   const initializedRef = useRef(false);
 
   // Reset so One Tap can re-show after logout
   useEffect(() => {
-    if (user === null) {
+    if (!authLoading && user === null) {
       initializedRef.current = false;
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     // Wait until auth state is resolved
-    if (user === undefined) return;
+    if (authLoading) return;
     // Don't show if already logged in
     if (user !== null) return;
 
@@ -113,7 +113,7 @@ export default function GoogleOneTap() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, authLoading]);
 
   async function handleCredentialResponse(response: CredentialResponse) {
     try {
