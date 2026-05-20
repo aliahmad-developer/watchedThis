@@ -64,7 +64,7 @@ export default function AuthPage() {
   const lastVerifiedRef = useRef(false);
   const hasFetchedRef = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
+  const fetchedUIDs = new Set<string>();
   const router = useRouter();
 
   const showMessage = useCallback((text: string, isError = false) => {
@@ -85,12 +85,23 @@ export default function AuthPage() {
 
   const fetchUserInfo = useCallback(
     async (forceRefresh = false) => {
-      if (hasFetchedRef.current && !forceRefresh) return;
+      const currentUser = authRef.current?.currentUser;
+      if (!currentUser) return;
+      const cached = userInfoCache.get(currentUser.uid);
+      if (cached && !forceRefresh && fetchedUIDs.has(currentUser.uid)) {
+        setUser(currentUser); // use existing user object, no reload
+        setIsVerified(!!currentUser.emailVerified);
+        lastVerifiedRef.current = !!currentUser.emailVerified;
+        setCreatedDate(cached.createdDate);
+        setDisplayPhotoURL(cached.photoURL);
+        setNewUsername(cached.displayName);
+        hasFetchedRef.current = true;
+        setIsLoading(false);
+        return;
+      }
 
       try {
         setIsLoading(true);
-        const currentUser = authRef.current?.currentUser;
-        if (!currentUser) return;
 
         await currentUser.reload();
         const freshUser = authRef.current?.currentUser;
@@ -102,15 +113,6 @@ export default function AuthPage() {
         setNewUsername(freshUser.displayName || "");
         setDisplayPhotoURL(freshUser.photoURL ?? null);
 
-        // Check cache first — skip Firestore if we already have it
-        const cached = userInfoCache.get(freshUser.uid);
-        if (cached && !forceRefresh) {
-          setCreatedDate(cached.createdDate);
-          hasFetchedRef.current = true;
-          return;
-        }
-
-        // Cache miss — fetch from Firestore
         if (dbRef.current) {
           try {
             const { doc, getDoc } = await import("firebase/firestore");
@@ -118,16 +120,11 @@ export default function AuthPage() {
               doc(dbRef.current, "users", freshUser.uid),
             );
             const date = userDoc.exists()
-              ? (userDoc
-                  .data()
-                  ?.createdAt?.toDate?.()
-                  ?.toLocaleDateString() as string) ||
+              ? userDoc.data()?.createdAt?.toDate?.()?.toLocaleDateString() ||
                 getSafeCreatedDate(freshUser)
               : getSafeCreatedDate(freshUser);
 
             setCreatedDate(date);
-
-            // Write to cache
             userInfoCache.set(freshUser.uid, {
               createdDate: date,
               photoURL: freshUser.photoURL ?? null,
@@ -138,6 +135,7 @@ export default function AuthPage() {
           }
         }
 
+        fetchedUIDs.add(freshUser.uid);
         hasFetchedRef.current = true;
       } catch {
         showMessage("Failed to refresh user information", true);
@@ -147,8 +145,6 @@ export default function AuthPage() {
     },
     [getSafeCreatedDate, showMessage],
   );
-
-  // Lazy Firebase initialization
   useEffect(() => {
     let unsubscribe: any;
 

@@ -91,21 +91,6 @@ export default function GoogleOneTap() {
         context: "signin",
         use_fedcm_for_prompt: false,
       });
-
-      google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed()) {
-          console.log(
-            "[OneTap] not displayed:",
-            notification.getNotDisplayedReason(),
-          );
-        }
-        if (notification.isSkippedMoment()) {
-          console.log("[OneTap] skipped:", notification.getSkippedReason());
-        }
-        if (notification.isDismissedMoment()) {
-          sessionStorage.setItem("google-one-tap-dismissed", "true");
-        }
-      });
     };
 
     init();

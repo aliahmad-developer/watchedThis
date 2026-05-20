@@ -25,13 +25,9 @@ async function tmdbGet<T>(
       url.searchParams.set("params", JSON.stringify(params));
     }
 
-    console.log("[tmdb] fetching:", url.toString());
-
     const res = await fetch(url.toString(), {
       cache: "no-store",
     });
-
-    console.log("[tmdb] status:", res.status);
 
     if (!res.ok) {
       const text = await res.text();
@@ -96,11 +92,7 @@ async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
       }),
     );
   });
-  console.log("[candidates] raw counts:", {
-    trendMovies: trendMovies?.results?.length,
-    trendTV: trendTV?.results?.length,
-    genreResults: genreResults.map((r) => r?.results?.length),
-  });
+
   const seen = new Set<string>();
 
   return results.filter((m) => {
@@ -341,19 +333,7 @@ export function useRecommendations(
         const topGenreIds = topGenreNames
           .map((n) => nameToId[n])
           .filter(Boolean) as number[];
-        console.log("[recs] topGenreNames:", topGenreNames);
-        console.log(
-          "[recs] TMDB_GENRES sample:",
-          Object.entries(TMDB_GENRES).slice(0, 5),
-        );
         const candidates = await fetchCandidates(topGenreIds);
-        console.log(
-          "[recs] candidates:",
-          candidates.length,
-          "topGenreIds:",
-          topGenreIds,
-        );
-
         if (abortRef.current) return;
 
         const profile: RecommendationProfile = {
@@ -396,10 +376,9 @@ export function useRecommendations(
               }),
             );
           } catch {
-            // ignore localStorage errors
+           
           }
         }
-        console.log("[recs] final recs:", recs.length);
         try {
           localStorage.setItem(
             cacheKey,

@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
     const sessionCookie = req.cookies.get(COOKIE_NAME)?.value;
 
     if (!sessionCookie) {
-      console.log("[auth/me] no cookie found");
       return NextResponse.json(
         { error: "No session" },
         { status: 401, headers: noCacheHeaders },
