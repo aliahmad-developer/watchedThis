@@ -143,7 +143,6 @@ export const login = async (email: string, password: string) => {
     notifyAuthChange();
 
     return { success: true, message: "Login successful!" };
-    
   } catch (error: any) {
     if (error.code) {
       const { message, noAccount } = friendlyAuthError(error.code);
@@ -182,6 +181,11 @@ export const logout = async () => {
 // ─── OAuth ─────────────────────────────────────────────────────────────────
 async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
   try {
+    // Cancel any active One Tap / GSI flow and wait for it to fully clear
+    window.google?.accounts?.id?.cancel();
+    window.google?.accounts?.id?.disableAutoSelect?.();
+    await new Promise((res) => setTimeout(res, 500));
+
     const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
     const auth = await getFirebaseAuth();
 

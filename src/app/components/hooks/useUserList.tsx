@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 
-import {
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  setDoc,
-} from "firebase/firestore";
+import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { getFirebaseDB } from "../../firebase/firebaseConfig";
 
@@ -21,8 +16,8 @@ interface MediaMeta {
   mediaType: "movie" | "tv";
   title: string;
   poster_path?: string;
+  genre_ids?: number[]; // add this
 }
-
 export function useUserList(mediaMeta: MediaMeta) {
   const { user } = useAuth();
 
@@ -30,8 +25,7 @@ export function useUserList(mediaMeta: MediaMeta) {
 
   const [loading, setLoading] = useState(false);
 
-  const currentStatus =
-    items[mediaMeta.mediaId] ?? null;
+  const currentStatus = items[mediaMeta.mediaId] ?? null;
 
   const saveToList = async (status: ListStatus) => {
     if (!user) return;
@@ -46,7 +40,7 @@ export function useUserList(mediaMeta: MediaMeta) {
         "users",
         user.uid,
         "lists",
-        String(mediaMeta.mediaId)
+        String(mediaMeta.mediaId),
       );
 
       if (currentStatus === status) {
@@ -57,6 +51,7 @@ export function useUserList(mediaMeta: MediaMeta) {
           mediaType: mediaMeta.mediaType,
           title: mediaMeta.title,
           poster_path: mediaMeta.poster_path ?? null,
+          genre_ids: mediaMeta.genre_ids ?? [], // add this
           status,
           addedAt: serverTimestamp(),
         });

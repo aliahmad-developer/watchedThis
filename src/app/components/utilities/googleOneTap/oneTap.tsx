@@ -2,6 +2,7 @@
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { getFirebaseAuth } from "../../../firebase/firebaseConfig";
 import { useEffect, useRef } from "react";
+import { useAuth } from "../../hooks/useAuth";
 
 declare global {
   interface Window {
@@ -43,20 +44,28 @@ declare global {
   }
 }
 
-function hasActiveSession(): boolean {
-  return document.cookie.includes("__session=");
-}
-
 export default function GoogleOneTap() {
+  const user = useAuth();
   const initializedRef = useRef(false);
 
+  // Reset so One Tap can re-show after logout
   useEffect(() => {
+    if (user === null) {
+      initializedRef.current = false;
+    }
+  }, [user]);
+
+  useEffect(() => {
+    // Wait until auth state is resolved
+    if (user === undefined) return;
+    // Don't show if already logged in
+    if (user !== null) return;
+
     if (initializedRef.current) return;
     initializedRef.current = true;
 
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     if (!clientId) return;
-    if (hasActiveSession()) return;
     if (sessionStorage.getItem("google-one-tap-dismissed")) return;
 
     let cancelled = false;
@@ -103,9 +112,8 @@ export default function GoogleOneTap() {
 
     return () => {
       cancelled = true;
-      window.google?.accounts?.id?.cancel();
     };
-  }, []);
+  }, [user]);
 
   async function handleCredentialResponse(response: CredentialResponse) {
     try {

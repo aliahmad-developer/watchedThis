@@ -25,17 +25,29 @@ async function tmdbGet<T>(
       url.searchParams.set("params", JSON.stringify(params));
     }
 
-    const res = await fetch(url.toString());
+    console.log("[tmdb] fetching:", url.toString());
 
-    if (!res.ok) return null;
+    const res = await fetch(url.toString(), {
+      cache: "no-store",
+    });
 
-    return res.json() as Promise<T>;
+    console.log("[tmdb] status:", res.status);
+
+    if (!res.ok) {
+      const text = await res.text();
+
+      console.error("[tmdb] failed:", res.status, text);
+
+      return null;
+    }
+
+    return await res.json();
   } catch (e) {
     console.error("[tmdb] fetch failed:", path, e);
+
     return null;
   }
 }
-
 async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
   const results: MediaItem[] = [];
 
@@ -84,7 +96,11 @@ async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
       }),
     );
   });
-
+  console.log("[candidates] raw counts:", {
+    trendMovies: trendMovies?.results?.length,
+    trendTV: trendTV?.results?.length,
+    genreResults: genreResults.map((r) => r?.results?.length),
+  });
   const seen = new Set<string>();
 
   return results.filter((m) => {
@@ -131,6 +147,7 @@ interface ListDoc {
   status: string;
   title?: string;
   poster_path?: string;
+  genre_ids?: number[]; // add this
 }
 
 async function fetchUserList(uid: string): Promise<ListDoc[]> {
@@ -189,7 +206,6 @@ export function useRecommendations(
 
   const excludeIdsKey = useMemo(() => excludeIds.join(","), [excludeIds]);
 
-
   const refresh = useCallback(() => {
     setTick((t) => t + 1);
   }, []);
@@ -233,13 +249,10 @@ export function useRecommendations(
 
     // Production safety: never get stuck in loading forever.
     loadingTimeoutRef.current = window.setTimeout(() => {
-
       if (abortRef.current) return;
       console.warn("[recs] loading timeout reached; forcing stop");
       setIsLoading(false);
     }, 12000);
-
-
 
     (async () => {
       try {
@@ -295,6 +308,7 @@ export function useRecommendations(
             media_type: d.mediaType,
             title: d.title,
             poster_path: d.poster_path,
+            genre_ids: d.genre_ids ?? [], // add this
           })),
 
           favouriteIds,
@@ -327,8 +341,11 @@ export function useRecommendations(
         const topGenreIds = topGenreNames
           .map((n) => nameToId[n])
           .filter(Boolean) as number[];
-
-
+        console.log("[recs] topGenreNames:", topGenreNames);
+        console.log(
+          "[recs] TMDB_GENRES sample:",
+          Object.entries(TMDB_GENRES).slice(0, 5),
+        );
         const candidates = await fetchCandidates(topGenreIds);
         console.log(
           "[recs] candidates:",
@@ -433,7 +450,6 @@ export function useRecommendations(
         window.clearTimeout(loadingTimeoutRef.current);
       }
     };
-
   }, [
     tick,
     uid,
