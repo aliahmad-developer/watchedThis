@@ -184,7 +184,7 @@ export function useRecommendations(
     limit = 20,
     excludeWatched = true,
     excludeIds = [],
-    enrichBatchSize = 10,
+    enrichBatchSize = 0,
   } = opts;
 
   const user = useAuth();
