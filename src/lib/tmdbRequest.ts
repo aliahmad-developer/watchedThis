@@ -20,7 +20,6 @@ export async function tmdbFetch<T>(
   const url = path.startsWith("http")
     ? path
     : `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
-  console.log("[tmdb] token present:", !!token, "| url:", url);
   const res = await fetch(url, {
     ...init,
     headers: {

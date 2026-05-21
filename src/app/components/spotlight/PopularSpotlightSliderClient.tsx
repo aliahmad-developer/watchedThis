@@ -8,10 +8,8 @@ import IndicatorDots from "./clientSubCom/IndicatorDots";
 import TrailerModal from "../playTrailerModal/trailerModal";
 import { MediaItem } from "./types";
 
-
 interface Props {
   items: MediaItem[];
-  isMobile: boolean;
   slideDuration?: number;
   className?: string;
   height?: number | string;
@@ -23,7 +21,6 @@ interface Props {
 
 export default function PopularSpotlightSliderClient({
   items,
-  isMobile: isMobileServer,
   slideDuration = 5000,
   className = "",
   height = "420px",
@@ -32,15 +29,11 @@ export default function PopularSpotlightSliderClient({
   showSpotlightNumber = true,
   autoPlay = true,
 }: Props) {
-  // Start with the server-detected value to avoid hydration mismatch,
-  // then sync to the real viewport width after mount.
-  const [isMobile, setIsMobile] = useState(isMobileServer);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
-    // Sync immediately on mount in case the viewport differs from UA detection
     setIsMobile(mq.matches);
-    // Update whenever the breakpoint is crossed (e.g. DevTools resize)
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
@@ -108,7 +101,6 @@ export default function PopularSpotlightSliderClient({
       const next = prev + 1;
 
       if (next === items.length) {
-        
         transitionTimeoutRef.current = setTimeout(() => {
           setIsTransitioning(false);
           setCurrentIndex(0);
@@ -131,7 +123,6 @@ export default function PopularSpotlightSliderClient({
 
     setCurrentIndex((prev) => {
       if (prev === 0) {
-        
         transitionTimeoutRef.current = setTimeout(() => {
           setIsTransitioning(false);
           setCurrentIndex(items.length - 1);
@@ -193,7 +184,6 @@ export default function PopularSpotlightSliderClient({
 
   if (!items || items.length === 0) return null;
 
-  // Real index for indicator dots — clamp -1 and items.length edge cases
   const realIndex =
     currentIndex === -1 ? items.length - 1 : currentIndex % items.length;
 

@@ -1,6 +1,5 @@
 import PopularSpotlightSliderClient from "./PopularSpotlightSliderClient";
 import { getSpotlightData } from "./spotlightHelper";
-import { headers } from "next/headers";
 import { tmdbImage } from "@/lib/imageTmdb";
 
 export default async function PopularSpotlightSliderServer({
@@ -13,15 +12,11 @@ export default async function PopularSpotlightSliderServer({
 }: any) {
   try {
     const results = await getSpotlightData();
-    const headersList = await headers();
-    const ua = headersList.get("user-agent") || "";
-    const isMobile = /mobile|android|iphone|ipad/i.test(ua);
     const firstBackdrop = results[0]?.backdrop_path;
 
-    const tmdbSize = isMobile ? "w780" : "w1280";
-    // ✅ use proxy URL instead of direct TMDB
+    // Preload the desktop image; client will handle mobile swap
     const preloadHref = firstBackdrop
-      ? tmdbImage(firstBackdrop, tmdbSize)
+      ? tmdbImage(firstBackdrop, "w1280")
       : null;
 
     return (
@@ -46,7 +41,6 @@ export default async function PopularSpotlightSliderServer({
           showNavigation={showNavigation}
           showSpotlightNumber={showSpotlightNumber}
           autoPlay={autoPlay}
-          isMobile={isMobile}
         />
       </section>
     );

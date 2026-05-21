@@ -99,11 +99,9 @@ export default function GoogleOneTap() {
           );
         }
         if (notification.isSkippedMoment()) {
-          console.log("[OneTap] skipped:", notification.getSkippedReason());
           sessionStorage.setItem("google-one-tap-dismissed", "1");
         }
         if (notification.isDismissedMoment()) {
-          console.log("[OneTap] dismissed:", notification.getDismissedReason());
           sessionStorage.setItem("google-one-tap-dismissed", "1");
         }
       });

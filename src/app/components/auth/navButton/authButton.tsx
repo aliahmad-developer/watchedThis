@@ -58,14 +58,12 @@ export default function AuthButton() {
 
   const syncFromSession = useCallback(async () => {
     try {
-      console.log("[AuthButton] syncFromSession start");
 
       const res = await fetch("/api/auth/me", {
         credentials: "include",
         cache: "no-store",
       });
 
-      console.log("[AuthButton] /api/auth/me status", res.status);
 
       if (!res.ok) {
         let body: any = null;
@@ -80,7 +78,6 @@ export default function AuthButton() {
       }
 
       const data: SessionUser = await res.json();
-      console.log("[AuthButton] /api/auth/me data", data);
       syncUser(data);
     } catch (e) {
       console.error("[AuthButton] syncFromSession error", e);
