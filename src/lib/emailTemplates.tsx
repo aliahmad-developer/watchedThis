@@ -157,7 +157,7 @@ export function getEmailVerificationTemplate(verifyLink: string): string {
     <div style="background:${BASE.lightBg};border-radius:8px;padding:14px 16px;
                 border-left:3px solid ${BASE.accent};">
       <p style="margin:0;color:${BASE.lightSecondaryText};font-size:12px;line-height:1.6;">
-        This link expires in <strong style="color:${BASE.lightBodyText};">24 hours</strong>.
+        This link expires in <strong style="color:${BASE.lightBodyText};">15 min</strong>.
         If you didn't create an account, you can safely ignore this email.
       </p>
     </div>
