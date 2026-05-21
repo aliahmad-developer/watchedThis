@@ -6,51 +6,29 @@ const BAD_BOTS =
 const SOCIAL_CRAWLERS =
   /facebookexternalhit|twitterbot|telegrambot|whatsapp|linkedinbot|slackbot|discordbot|applebot|googlebot|bingbot/i;
 
-function isBadBot(req: NextRequest): boolean {
-  const ua = req.headers.get("user-agent") ?? "";
-  const host = req.headers.get("host") ?? "";
-
-  // Never block local development
-  if (host.includes("localhost") || host.includes("127.0.0.1")) {
-    return false;
-  }
-
-  // Allow legitimate crawlers
-  if (SOCIAL_CRAWLERS.test(ua)) {
-    return false;
-  }
-
-  // Empty UA is suspicious
-  if (!ua.trim()) {
-    return true;
-  }
-
-  return BAD_BOTS.test(ua);
-}
-
 const SECURITY_HEADERS: Record<string, string> = {
-  // Existing
   "X-DNS-Prefetch-Control": "on",
   "X-Frame-Options": "SAMEORIGIN",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
   "X-XSS-Protection": "0",
-
-  // Added
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Cross-Origin-Resource-Policy": "same-origin",
 
-  // Safer CSP without breaking current site
   "Content-Security-Policy": [
     "default-src 'self'",
-    "img-src 'self' data: https:",
+
+    // Allow normal + blob images
+    "img-src 'self' data: blob: https:",
+
     "media-src 'self' https:",
     "frame-src 'self' https:",
     "font-src 'self' https: data:",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
     "style-src 'self' 'unsafe-inline' https:",
     "connect-src 'self' https: wss:",
+
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -58,45 +36,70 @@ const SECURITY_HEADERS: Record<string, string> = {
     "upgrade-insecure-requests",
   ].join("; "),
 };
+// Routes that require a valid session cookie
+const PROTECTED_ROUTES = ["/user/settings", "/user/lists"];
 
-function applyHeaders(res: NextResponse) {
+function isBadBot(req: NextRequest): boolean {
+  const ua = req.headers.get("user-agent") ?? "";
+  const host = req.headers.get("host") ?? "";
+
+  if (host.includes("localhost") || host.includes("127.0.0.1")) return false;
+  if (SOCIAL_CRAWLERS.test(ua)) return false;
+  if (!ua.trim()) return true;
+
+  return BAD_BOTS.test(ua);
+}
+
+function applySecurityHeaders(res: NextResponse): NextResponse {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     res.headers.set(key, value);
   }
-
   return res;
 }
 
-export default function middleware(req: NextRequest) {
-  const { pathname, searchParams } = req.nextUrl;
+function isProtected(pathname: string): boolean {
+  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+}
 
+export default function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // ✅ Always skip static assets — no headers needed, no bot check
   if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.includes(".") ||
+    pathname.startsWith("/_next/static") ||
+    pathname.startsWith("/_next/image") ||
     pathname === "/favicon.ico"
   ) {
     return NextResponse.next();
   }
 
-  const isRSC = req.headers.has("rsc") || searchParams.has("_rsc");
+  // ✅ Skip bot filtering for API routes and RSC — apply headers only
+  const isApi = pathname.startsWith("/api");
+  const isRSC = req.headers.has("rsc") || req.nextUrl.searchParams.has("_rsc");
 
-  if (isRSC) {
-    return NextResponse.next();
+  if (isApi || isRSC) {
+    return applySecurityHeaders(NextResponse.next());
   }
 
-  // Bot filtering
+  // ✅ Bot filtering for all page routes
   if (isBadBot(req)) {
-    return new NextResponse("Forbidden", {
-      status: 403,
-    });
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const response = NextResponse.next();
+  // ✅ Auth guard for protected routes
+  if (isProtected(pathname)) {
+    const session = req.cookies.get("__session")?.value;
 
-  return applyHeaders(response);
+    if (!session) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  return applySecurityHeaders(NextResponse.next());
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

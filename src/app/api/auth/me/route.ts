@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
+import { getFirestore } from "firebase-admin/firestore";
+import { adminApp } from "@/lib/firebaseAdmin";
 
 const COOKIE_NAME = "__session";
 
@@ -19,14 +21,26 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, false);
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+
+    // Fallback to Firestore for photoURL because decoded.picture may be stale
+    // (or not included in the session token).
+    const db = getFirestore(adminApp);
+    let firestorePhotoURL: string | null = null;
+    try {
+      const snap = await db.collection("users").doc(decoded.uid).get();
+      const data = snap.data();
+      firestorePhotoURL = (data?.photoURL as string | undefined) ?? null;
+    } catch {
+      // ignore
+    }
 
     return NextResponse.json(
       {
         uid: decoded.uid,
         email: decoded.email ?? null,
         displayName: decoded.name || decoded.email || null,
-        photoURL: decoded.picture || null,
+        photoURL: firestorePhotoURL ?? decoded.picture ?? null,
       },
       { headers: noCacheHeaders },
     );
@@ -42,7 +56,7 @@ export async function GET(req: NextRequest) {
       res.cookies.set(COOKIE_NAME, "", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
         maxAge: 0,
       });

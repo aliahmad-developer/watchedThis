@@ -1,7 +1,7 @@
 "use client";
 import ProfilePictureUpdate from "./authComponent/profilePic";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation"; // ✅ added useSearchParams
 import SignupForm from "./signUpForm";
 import LoginForm from "./loginForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
@@ -15,11 +15,7 @@ import { User } from "firebase/auth";
 
 const userInfoCache = new Map<
   string,
-  {
-    createdDate: string;
-    photoURL: string | null;
-    displayName: string;
-  }
+  { createdDate: string; photoURL: string | null; displayName: string }
 >();
 
 const SkeletonLoader = () => (
@@ -64,8 +60,9 @@ export default function AuthPage() {
   const lastVerifiedRef = useRef(false);
   const hasFetchedRef = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const fetchedUIDs = new Set<string>();
+  const fetchedUIDs = useRef(new Set<string>()); // ✅ moved to ref so it persists across renders
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const showMessage = useCallback((text: string, isError = false) => {
     setMessage(text);
@@ -88,8 +85,8 @@ export default function AuthPage() {
       const currentUser = authRef.current?.currentUser;
       if (!currentUser) return;
       const cached = userInfoCache.get(currentUser.uid);
-      if (cached && !forceRefresh && fetchedUIDs.has(currentUser.uid)) {
-        setUser(currentUser); // use existing user object, no reload
+      if (cached && !forceRefresh && fetchedUIDs.current.has(currentUser.uid)) {
+        setUser(currentUser);
         setIsVerified(!!currentUser.emailVerified);
         lastVerifiedRef.current = !!currentUser.emailVerified;
         setCreatedDate(cached.createdDate);
@@ -135,7 +132,7 @@ export default function AuthPage() {
           }
         }
 
-        fetchedUIDs.add(freshUser.uid);
+        fetchedUIDs.current.add(freshUser.uid);
         hasFetchedRef.current = true;
       } catch {
         showMessage("Failed to refresh user information", true);
@@ -145,6 +142,8 @@ export default function AuthPage() {
     },
     [getSafeCreatedDate, showMessage],
   );
+
+  // ✅ Firebase init + auth state listener
   useEffect(() => {
     let unsubscribe: any;
 
@@ -188,6 +187,31 @@ export default function AuthPage() {
     };
   }, [fetchUserInfo, showMessage]);
 
+  // ✅ Auto-login after email verification redirect
+  // Runs only after auth is initialized; skipped if user is already signed in
+  useEffect(() => {
+    if (!auth || user) return;
+    if (searchParams.get("verified") !== "true") return;
+
+    const signInAfterVerification = async () => {
+      try {
+        const res = await fetch("/api/auth/clientToken");
+        if (!res.ok) return;
+
+        const { customToken } = await res.json();
+        if (!customToken) return;
+
+        const { signInWithCustomToken } = await import("firebase/auth");
+        await signInWithCustomToken(auth, customToken);
+        // onAuthStateChanged will fire and call fetchUserInfo automatically
+      } catch (err) {
+        console.error("[authPage] auto sign-in after verification failed", err);
+      }
+    };
+
+    signInAfterVerification();
+  }, [auth, user, searchParams]); // ✅ depends on auth being ready
+
   // Seed username input when user loads
   useEffect(() => {
     if (user?.displayName) {
@@ -199,7 +223,6 @@ export default function AuthPage() {
   useEffect(() => {
     if (!user || !authRef.current?.currentUser) return;
 
-    // Seed ref BEFORE interval starts so already-verified users don't get the toast
     lastVerifiedRef.current = !!authRef.current.currentUser.emailVerified;
 
     const interval = setInterval(async () => {
@@ -233,7 +256,6 @@ export default function AuthPage() {
       setUser(updated);
       setNewUsername(updated?.displayName || "");
 
-      // Update cache with new display name
       const uid = updated?.uid;
       if (uid) {
         const cached = userInfoCache.get(uid);
@@ -323,7 +345,6 @@ export default function AuthPage() {
             user={user}
             onUpdated={(newPhotoURL) => {
               setDisplayPhotoURL(newPhotoURL);
-              // Update cache with new photo URL
               const uid = authRef.current?.currentUser?.uid;
               if (uid) {
                 const cached = userInfoCache.get(uid);
@@ -458,22 +479,6 @@ export default function AuthPage() {
         )}
         {mode === "signup" && (
           <SignupForm
-            onSuccess={(newUser: any, username: string) => {
-              setUser(newUser);
-              setNewUsername(username);
-              setIsVerified(!!newUser.emailVerified);
-              const date = newUser.metadata?.creationTime
-                ? new Date(newUser.metadata.creationTime).toLocaleDateString()
-                : "Unknown";
-              setCreatedDate(date);
-              // Seed cache on signup so no Firestore read needed immediately
-              userInfoCache.set(newUser.uid, {
-                createdDate: date,
-                photoURL: newUser.photoURL ?? null,
-                displayName: username,
-              });
-              window.dispatchEvent(new CustomEvent("signup-username-ready"));
-            }}
             onError={(e) => showMessage(e, true)}
             onSwitchToLogin={() => setMode("login")}
           />

@@ -98,22 +98,29 @@ export async function signup(
     const data = await res.json();
 
     if (!res.ok) {
-      const accountExists = res.status === 409;
       return {
         success: false,
+        unverifiedResent: false,
         message: data.error || "Failed to send verification email.",
-        accountExists,
+        accountExists: res.status === 409,
       };
     }
 
     return {
-      success: true,
+      success: !data.unverifiedResent,
+      unverifiedResent: (data.unverifiedResent as boolean) ?? false,
       message: `Verification email sent to ${email}. Please check your inbox.`,
+      accountExists: false,
       user: null,
       username,
     };
   } catch {
-    return { success: false, message: "Sign up failed. Please try again." };
+    return {
+      success: false,
+      unverifiedResent: false,
+      message: "Sign up failed. Please try again.",
+      accountExists: false,
+    };
   }
 }
 

@@ -72,6 +72,25 @@ export async function POST(req: NextRequest) {
       }
       throw e;
     }
+    // After getUserByEmail succeeds, check if they're still pending verification
+    const pendingSnap = await adminDb
+      .collection("pendingSignups")
+      .where("email", "==", cleanEmail)
+      .limit(1)
+      .get();
+
+    if (!pendingSnap.empty) {
+      const { expiresAt } = pendingSnap.docs[0].data();
+      if (expiresAt > Date.now()) {
+        return NextResponse.json(
+          {
+            error:
+              "Please verify your email address before resetting your password.",
+          },
+          { status: 403 },
+        );
+      }
+    }
 
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = hashToken(rawToken);

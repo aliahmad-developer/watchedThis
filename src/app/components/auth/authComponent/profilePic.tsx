@@ -562,6 +562,9 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
         await updateProfile(user, { photoURL: downloadURL });
         await user.reload();
 
+        // Force token refresh so the session cookie gets the new photoURL
+        await user.getIdToken(true);
+
         try {
           await updateDoc(doc(getFirebaseDB(), "users", user.uid), {
             photoURL: downloadURL,
@@ -570,11 +573,10 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
           console.warn("Firestore update non-critical:", err);
         }
 
-        window.dispatchEvent(new CustomEvent("signup-username-ready"));
-        window.dispatchEvent(new CustomEvent("user-photo-updated"));
-        toast.success("Profile picture updated!");
         updateCache(downloadURL);
         onUpdated?.(downloadURL);
+        window.dispatchEvent(new Event("auth-updated"));
+        toast.success("Profile picture updated!");
       } catch (err: any) {
         if (err?.code === "storage/canceled") return;
         console.error("Upload error:", err);
@@ -585,7 +587,7 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
         uploadTaskRef.current = null;
       }
     },
-    [user, onUpdated],
+    [user, onUpdated, updateCache],
   );
 
   const handleCropApply = useCallback(

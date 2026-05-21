@@ -7,15 +7,20 @@ export function getTmdbBearerToken() {
   return process.env.TMDB_ACCESS_TOKEN || process.env.TMDB_API_KEY;
 }
 
-export async function tmdbFetch<T>(path: string, init?: RequestInit & { next?: any }): Promise<T> {
+export async function tmdbFetch<T>(
+  path: string,
+  init?: RequestInit & { next?: any },
+): Promise<T> {
   const token = getTmdbBearerToken();
   if (!token) {
     throw new Error("TMDB access token is not configured");
   }
 
   const baseUrl = getTmdbBaseUrl();
-  const url = path.startsWith("http") ? path : `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
-
+  const url = path.startsWith("http")
+    ? path
+    : `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
+  console.log("[tmdb] token present:", !!token, "| url:", url);
   const res = await fetch(url, {
     ...init,
     headers: {
@@ -31,4 +36,3 @@ export async function tmdbFetch<T>(path: string, init?: RequestInit & { next?: a
 
   return (await res.json()) as T;
 }
-

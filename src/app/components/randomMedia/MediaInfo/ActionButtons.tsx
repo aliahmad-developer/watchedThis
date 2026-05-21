@@ -102,7 +102,7 @@ export default function ActionButtons({
           dark:bg-dark-header dark:text-dark-bg dark:hover:bg-white
         "
       >
-        <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-white/10 via-white/0 to-white/10" />
+        <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-linear-to-r from-white/10 via-white/0 to-white/10" />
         <FontAwesomeIcon
           icon={faPlay}
           fixedWidth

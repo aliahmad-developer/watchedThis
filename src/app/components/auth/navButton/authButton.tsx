@@ -27,38 +27,63 @@ export default function AuthButton() {
     pathname === "/user/profile" || pathname === "/user/library";
 
   const syncUser = useCallback((u: SessionUser | null) => {
+    setUser(u);
+
     if (!u) {
-      setUser(null);
       setPhotoURL(null);
       setDisplayLetter("");
       setImgError(false);
       return;
     }
 
-    setUser(u);
+    // Avoid leaving the <Image> in an error state after a new upload.
     setImgError(false);
-    setPhotoURL(u.photoURL ?? null);
+
+    // If server session doesn't yet have photoURL, keep rendering the user
+    // but fall back to initials until it appears.
+    if (!u.photoURL) {
+      setPhotoURL(null);
+    } else {
+      // Force the browser to refetch the latest photoURL.
+      // Also handle the case where the URL already has query params.
+      const sep = u.photoURL.includes("?") ? "&" : "?";
+      setPhotoURL(`${u.photoURL}${sep}_t=${Date.now()}`);
+    }
 
     const name = u.displayName?.trim();
     const email = u.email?.split("@")[0] ?? "";
-    setDisplayLetter((name ? name.charAt(0) : email.charAt(0)).toUpperCase());
+
+    setDisplayLetter((name?.[0] || email?.[0] || "").toUpperCase());
   }, []);
 
   const syncFromSession = useCallback(async () => {
     try {
+      console.log("[AuthButton] syncFromSession start");
+
       const res = await fetch("/api/auth/me", {
         credentials: "include",
         cache: "no-store",
       });
 
+      console.log("[AuthButton] /api/auth/me status", res.status);
+
       if (!res.ok) {
+        let body: any = null;
+        try {
+          body = await res.json();
+        } catch {
+          // ignore
+        }
+        console.warn("[AuthButton] /api/auth/me non-ok", body);
         syncUser(null);
         return;
       }
 
       const data: SessionUser = await res.json();
+      console.log("[AuthButton] /api/auth/me data", data);
       syncUser(data);
-    } catch {
+    } catch (e) {
+      console.error("[AuthButton] syncFromSession error", e);
       syncUser(null);
     }
   }, [syncUser]);
@@ -95,7 +120,7 @@ export default function AuthButton() {
               referrerPolicy="no-referrer"
             />
           ) : (
-            <span className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-200 text-sm font-medium">
+            <span className="w-9 h-9 text-accent-text dark:text-dark-bg flex items-center justify-center rounded-full bg-light-accent dark:bg-dark-accent text-sm font-medium">
               {displayLetter}
             </span>
           )}

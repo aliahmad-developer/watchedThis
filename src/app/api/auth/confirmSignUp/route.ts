@@ -37,16 +37,11 @@ function decrypt(text: string): string {
   return decrypted.toString("utf8");
 }
 
-/**
- * 🔥 IMPORTANT FIX:
- * DO NOT manually build cookie strings.
- * Use NextResponse cookies API instead.
- */
 function setSessionCookie(res: NextResponse, sessionCookie: string) {
   res.cookies.set("__session", sessionCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax", // ❗ STRICT breaks auth in production
+    sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 5, // 5 days
   });
@@ -100,11 +95,10 @@ export async function GET(req: NextRequest) {
     const { email, username, passwordEncrypted } = data;
     const password = decrypt(passwordEncrypted);
 
-    // If user already exists → just clean up
+    // If user already exists → just clean up and redirect
     try {
       await auth.getUserByEmail(email);
       await docRef.delete();
-
       return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
     } catch (e: any) {
       if (e.code !== "auth/user-not-found") throw e;
@@ -125,15 +119,14 @@ export async function GET(req: NextRequest) {
 
     await docRef.delete();
 
-    // 🔥 STEP 1: create custom token
+    // Exchange custom token for ID token
     const customToken = await auth.createCustomToken(userRecord.uid);
 
-    const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API;
     if (!firebaseApiKey) {
       throw new Error("Missing FIREBASE_API_KEY");
     }
 
-    // 🔥 STEP 2: exchange for ID token
     const exchangeRes = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${firebaseApiKey}`,
       {
@@ -148,27 +141,28 @@ export async function GET(req: NextRequest) {
 
     if (!exchangeRes.ok) {
       console.error("[auth] token exchange failed", exchangeRes.status);
-
+      // User was created successfully, just skip auto-login
       return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
     }
 
-    const { idToken } = (await exchangeRes.json()) as {
-      idToken: string;
-    };
+    const { idToken } = (await exchangeRes.json()) as { idToken: string };
 
     await auth.verifyIdToken(idToken);
 
-    // 🔥 STEP 3: SET COOKIE PROPERLY (NO MANUAL HEADER)
+    const expiresIn = 5 * 24 * 60 * 60 * 1000;
+    const sessionCookie = await auth.createSessionCookie(idToken, {
+      expiresIn,
+    });
+
     const response = NextResponse.redirect(
       `${baseUrl}/user/profile?verified=true`,
     );
 
-    setSessionCookie(response, idToken);
+    setSessionCookie(response, sessionCookie);
 
     return response;
   } catch (err) {
     console.error("[confirmSignUp] unexpected error", err);
-
     return NextResponse.redirect(`${baseUrl}/user/profile?error=server_error`);
   }
 }

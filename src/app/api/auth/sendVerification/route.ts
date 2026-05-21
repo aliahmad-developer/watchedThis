@@ -10,11 +10,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const HMAC_SECRET = process.env.RANDOM_HMAC_SECRET!;
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
-function signToken(id: string, expiresAt: number): string {
-  return crypto
-    .createHmac("sha256", HMAC_SECRET)
-    .update(`${id}.${expiresAt}`)
-    .digest("hex");
+function signToken(id: string): string {
+  return crypto.createHmac("sha256", HMAC_SECRET).update(id).digest("hex");
 }
 
 function encrypt(text: string): string {
@@ -71,6 +68,7 @@ export async function POST(req: NextRequest) {
     const auth = getAuth(adminApp);
     const db = getFirestore(adminApp);
 
+    // Check if a verified account already exists in Firebase Auth
     try {
       await auth.getUserByEmail(cleanEmail);
       return NextResponse.json(
@@ -79,15 +77,46 @@ export async function POST(req: NextRequest) {
       );
     } catch (e: any) {
       if (e.code !== "auth/user-not-found") throw e;
+      // User not found in Auth — fall through to pending check
+    }
+
+    // Check if there's already a pending (unverified) signup
+    const existingPending = await db
+      .collection("pendingSignups")
+      .where("email", "==", cleanEmail)
+      .limit(1)
+      .get();
+
+    if (!existingPending.empty) {
+      const doc = existingPending.docs[0];
+      const { expiresAt, username: existingUsername } = doc.data();
+
+      // Check expiry in code instead of Firestore query
+      if (expiresAt > Date.now()) {
+        const existingId = doc.id;
+        const sig = signToken(existingId);
+        const confirmUrl = `${baseUrl}/api/auth/confirmSignUp?token=${existingId}.${sig}`;
+
+        await resend.emails.send({
+          from: process.env.EMAIL_FROM!,
+          to: cleanEmail,
+          subject: "Verify your email address",
+          html: getEmailVerificationTemplate(confirmUrl),
+        });
+
+        return NextResponse.json({ unverifiedResent: true });
+      }
     }
 
     const id = crypto.randomBytes(32).toString("hex");
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-    const sig = signToken(id, expiresAt);
+    const expiresAt = Date.now() + 15 * 60 * 1000;
+    const sig = signToken(id);
+    const passwordEncrypted = encrypt(password);
 
     await db.collection("pendingSignups").doc(id).set({
       email: cleanEmail,
       username: cleanUsername,
+      passwordEncrypted,
       expiresAt,
       createdAt: Date.now(),
     });
@@ -103,6 +132,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
+    console.error("[signup] unexpected error", err);
     return NextResponse.json(
       { error: "Failed to send verification email." },
       { status: 500 },

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef,useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { signup, signInWithGoogle, signInWithApple } from "./auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -31,7 +31,6 @@ const validatePassword = (password: string) => ({
   hasLowerCase: /[a-z]/.test(password),
   hasNumber: /\d/.test(password),
 });
-
 const Spinner = () => (
   <svg
     className="animate-spin h-3 w-3"
@@ -70,6 +69,7 @@ export default function SignupForm({
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(
     null,
   );
+  const [unverifiedResent, setUnverifiedResent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -77,9 +77,7 @@ export default function SignupForm({
     Record<string, string>
   >({});
   const [shakeTerms, setShakeTerms] = useState(false);
-  const [showVerifyModal, 
-    
-    setShowVerifyModal] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const termsRef = useRef<HTMLDivElement>(null);
 
@@ -88,12 +86,11 @@ export default function SignupForm({
   const passwordsMatch = password === confirmPassword;
   const anyLoading = loading || oauthLoading !== null;
 
- const emailId = useId();
+  const emailId = useId();
   const passwordId = useId();
   const confirmPasswordId = useId();
   const usernameId = useId();
   const termsId = useId();
-  
 
   const triggerTermsError = () => {
     setValidationErrors((prev) => ({
@@ -137,11 +134,9 @@ export default function SignupForm({
         sanitizeInput(username),
       );
 
-      if (result.success) {
-        // Don't call onSuccess yet — account doesn't exist yet.
-        // Show the verify email modal instead.
+      if (result.success || result.unverifiedResent) {
+        if (result.unverifiedResent) setUnverifiedResent(true);
         setShowVerifyModal(true);
-         
       } else {
         setMessage(result.message);
         if (result.accountExists) setAccountExists(true);
@@ -155,7 +150,6 @@ export default function SignupForm({
       setLoading(false);
     }
   };
-
   const handleOAuth = async (provider: "google" | "apple") => {
     if (!acceptedTerms) {
       triggerTermsError();
@@ -251,7 +245,10 @@ export default function SignupForm({
         {/* Username + Email */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
-            <label htmlFor={usernameId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+            <label
+              htmlFor={usernameId}
+              className="text-xs font-medium text-light-body-text dark:text-dark-body-text"
+            >
               Username
             </label>
             <input
@@ -280,7 +277,10 @@ export default function SignupForm({
           </div>
 
           <div>
-            <label htmlFor={emailId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+            <label
+              htmlFor={emailId}
+              className="text-xs font-medium text-light-body-text dark:text-dark-body-text"
+            >
               Email
             </label>
             <input
@@ -313,7 +313,10 @@ export default function SignupForm({
 
         {/* Password */}
         <div>
-          <label htmlFor={passwordId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+          <label
+            htmlFor={passwordId}
+            className="text-xs font-medium text-light-body-text dark:text-dark-body-text"
+          >
             Password
           </label>
           <div className="relative mt-1">
@@ -383,7 +386,10 @@ export default function SignupForm({
 
         {/* Confirm Password */}
         <div>
-          <label htmlFor={confirmPasswordId} className="text-xs font-medium text-light-body-text dark:text-dark-body-text">
+          <label
+            htmlFor={confirmPasswordId}
+            className="text-xs font-medium text-light-body-text dark:text-dark-body-text"
+          >
             Confirm Password
           </label>
           <div className="relative mt-1">
@@ -522,7 +528,7 @@ export default function SignupForm({
               <button
                 type="button"
                 onClick={onSwitchToLogin}
-                className="block mt-1 font-medium bg-transparent text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors hover:underline"
+                className="inline underline mt-1 font-medium bg-transparent text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors hover:underline"
               >
                 Go to login
               </button>
@@ -537,7 +543,10 @@ export default function SignupForm({
           email={sanitizeInput(email)}
           password={password}
           username={sanitizeInput(username)}
-          onClose={() => setShowVerifyModal(false) }
+          onClose={() => {
+            setShowVerifyModal(false);
+            setUnverifiedResent(false);
+          }}
           onSwitchToLogin={onSwitchToLogin}
         />
       )}

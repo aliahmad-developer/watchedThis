@@ -5,7 +5,7 @@ import { cache, TTL } from "@/lib/cache";
 const ALLOWED_PATHS = [
   "/movie/",
   "/tv/",
-  '/find/',
+  "/find/",
   "/search/",
   "/discover/",
   "/trending/",
@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } });
   }
 
-  // Parse optional extra params
   let extraParams: Record<string, string> = {};
   if (params) {
     try {
@@ -44,16 +43,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Build query string from extra params only — no api_key
   const qs = new URLSearchParams(extraParams).toString();
   const fullPath = qs ? `${path}?${qs}` : path;
 
   try {
     const data = await tmdbFetch<unknown>(fullPath);
-    cache.set(cacheKey, data);
+    const isValidResponse =
+      data &&
+      typeof data === "object" &&
+      !("error" in data) &&
+      !("message" in data);
+    if (isValidResponse) {
+      cache.set(cacheKey, data, true);
+    }
     return NextResponse.json(data, { headers: { "X-Cache": "MISS" } });
   } catch (error) {
     console.error(`[/api/tmdb] path=${path}`, error);
+    cache.invalidate(cacheKey);
     return NextResponse.json(
       { message: "Error fetching from TMDB", error: String(error) },
       { status: 502 },

@@ -264,7 +264,7 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
               <div
                 className="
                   absolute inset-0 z-10
-                  bg-gradient-to-t
+                  bg-linear-to-t
                   from-white/90
                   via-white/75
                   to-white/60
@@ -410,7 +410,7 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
                       className={`
                         hidden md:block
                         text-sm leading-relaxed
-                        overflow-hidden break-words
+                        overflow-hidden wrap-break-word
                         mb-auto
                         text-gray-800 dark:text-gray-200
                         ${
