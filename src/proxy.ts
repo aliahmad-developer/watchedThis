@@ -39,8 +39,8 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy": [
     "default-src 'self'",
 
-    // scripts (Google One Tap needs this)
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.google.com",
+    // scripts (Google One Tap + GTM)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.google.com https://www.googletagmanager.com https://tagmanager.google.com",
 
     // styles
     "style-src 'self' 'unsafe-inline' https:",
@@ -48,11 +48,11 @@ const SECURITY_HEADERS: Record<string, string> = {
     // images
     "img-src 'self' data: blob: https:",
 
-    // API / auth calls
-    "connect-src 'self' https: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
+    // API / auth calls (GTM + Google services)
+    "connect-src 'self' https: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.googletagmanager.com https://region1.google-analytics.com https://www.google-analytics.com",
 
-    // Google One Tap uses iframe / identity services
-    "frame-src 'self' https://accounts.google.com https://www.google.com",
+    // Google One Tap + GTM iframe usage
+    "frame-src 'self' https://accounts.google.com https://www.google.com https://www.googletagmanager.com",
 
     "font-src 'self' https: data:",
     "media-src 'self' https:",
