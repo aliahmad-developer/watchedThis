@@ -1,4 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+const authRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "15 m"),
+  prefix: "rl:auth",
+});
+
+const RATE_LIMITED_ROUTES = [
+  "/api/auth/resetPassword",
+  "/api/auth/sendVerification",
+  "/api/auth/confirmReset",
+  "/api/auth/confirmSignUp",
+];
 
 const BAD_BOTS =
   /crawler|spider|scraper|go-http|libwww|python-requests|curl|wget|java\/|ruby|perl|php|bot(?!tle)/i;
@@ -15,20 +35,15 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Cross-Origin-Resource-Policy": "same-origin",
-
   "Content-Security-Policy": [
     "default-src 'self'",
-
-    // Allow normal + blob images
     "img-src 'self' data: blob: https:",
-
     "media-src 'self' https:",
     "frame-src 'self' https:",
     "font-src 'self' https: data:",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
     "style-src 'self' 'unsafe-inline' https:",
     "connect-src 'self' https: wss:",
-
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -36,8 +51,6 @@ const SECURITY_HEADERS: Record<string, string> = {
     "upgrade-insecure-requests",
   ].join("; "),
 };
-// Routes that require a valid session cookie
-const PROTECTED_ROUTES = ["/user/settings", "/user/lists"];
 
 function isBadBot(req: NextRequest): boolean {
   const ua = req.headers.get("user-agent") ?? "";
@@ -57,14 +70,15 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
   return res;
 }
 
-function isProtected(pathname: string): boolean {
-  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+function getIP(req: NextRequest): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "127.0.0.1"
+  );
 }
 
-export default function middleware(req: NextRequest) {
+export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // ✅ Always skip static assets — no headers needed, no bot check
   if (
     pathname.startsWith("/_next/static") ||
     pathname.startsWith("/_next/image") ||
@@ -73,25 +87,34 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // ✅ Skip bot filtering for API routes and RSC — apply headers only
   const isApi = pathname.startsWith("/api");
   const isRSC = req.headers.has("rsc") || req.nextUrl.searchParams.has("_rsc");
+
+  if (RATE_LIMITED_ROUTES.some((r) => pathname.startsWith(r))) {
+    const ip = getIP(req);
+    const { success, limit, remaining, reset } = await authRatelimit.limit(ip);
+
+    if (!success) {
+      const res = new NextResponse("Too many requests", { status: 429 });
+      res.headers.set("X-RateLimit-Limit", String(limit));
+      res.headers.set("X-RateLimit-Remaining", String(remaining));
+      res.headers.set("X-RateLimit-Reset", String(reset));
+      return res;
+    }
+  }
 
   if (isApi || isRSC) {
     return applySecurityHeaders(NextResponse.next());
   }
 
-  // ✅ Bot filtering for all page routes
   if (isBadBot(req)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // ✅ Auth guard for protected routes
-  if (isProtected(pathname)) {
+  if (pathname.startsWith("/user/library")) {
     const session = req.cookies.get("__session")?.value;
-
     if (!session) {
-      const loginUrl = new URL("/login", req.url);
+      const loginUrl = new URL("/user/profile", req.url);
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }

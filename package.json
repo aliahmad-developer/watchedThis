@@ -17,6 +17,8 @@
     "@heroicons/react": "^2.2.0",
     "@sendgrid/mail": "^8.1.6",
     "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "animejs": "^4.3.6",
     "axios": "^1.12.2",
     "choco": "^0.2.1",
