@@ -62,8 +62,6 @@ export async function POST(req: NextRequest) {
   const cleanEmail = (email as string).trim().toLowerCase();
 
   try {
-    // FIX (enumeration): check if user exists but return the same response
-    // either way — don't tell the caller whether the email is registered.
     try {
       await adminAuth.getUserByEmail(cleanEmail);
     } catch (e: any) {
@@ -72,7 +70,6 @@ export async function POST(req: NextRequest) {
       }
       throw e;
     }
-    // After getUserByEmail succeeds, check if they're still pending verification
     const pendingSnap = await adminDb
       .collection("pendingSignups")
       .where("email", "==", cleanEmail)
@@ -94,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = hashToken(rawToken);
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes;
 
     await adminDb.collection("passwordResetTokens").doc(hashedToken).set({
       token: hashedToken,

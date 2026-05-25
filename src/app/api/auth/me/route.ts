@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 import { getFirestore } from "firebase-admin/firestore";
 import { adminApp } from "@/lib/firebaseAdmin";
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 const COOKIE_NAME = "__session";
+const CACHE_TTL = 60 * 60; 
 
 const noCacheHeaders = {
   "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -21,10 +28,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const cacheKey = `user:session:${sessionCookie.slice(-32)}`; 
+    const cached = await redis.get<{
+      uid: string;
+      email: string | null;
+      displayName: string | null;
+      photoURL: string | null;
+    }>(cacheKey);
+
+    if (cached) {
+      return NextResponse.json(cached, { headers: noCacheHeaders });
+    }
+
+    // Cache miss — verify and fetch from Firestore
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
 
-    // Fallback to Firestore for photoURL because decoded.picture may be stale
-    // (or not included in the session token).
     const db = getFirestore(adminApp);
     let firestorePhotoURL: string | null = null;
     try {
@@ -35,15 +53,16 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    return NextResponse.json(
-      {
-        uid: decoded.uid,
-        email: decoded.email ?? null,
-        displayName: decoded.name || decoded.email || null,
-        photoURL: firestorePhotoURL ?? decoded.picture ?? null,
-      },
-      { headers: noCacheHeaders },
-    );
+    const userData = {
+      uid: decoded.uid,
+      email: decoded.email ?? null,
+      displayName: decoded.name || decoded.email || null,
+      photoURL: firestorePhotoURL ?? decoded.picture ?? null,
+    };
+
+    await redis.set(cacheKey, userData, { ex: CACHE_TTL });
+
+    return NextResponse.json(userData, { headers: noCacheHeaders });
   } catch (err: unknown) {
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[auth/me] verifySessionCookie failed — code:", code, err);

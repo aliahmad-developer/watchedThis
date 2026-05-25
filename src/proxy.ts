@@ -33,21 +33,34 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
   "X-XSS-Protection": "0",
-  "Cross-Origin-Opener-Policy": "same-origin-allow-popups", 
+  "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Cross-Origin-Resource-Policy": "cross-origin",
+
   "Content-Security-Policy": [
     "default-src 'self'",
-    "img-src 'self' data: blob: https:",
-    "media-src 'self' https:",
-    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
-    "font-src 'self' https: data:",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+
+    // scripts (Google One Tap needs this)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.google.com",
+
+    // styles
     "style-src 'self' 'unsafe-inline' https:",
-    "connect-src 'self' https: wss: https://*.firebaseapp.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+
+    // images
+    "img-src 'self' data: blob: https:",
+
+    // API / auth calls
+    "connect-src 'self' https: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
+
+    // Google One Tap uses iframe / identity services
+    "frame-src 'self' https://accounts.google.com https://www.google.com",
+
+    "font-src 'self' https: data:",
+    "media-src 'self' https:",
+    "object-src 'none'",
+
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
-    "object-src 'none'",
     "upgrade-insecure-requests",
   ].join("; "),
 };
@@ -90,6 +103,7 @@ export default async function proxy(req: NextRequest) {
   const isApi = pathname.startsWith("/api");
   const isRSC = req.headers.has("rsc") || req.nextUrl.searchParams.has("_rsc");
 
+  // Rate limit auth routes
   if (RATE_LIMITED_ROUTES.some((r) => pathname.startsWith(r))) {
     const ip = getIP(req);
     const { success, limit, remaining, reset } = await authRatelimit.limit(ip);
@@ -103,18 +117,22 @@ export default async function proxy(req: NextRequest) {
     }
   }
 
+  // Block bad bots (non-API)
   if (!isApi && isBadBot(req)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
+  // Allow API/RSC with headers only
   if (isApi || isRSC) {
     return applySecurityHeaders(NextResponse.next());
   }
 
+  // Block again for page requests
   if (isBadBot(req)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
+  // Protected route example
   if (pathname.startsWith("/user/library")) {
     const session = req.cookies.get("__session")?.value;
     if (!session) {

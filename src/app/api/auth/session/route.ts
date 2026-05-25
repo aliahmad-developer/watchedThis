@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminAuth } from "@/lib/firebaseAdmin";
+import { Redis } from "@upstash/redis";
 
 const bodySchema = z.object({
   idToken: z.string().min(1),
+});
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
 const COOKIE_NAME = "__session";
@@ -56,9 +61,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE() {
-  const res = NextResponse.json({ ok: true }, { headers: noCacheHeaders });
+export async function DELETE(req: NextRequest) {
+  const sessionCookie = req.cookies.get("__session")?.value;
 
+  if (sessionCookie) {
+    const cacheKey = `user:session:${sessionCookie.slice(-32)}`;
+    await redis.del(cacheKey);
+  }
+
+  const res = NextResponse.json({ ok: true }, { headers: noCacheHeaders });
   res.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

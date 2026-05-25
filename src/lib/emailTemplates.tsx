@@ -122,7 +122,7 @@ export function getPasswordResetTemplate(resetLink: string): string {
     <div style="background:${BASE.lightBg};border-radius:8px;padding:14px 16px;
                 border-left:3px solid ${BASE.accent};">
       <p style="margin:0;color:${BASE.lightSecondaryText};font-size:12px;line-height:1.6;">
-        This link expires in <strong style="color:${BASE.lightBodyText};">1 hour</strong>.
+        This link expires in <strong style="color:${BASE.lightBodyText};">15 min</strong>.
         If you didn't request a password reset, you can safely ignore this email —
         your password won't change.
       </p>
