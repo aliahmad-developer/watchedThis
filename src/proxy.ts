@@ -103,6 +103,10 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
+  if (!isApi && isBadBot(req)) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   if (isApi || isRSC) {
     return applySecurityHeaders(NextResponse.next());
   }

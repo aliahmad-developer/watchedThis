@@ -5,6 +5,27 @@ runConfig:
   concurrency: 80
 
 env:
+  # ── Public (build-time inlined) ───────────────────────────────────────────
+  - variable: NEXT_PUBLIC_BASE_URL
+    value: "https://watchedthis.com"
+  - variable: NEXT_PUBLIC_APP_URL
+    value: "https://watchedthis.com"
+  - variable: NEXT_PUBLIC_FIREBASE_API
+    value: AIzaSyAGI1_aNBvq3k3bkNw4YBFQmSIeiYQT7pE
+  - variable: NEXT_PUBLIC_AUTH_DOMAIN
+    value: fyp-movie-4d46d.firebaseapp.com
+  - variable: NEXT_PUBLIC_PROJECT_ID
+    value: fyp-movie-4d46d
+  - variable: NEXT_PUBLIC_STORAGE_BUCKET
+    value: fyp-movie-4d46d.appspot.com
+  - variable: NEXT_PUBLIC_MESSAGING_SENDER_ID
+    value: "533039372071"
+  - variable: NEXT_PUBLIC_APP_ID
+    value: "1:533039372071:web:8e51125262c4e74ecffb02"
+  - variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    value: 533039372071-45s97vpg0aqu5a5sn9urtck8uhn7ncv3.apps.googleusercontent.com
+
+  # ── Server-side secrets ───────────────────────────────────────────────────
   - variable: TMDB_ACCESS_TOKEN
     secret: TMDB_ACCESS_TOKEN
   - variable: TMDB_API_KEY
@@ -19,30 +40,12 @@ env:
     secret: FIREBASE_ADMIN_PRIVATE_KEY
   - variable: FIREBASE_SERVICE_ACCOUNT
     secret: FIREBASE_SERVICE_ACCOUNT
-  - variable: NEXT_PUBLIC_BASE_URL
-    secret: NEXT_PUBLIC_BASE_URL
-  - variable: NEXT_PUBLIC_FIREBASE_API
-    secret: NEXT_PUBLIC_FIREBASE_API
-  - variable: NEXT_PUBLIC_AUTH_DOMAIN
-    secret: NEXT_PUBLIC_AUTH_DOMAIN
-  - variable: NEXT_PUBLIC_PROJECT_ID
-    secret: NEXT_PUBLIC_PROJECT_ID
-  - variable: NEXT_PUBLIC_STORAGE_BUCKET
-    secret: NEXT_PUBLIC_STORAGE_BUCKET
-  - variable: NEXT_PUBLIC_MESSAGING_SENDER_ID
-    secret: NEXT_PUBLIC_MESSAGING_SENDER_ID
-  - variable: NEXT_PUBLIC_APP_ID
-    secret: NEXT_PUBLIC_APP_ID
-  - variable: NEXT_PUBLIC_APP_URL
-    secret: NEXT_PUBLIC_APP_URL
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY
   - variable: EMAIL_FROM
     secret: EMAIL_FROM
   - variable: RANDOM_HMAC_SECRET
     secret: RANDOM_HMAC_SECRET
-  - variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID
-    secret: NEXT_PUBLIC_GOOGLE_CLIENT_ID
   - variable: UPSTASH_REDIS_REST_URL
     secret: UPSTASH_REDIS_REST_URL
   - variable: UPSTASH_REDIS_REST_TOKEN
