@@ -37,7 +37,6 @@ function getServiceAccount(): Parameters<typeof cert>[0] {
 function initAdminApp(): App {
   const existing = getApps();
   if (existing.length > 0) {
-    // getApps()[0] is App | undefined in the type — guard it explicitly.
     const app = existing[0];
     if (!app)
       throw new Error("Firebase Admin: getApps() returned an empty slot.");
