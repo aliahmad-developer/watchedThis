@@ -28,7 +28,6 @@ function getServiceAccount(): Parameters<typeof cert>[0] {
   return {
     projectId: requireEnv("FIREBASE_ADMIN_PROJECT_ID"),
     clientEmail: requireEnv("FIREBASE_ADMIN_CLIENT_EMAIL"),
-    // PEM newlines are often escaped to \\n by secret managers.
     privateKey: requireEnv("FIREBASE_ADMIN_PRIVATE_KEY").replace(/\\n/g, "\n"),
   };
 }

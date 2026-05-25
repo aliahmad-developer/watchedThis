@@ -11,12 +11,12 @@ env:
     secret: TMDB_API_KEY
   - variable: TMDB_BASE_URL
     secret: TMDB_BASE_URL
-  - variable: ADMIN_PROJECT_ID
-    secret: ADMIN_PROJECT_ID
-  - variable: ADMIN_CLIENT_EMAIL
-    secret: ADMIN_CLIENT_EMAIL
-  - variable: ADMIN_PRIVATE_KEY
-    secret: ADMIN_PRIVATE_KEY
+  - variable: FIREBASE_ADMIN_PROJECT_ID
+    secret: FIREBASE_ADMIN_PROJECT_ID
+  - variable: FIREBASE_ADMIN_CLIENT_EMAIL
+    secret: FIREBASE_ADMIN_CLIENT_EMAIL
+  - variable: FIREBASE_ADMIN_PRIVATE_KEY
+    secret: FIREBASE_ADMIN_PRIVATE_KEY
   - variable: FIREBASE_SERVICE_ACCOUNT
     secret: FIREBASE_SERVICE_ACCOUNT
   - variable: NEXT_PUBLIC_BASE_URL
