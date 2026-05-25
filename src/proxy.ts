@@ -33,6 +33,8 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
   "X-XSS-Protection": "0",
+  // FIX 1: Changed from "same-origin" to "same-origin-allow-popups" to allow
+  // Firebase popup-based auth flows (window.closed calls were being blocked).
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Cross-Origin-Resource-Policy": "cross-origin",
 
@@ -48,11 +50,12 @@ const SECURITY_HEADERS: Record<string, string> = {
     // images
     "img-src 'self' data: blob: https:",
 
-    // API / auth calls (GTM + Google services)
-    "connect-src 'self' https: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.googletagmanager.com https://region1.google-analytics.com https://www.google-analytics.com",
+    // API / auth calls (GTM + Google services + Firebase)
+    "connect-src 'self' https: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.googletagmanager.com https://region1.google-analytics.com https://www.google-analytics.com https://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
 
-    // Google One Tap + GTM iframe usage
-    "frame-src 'self' https://accounts.google.com https://www.google.com https://www.googletagmanager.com",
+    // FIX 2: Added https://fyp-movie-4d46d.firebaseapp.com (and wildcard fallback)
+    // to allow Firebase auth iframe used for session management and token refresh.
+    "frame-src 'self' https://accounts.google.com https://www.google.com https://www.googletagmanager.com https://fyp-movie-4d46d.firebaseapp.com https://*.firebaseapp.com",
 
     "font-src 'self' https: data:",
     "media-src 'self' https:",
