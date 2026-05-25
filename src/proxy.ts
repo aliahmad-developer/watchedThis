@@ -33,17 +33,17 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
   "X-XSS-Protection": "0",
-  "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
-  "Cross-Origin-Resource-Policy": "same-origin",
+  "Cross-Origin-Opener-Policy": "same-origin-allow-popups", 
+  "Cross-Origin-Resource-Policy": "cross-origin",
   "Content-Security-Policy": [
     "default-src 'self'",
     "img-src 'self' data: blob: https:",
     "media-src 'self' https:",
-    "frame-src 'self' https:",
+    "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
     "font-src 'self' https: data:",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
     "style-src 'self' 'unsafe-inline' https:",
-    "connect-src 'self' https: wss:",
+    "connect-src 'self' https: wss: https://*.firebaseapp.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -76,7 +76,7 @@ function getIP(req: NextRequest): string {
   );
 }
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (

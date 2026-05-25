@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     res.cookies.set(COOKIE_NAME, sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: expiresIn / 1000,
     });
