@@ -1,103 +1,64 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import AuthModal from "../authModal";
+import { usePathname } from "next/navigation";
 
-type SessionUser = {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
-};
+import AuthModal from "../authModal";
+import { useAuth } from "../../../context/authContext";
 
 export default function AuthButton() {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [displayLetter, setDisplayLetter] = useState("");
-  const [photoURL, setPhotoURL] = useState<string | null>(null);
-  const [imgError, setImgError] = useState(false);
+  const { user, status } = useAuth();
+
   const [modalOpen, setModalOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const pathname = usePathname();
-  const router = useRouter();
 
   const isAuthPage =
-    pathname === "/user/profile" || pathname === "/user/library";
-
-  const syncUser = useCallback((u: SessionUser | null) => {
-    setUser(u);
-
-    if (!u) {
-      setPhotoURL(null);
-      setDisplayLetter("");
-      setImgError(false);
-      return;
-    }
-
-    // Avoid leaving the <Image> in an error state after a new upload.
-    setImgError(false);
-
-    // If server session doesn't yet have photoURL, keep rendering the user
-    // but fall back to initials until it appears.
-    if (!u.photoURL) {
-      setPhotoURL(null);
-    } else {
-      // Force the browser to refetch the latest photoURL.
-      // Also handle the case where the URL already has query params.
-      const sep = u.photoURL.includes("?") ? "&" : "?";
-      setPhotoURL(`${u.photoURL}${sep}_t=${Date.now()}`);
-    }
-
-    const name = u.displayName?.trim();
-    const email = u.email?.split("@")[0] ?? "";
-
-    setDisplayLetter((name?.[0] || email?.[0] || "").toUpperCase());
-  }, []);
-
-  const syncFromSession = useCallback(async () => {
-    try {
-
-      const res = await fetch("/api/auth/me", {
-        credentials: "include",
-        cache: "no-store",
-      });
-
-
-      if (!res.ok) {
-        let body: any = null;
-        try {
-          body = await res.json();
-        } catch {
-          // ignore
-        }
-        console.warn("[AuthButton] /api/auth/me non-ok", body);
-        syncUser(null);
-        return;
-      }
-
-      const data: SessionUser = await res.json();
-      syncUser(data);
-    } catch (e) {
-      console.error("[AuthButton] syncFromSession error", e);
-      syncUser(null);
-    }
-  }, [syncUser]);
+    pathname === "/user/profile" ||
+    pathname === "/user/library";
 
   useEffect(() => {
-    syncFromSession();
+    setImgError(false);
+  }, [user?.photoURL]);
 
-    const handler = () => {
-      syncFromSession();
-      router.refresh();
-    };
+  const displayLetter = useMemo(() => {
+    if (!user) return "";
 
-    window.addEventListener("auth-updated", handler);
-    return () => window.removeEventListener("auth-updated", handler);
-  }, [syncFromSession, router]);
+    const name =
+      user.displayName?.trim();
 
-  const showPhoto = !!photoURL && !imgError;
+    const email =
+      user.email?.split("@")[0] ?? "";
+
+    return (
+      name?.[0] ||
+      email?.[0] ||
+      ""
+    ).toUpperCase();
+  }, [user]);
+
+  const photoURL = useMemo(() => {
+    if (!user?.photoURL) return null;
+
+    const sep =
+      user.photoURL.includes("?")
+        ? "&"
+        : "?";
+
+    return `${user.photoURL}${sep}_t=${user.metadata.lastSignInTime ?? Date.now()}`;
+  }, [user]);
+
+  const showPhoto =
+    !!photoURL && !imgError;
+
+  if (status === "loading") {
+    return (
+      <div className="w-9 h-9 rounded-full animate-pulse bg-light-accent dark:bg-dark-accent/30" />
+    );
+  }
 
   return (
     <>
@@ -108,23 +69,30 @@ export default function AuthButton() {
         >
           {showPhoto ? (
             <Image
-              src={photoURL!}
+              src={photoURL}
               alt="Profile"
               width={36}
               height={36}
+              priority
               className="w-9 h-9 rounded-full object-cover"
-              onError={() => setImgError(true)}
               referrerPolicy="no-referrer"
+              onError={() =>
+                setImgError(true)
+              }
             />
           ) : (
-            <span className="w-9 h-9 text-accent-text dark:text-dark-bg flex items-center justify-center rounded-full bg-light-accent dark:bg-dark-accent text-sm font-medium">
+            <span className="w-9 h-9 rounded-full bg-light-accent dark:bg-dark-accent text-accent-text dark:text-dark-bg flex items-center justify-center text-sm font-medium"
+            >
               {displayLetter}
             </span>
           )}
         </Link>
       ) : (
         <button
-          onClick={() => !isAuthPage && setModalOpen(true)}
+          onClick={() =>
+            !isAuthPage &&
+            setModalOpen(true)
+          }
           className="px-2 text-sm"
         >
           Login
@@ -134,11 +102,9 @@ export default function AuthButton() {
       {modalOpen && (
         <AuthModal
           isOpen={modalOpen}
-          onClose={() => {
-            setModalOpen(false);
-            syncFromSession();
-            router.refresh();
-          }}
+          onClose={() =>
+            setModalOpen(false)
+          }
         />
       )}
     </>

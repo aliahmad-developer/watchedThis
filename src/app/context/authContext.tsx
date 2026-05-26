@@ -61,19 +61,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Use statusRef instead of state.status — avoids stale closure
         if (sessionSyncRef.current && statusRef.current === "authenticated") {
           setAuthState((prev) => ({ ...prev, user: u }));
           return;
         }
 
-        const res = await fetch("/api/auth/me", { credentials: "include" });
+        setAuthState({
+          user: u,
+          status: "authenticated",
+        });
 
-        if (res.ok && mountedRef.current) {
-          sessionSyncRef.current = true;
-          setAuthState({ user: u, status: "authenticated" });
+        if (sessionSyncRef.current) {
           return;
         }
+
+        try {
+          const res = await fetch("/api/auth/me", {
+            credentials: "include",
+            cache: "no-store",
+          });
+
+          if (!res.ok) {
+            const token = await u.getIdToken();
+
+            await fetch("/api/auth/session", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                idToken: token,
+              }),
+            });
+          }
+
+          sessionSyncRef.current = true;
+        } catch {}
 
         try {
           const token = await u.getIdToken(true);
