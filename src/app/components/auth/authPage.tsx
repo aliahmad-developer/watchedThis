@@ -1,7 +1,7 @@
 "use client";
 import ProfilePictureUpdate from "./authComponent/profilePic";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation"; // ✅ added useSearchParams
+import { useRouter, useSearchParams } from "next/navigation"; 
 import SignupForm from "./signUpForm";
 import LoginForm from "./loginForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
