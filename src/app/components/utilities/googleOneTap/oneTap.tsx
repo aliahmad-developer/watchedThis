@@ -2,7 +2,7 @@
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { getFirebaseAuth } from "../../../firebase/firebaseConfig";
 import { useEffect, useRef } from "react";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../../context/authContext";
 
 declare global {
   interface Window {
@@ -45,7 +45,8 @@ declare global {
 }
 
 export default function GoogleOneTap() {
-  const { user, authLoading } = useAuth();
+  const { user, status } = useAuth();
+  const authLoading = status === "loading";
   const initializedRef = useRef(false);
 
   // Reset so One Tap can re-show after logout
@@ -130,7 +131,6 @@ export default function GoogleOneTap() {
 
       if (!res.ok) {
         console.error("[OneTap] session creation failed:", res.status);
-        window.dispatchEvent(new Event("auth-updated"));
         return;
       }
 

@@ -135,7 +135,7 @@ export default function VerifyEmailModal({
         className="
         relative
         w-full
-        max-w-[330px]
+        max-w-82.5
         rounded-[20px]
         border border-light-border dark:border-dark-border
         bg-light-card dark:bg-dark-card

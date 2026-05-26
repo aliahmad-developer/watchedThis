@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "./useAuth";
+import { useAuth } from "../../context/authContext";
 import { ListStatus } from "../../user/library/types";
 
 export interface ListItem {
@@ -13,23 +13,28 @@ export interface ListItem {
   addedAt: { seconds: number } | null;
 }
 
-
 export function useUserLists() {
-  const { user, authLoading } = useAuth();
+  const { user, status } = useAuth();
+  const authLoading = status === "loading";
   const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { setItems([]); setLoading(false); return; }
+    if (!user) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
 
     let unsubscribe: (() => void) | null = null;
 
     (async () => {
-      const { collection, query, onSnapshot } = await import("firebase/firestore");
+      const { collection, query, onSnapshot } =
+        await import("firebase/firestore");
       const firebaseConfig = await import("../../firebase/firebaseConfig");
       const db = firebaseConfig.getFirebaseDB();
-      
+
       const q = query(collection(db, "users", user.uid, "lists"));
       unsubscribe = onSnapshot(q, (snap) => {
         const data = snap.docs.map((d) => d.data() as ListItem);
@@ -43,7 +48,6 @@ export function useUserLists() {
     };
   }, [user, authLoading]);
 
-
   const removeItem = async (mediaId: number) => {
     if (!user) return;
 
@@ -56,4 +60,3 @@ export function useUserLists() {
 
   return { items, loading, isAuthenticated: !!user, authLoading, removeItem };
 }
-
