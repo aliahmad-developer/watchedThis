@@ -1,7 +1,7 @@
 "use client";
 import ProfilePictureUpdate from "./authComponent/profilePic";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation"; 
+import { useRouter, useSearchParams } from "next/navigation";
 import SignupForm from "./signUpForm";
 import LoginForm from "./loginForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
@@ -83,17 +83,27 @@ export default function AuthPage() {
   const fetchUserInfo = useCallback(
     async (forceRefresh = false) => {
       const currentUser = authRef.current?.currentUser;
+
       if (!currentUser) return;
+
       const cached = userInfoCache.get(currentUser.uid);
+
       if (cached && !forceRefresh && fetchedUIDs.current.has(currentUser.uid)) {
         setUser(currentUser);
         setIsVerified(!!currentUser.emailVerified);
+
         lastVerifiedRef.current = !!currentUser.emailVerified;
+
         setCreatedDate(cached.createdDate);
+
         setDisplayPhotoURL(cached.photoURL);
+
         setNewUsername(cached.displayName);
+
         hasFetchedRef.current = true;
+
         setIsLoading(false);
+
         return;
       }
 
@@ -101,49 +111,90 @@ export default function AuthPage() {
         setIsLoading(true);
 
         await currentUser.reload();
+
         const freshUser = authRef.current?.currentUser;
+
         if (!freshUser) return;
 
+        const fallbackDate = getSafeCreatedDate(freshUser);
+
         setUser(freshUser);
+
         setIsVerified(!!freshUser.emailVerified);
+
         lastVerifiedRef.current = !!freshUser.emailVerified;
+
         setNewUsername(freshUser.displayName || "");
+
         setDisplayPhotoURL(freshUser.photoURL ?? null);
 
-        if (dbRef.current) {
-          try {
-            const { doc, getDoc } = await import("firebase/firestore");
-            const userDoc = await getDoc(
-              doc(dbRef.current, "users", freshUser.uid),
-            );
-            const date = userDoc.exists()
-              ? userDoc.data()?.createdAt?.toDate?.()?.toLocaleDateString() ||
-                getSafeCreatedDate(freshUser)
-              : getSafeCreatedDate(freshUser);
+        // Show immediately
+        setCreatedDate(fallbackDate);
 
-            setCreatedDate(date);
-            userInfoCache.set(freshUser.uid, {
-              createdDate: date,
-              photoURL: freshUser.photoURL ?? null,
-              displayName: freshUser.displayName || "",
-            });
-          } catch {
-            setCreatedDate(getSafeCreatedDate(freshUser));
-          }
-        }
+        setIsLoading(false);
 
         fetchedUIDs.current.add(freshUser.uid);
+
         hasFetchedRef.current = true;
+
+        // Firestore runs in background
+        if (dbRef.current) {
+          void (async () => {
+            try {
+              // Ensure Firebase Auth token is attached
+              await freshUser.getIdToken();
+
+              const { doc, getDoc } = await import("firebase/firestore");
+
+              const timeout = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Firestore timeout")), 5000),
+              );
+
+              const userDoc = await Promise.race([
+                getDoc(doc(dbRef.current, "users", freshUser.uid)),
+                timeout,
+              ]);
+
+              const snap = userDoc as any;
+
+              if (!snap.exists()) {
+                console.warn("User doc missing:", freshUser.uid);
+
+                return;
+              }
+
+              const firestoreDate = snap
+                .data()
+                ?.createdAt?.toDate?.()
+                ?.toLocaleDateString();
+
+              if (!firestoreDate) return;
+
+              setCreatedDate(firestoreDate);
+
+              userInfoCache.set(freshUser.uid, {
+                createdDate: firestoreDate,
+                photoURL: freshUser.photoURL ?? null,
+                displayName: freshUser.displayName || "",
+              });
+            } catch (err) {
+              console.error("[Firestore User Fetch]", err);
+
+              console.log("Auth UID:", freshUser.uid);
+
+              setCreatedDate(getSafeCreatedDate(freshUser));
+            }
+          })();
+        }
       } catch {
         showMessage("Failed to refresh user information", true);
-      } finally {
+
         setIsLoading(false);
       }
     },
     [getSafeCreatedDate, showMessage],
   );
 
-  // ✅ Firebase init + auth state listener
   useEffect(() => {
     let unsubscribe: any;
 
@@ -420,7 +471,7 @@ export default function AuthPage() {
               showMessage(err.message || "Failed to logout", true);
             }
           }}
-          disabled={isLoading}
+          disabled={false}
           className="px-3 py-2 rounded-lg font-medium text-xs w-full bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text transition-colors"
         >
           Logout
