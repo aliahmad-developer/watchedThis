@@ -179,8 +179,7 @@ export function useRecommendations(
     enrichBatchSize = 0,
   } = opts;
 
-  const user = useAuth();
-
+  const { user, status } = useAuth();
   const uid = user?.uid;
 
   const [recommendations, setRecommendations] = useState<ScoredItem[]>([]);
@@ -225,7 +224,7 @@ export function useRecommendations(
   );
 
   useEffect(() => {
-    if (user === undefined) return;
+    if (status === "loading") return;
 
     if (!uid) {
       setRecommendations([]);
@@ -375,9 +374,7 @@ export function useRecommendations(
                 tasteProfile: tasteProfileData,
               }),
             );
-          } catch {
-           
-          }
+          } catch {}
         }
         try {
           localStorage.setItem(

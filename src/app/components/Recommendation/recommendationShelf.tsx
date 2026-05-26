@@ -485,9 +485,8 @@ export default function RecommendationShelf({
   |--------------------------------------------------------------------------
   */
 
-  const user = useAuth();
-
-  const isLoggedIn = user === undefined ? null : !!user;
+  const { user, status } = useAuth();
+  const isLoggedIn = status === "loading" ? null : !!user;
 
   /*
   |--------------------------------------------------------------------------

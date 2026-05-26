@@ -3,55 +3,103 @@
 import { createContext, useContext, useEffect, useState, useRef } from "react";
 import type { User } from "firebase/auth";
 
-const AuthContext = createContext<User | null | undefined>(undefined);
+type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
+interface AuthState {
+  user: User | null;
+  status: AuthStatus;
+}
+
+const AuthContext = createContext<AuthState>({
+  user: null,
+  status: "loading",
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null | undefined>(undefined);
-  const nullTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    status: "loading",
+  });
   const mountedRef = useRef(true);
+  const sessionSyncRef = useRef(false);
+  const statusRef = useRef<AuthStatus>("loading"); // ← fixes stale closure
+
+  const setAuthState = (next: AuthState | ((prev: AuthState) => AuthState)) => {
+    if (typeof next === "function") {
+      setState((prev) => {
+        const resolved = next(prev);
+        statusRef.current = resolved.status;
+        return resolved;
+      });
+    } else {
+      statusRef.current = next.status;
+      setState(next);
+    }
+  };
 
   useEffect(() => {
     mountedRef.current = true;
-    let unsub: (() => void) | undefined;
 
-    // Safety net: never hang forever — resolve to null after 5s
     const safetyTimer = setTimeout(() => {
-      if (mountedRef.current) {
-        setUser((prev) => (prev === undefined ? null : prev));
+      if (mountedRef.current && statusRef.current === "loading") {
+        setAuthState({ user: null, status: "unauthenticated" });
       }
     }, 5000);
+
+    let unsub: (() => void) | undefined;
 
     (async () => {
       const { onIdTokenChanged } = await import("firebase/auth");
       const { getFirebaseAuth } = await import("../firebase/firebaseConfig");
-
       const auth = await getFirebaseAuth();
 
-      if (mountedRef.current && auth.currentUser) {
-        setUser(auth.currentUser);
-      }
-
-      unsub = onIdTokenChanged(auth, (u) => {
+      unsub = onIdTokenChanged(auth, async (u) => {
         if (!mountedRef.current) return;
-        if (nullTimer.current) clearTimeout(nullTimer.current);
 
-        if (u) {
-          setUser(u);
-        } else {
-          nullTimer.current = setTimeout(() => {
-            if (mountedRef.current) setUser(null);
-          }, 1000);
+        if (!u) {
+          setAuthState({ user: null, status: "unauthenticated" });
+          return;
+        }
+
+        // Use statusRef instead of state.status — avoids stale closure
+        if (sessionSyncRef.current && statusRef.current === "authenticated") {
+          setAuthState((prev) => ({ ...prev, user: u }));
+          return;
+        }
+
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+
+        if (res.ok && mountedRef.current) {
+          sessionSyncRef.current = true;
+          setAuthState({ user: u, status: "authenticated" });
+          return;
+        }
+
+        try {
+          const token = await u.getIdToken(true);
+          const sessionRes = await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ idToken: token }),
+          });
+
+          if (sessionRes.ok && mountedRef.current) {
+            sessionSyncRef.current = true;
+            setAuthState({ user: u, status: "authenticated" });
+          } else if (mountedRef.current) {
+            setAuthState({ user: null, status: "unauthenticated" });
+          }
+        } catch {
+          if (mountedRef.current) {
+            setAuthState({ user: null, status: "unauthenticated" });
+          }
         }
       });
     })();
 
-    // Listen for One Tap / manual auth-updated events
     const handleAuthUpdated = async () => {
-      const { getFirebaseAuth } = await import("../firebase/firebaseConfig");
-      const auth = await getFirebaseAuth();
-      if (mountedRef.current) {
-        setUser(auth.currentUser ?? null);
-      }
+      sessionSyncRef.current = false;
     };
 
     window.addEventListener("auth-updated", handleAuthUpdated);
@@ -60,12 +108,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mountedRef.current = false;
       unsub?.();
       clearTimeout(safetyTimer);
-      if (nullTimer.current) clearTimeout(nullTimer.current);
       window.removeEventListener("auth-updated", handleAuthUpdated);
     };
   }, []);
 
-  return <AuthContext.Provider value={user}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
