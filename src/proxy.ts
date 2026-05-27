@@ -51,8 +51,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "img-src 'self' data: blob: https:",
 
     // API / auth calls (GTM + Google services + Firebase)
-    "connect-src 'self' https: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.googletagmanager.com https://region1.google-analytics.com https://www.google-analytics.com https://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
-
+    "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.googletagmanager.com https://region1.google-analytics.com https://www.google-analytics.com https://*.firebaseio.com wss://*.firebaseio.com https://firestore.googleapis.com https://channel.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebase.googleapis.com wss://*.googleapis.com",
     // FIX 2: Added https://fyp-movie-4d46d.firebaseapp.com (and wildcard fallback)
     // to allow Firebase auth iframe used for session management and token refresh.
     "frame-src 'self' https://accounts.google.com https://www.google.com https://www.googletagmanager.com https://fyp-movie-4d46d.firebaseapp.com https://*.firebaseapp.com",
