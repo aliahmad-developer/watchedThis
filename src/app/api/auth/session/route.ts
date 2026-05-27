@@ -32,6 +32,11 @@ export async function POST(req: NextRequest) {
 
     const { idToken } = parsed.data;
 
+    // Debug (prod only): confirm we reached this endpoint + cookie attributes.
+    if (process.env.NODE_ENV === "production") {
+      console.log("[auth/session] POST received");
+    }
+
     await adminAuth.verifyIdToken(idToken);
 
     const expiresIn = 60 * 60 * 24 * 5 * 1000;

@@ -18,6 +18,14 @@ const noCacheHeaders = {
 };
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    const hasCookie = !!req.cookies.get(COOKIE_NAME)?.value;
+    console.log("[auth/me] called, __session present:", hasCookie);
+    if (hasCookie) {
+      const v = req.cookies.get(COOKIE_NAME)?.value;
+      console.log("[auth/me] cookie __session len:", v?.length ?? 0);
+    }
+  }
   try {
     const sessionCookie = req.cookies.get(COOKIE_NAME)?.value;
 
@@ -67,6 +75,8 @@ export async function GET(req: NextRequest) {
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[auth/me] verifySessionCookie failed — code:", code, err);
 
+    const isProd = process.env.NODE_ENV === "production";
+
     if (code === "auth/session-cookie-expired") {
       const res = NextResponse.json(
         { error: "Session expired" },
@@ -74,8 +84,8 @@ export async function GET(req: NextRequest) {
       );
       res.cookies.set(COOKIE_NAME, "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
         path: "/",
         maxAge: 0,
       });
