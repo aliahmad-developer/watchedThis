@@ -90,7 +90,7 @@ export default function GoogleOneTap() {
         auto_select: false,
         cancel_on_tap_outside: true,
         context: "signin",
-        use_fedcm_for_prompt: false,
+        use_fedcm_for_prompt: true,
       });
       google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed()) {
@@ -119,26 +119,9 @@ export default function GoogleOneTap() {
     try {
       const auth = await getFirebaseAuth();
       const credential = GoogleAuthProvider.credential(response.credential);
-      const userCred = await signInWithCredential(auth, credential);
-      const idToken = await userCred.user.getIdToken();
-
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!res.ok) {
-        console.error("[OneTap] session creation failed:", res.status);
-        return;
-      }
-
-      await new Promise((r) => setTimeout(r, 150));
-      window.dispatchEvent(new Event("auth-updated"));
+      await signInWithCredential(auth, credential);
     } catch (err) {
       console.error("[OneTap] login failed:", err);
-      window.dispatchEvent(new Event("auth-updated"));
     }
   }
 
