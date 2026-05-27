@@ -10,7 +10,7 @@ const redis = new Redis({
 });
 
 const COOKIE_NAME = "__session";
-const CACHE_TTL = 60 * 60; 
+const CACHE_TTL = 60 * 60;
 
 const noCacheHeaders = {
   "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -18,14 +18,6 @@ const noCacheHeaders = {
 };
 
 export async function GET(req: NextRequest) {
-  if (process.env.NODE_ENV === "production") {
-    const hasCookie = !!req.cookies.get(COOKIE_NAME)?.value;
-    console.log("[auth/me] called, __session present:", hasCookie);
-    if (hasCookie) {
-      const v = req.cookies.get(COOKIE_NAME)?.value;
-      console.log("[auth/me] cookie __session len:", v?.length ?? 0);
-    }
-  }
   try {
     const sessionCookie = req.cookies.get(COOKIE_NAME)?.value;
 
@@ -36,7 +28,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const cacheKey = `user:session:${sessionCookie.slice(-32)}`; 
+    const cacheKey = `user:session:${sessionCookie.slice(-32)}`;
     const cached = await redis.get<{
       uid: string;
       email: string | null;
