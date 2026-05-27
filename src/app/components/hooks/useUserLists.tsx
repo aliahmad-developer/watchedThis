@@ -36,11 +36,20 @@ export function useUserLists() {
       const db = firebaseConfig.getFirebaseDB();
 
       const q = query(collection(db, "users", user.uid, "lists"));
-      unsubscribe = onSnapshot(q, (snap) => {
-        const data = snap.docs.map((d) => d.data() as ListItem);
-        setItems(data);
-        setLoading(false);
-      });
+      unsubscribe = onSnapshot(
+        q,
+        (snap) => {
+          const data = snap.docs.map((d) => d.data() as ListItem);
+          setItems(data);
+          setLoading(false);
+        },
+        (error) => {
+          if (error.code === "permission-denied") {
+            setItems([]);
+            setLoading(false);
+          }
+        },
+      );
     })();
 
     return () => {

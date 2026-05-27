@@ -485,7 +485,7 @@ export default function RecommendationShelf({
   |--------------------------------------------------------------------------
   */
 
-  const { user, status } = useAuth();
+  const { user, status, sessionReady } = useAuth();
   const isLoggedIn = status === "loading" ? null : !!user;
 
   /*
@@ -551,13 +551,11 @@ export default function RecommendationShelf({
   |--------------------------------------------------------------------------
   */
 
-  if (isLoggedIn === null) return <ShelfSkeleton />; // auth loading
-
-  if (!isLoggedIn) return <GuestCTA />; // not logged in
-
-  if (isLoading) return <ShelfSkeleton />; // recs loading
-
-  if (error || recommendations.length === 0) return null; // failed or empty — not skeleton
+  if (isLoggedIn === null || (isLoggedIn && !sessionReady))
+    return <ShelfSkeleton />;
+  if (!isLoggedIn) return <GuestCTA />;
+  if (isLoading) return <ShelfSkeleton />;
+  if (error || recommendations.length === 0) return null;
 
   /*
   |--------------------------------------------------------------------------

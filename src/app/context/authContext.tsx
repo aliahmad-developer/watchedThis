@@ -8,21 +8,24 @@ type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 interface AuthState {
   user: User | null;
   status: AuthStatus;
+  sessionReady: boolean;
 }
 
 const AuthContext = createContext<AuthState>({
   user: null,
   status: "loading",
+  sessionReady: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
     status: "loading",
+    sessionReady: false,
   });
   const mountedRef = useRef(true);
   const sessionSyncRef = useRef(false);
-  const statusRef = useRef<AuthStatus>("loading"); // ← fixes stale closure
+  const statusRef = useRef<AuthStatus>("loading");
 
   const setAuthState = (next: AuthState | ((prev: AuthState) => AuthState)) => {
     if (typeof next === "function") {
@@ -42,7 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const safetyTimer = setTimeout(() => {
       if (mountedRef.current && statusRef.current === "loading") {
-        setAuthState({ user: null, status: "unauthenticated" });
+        setAuthState({
+          user: null,
+          status: "unauthenticated",
+          sessionReady: false,
+        });
       }
     }, 5000);
 
@@ -57,16 +64,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mountedRef.current) return;
 
         if (!u) {
-          setAuthState({ user: null, status: "unauthenticated" });
+          setAuthState({
+            user: null,
+            status: "unauthenticated",
+            sessionReady: false,
+          });
           return;
         }
 
+        // Already synced — just update user object
         if (sessionSyncRef.current) {
-          setAuthState({ user: u, status: "authenticated" });
+          setAuthState({
+            user: u,
+            status: "authenticated",
+            sessionReady: true,
+          });
           return;
         }
 
-        setAuthState({ user: u, status: "authenticated" });
+        // Optimistically authenticated, session not ready yet
+        setAuthState({ user: u, status: "authenticated", sessionReady: false });
 
         try {
           const check = await fetch("/api/auth/me", {
@@ -85,8 +102,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           sessionSyncRef.current = true;
+          if (mountedRef.current) {
+            setAuthState({
+              user: u,
+              status: "authenticated",
+              sessionReady: true,
+            });
+          }
         } catch {
           sessionSyncRef.current = true;
+          if (mountedRef.current) {
+            setAuthState({
+              user: u,
+              status: "authenticated",
+              sessionReady: true,
+            });
+          }
         }
       });
     })();

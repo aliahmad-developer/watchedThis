@@ -179,7 +179,7 @@ export function useRecommendations(
     enrichBatchSize = 0,
   } = opts;
 
-  const { user, status } = useAuth();
+  const { user, status, sessionReady } = useAuth();
   const uid = user?.uid;
 
   const [recommendations, setRecommendations] = useState<ScoredItem[]>([]);
@@ -224,7 +224,7 @@ export function useRecommendations(
   );
 
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || !sessionReady) return;
 
     if (!uid) {
       setRecommendations([]);
@@ -434,6 +434,7 @@ export function useRecommendations(
     excludeIdsKey,
     enrichBatchSize,
     getCacheKey,
+    sessionReady,
   ]);
 
   return {

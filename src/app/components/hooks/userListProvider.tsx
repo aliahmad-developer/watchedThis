@@ -1,18 +1,8 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import {
-  collection,
-  onSnapshot,
-  query,
-} from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 
 import { useAuth } from "./useAuth";
 import { getFirebaseDB } from "../../firebase/firebaseConfig";
@@ -33,11 +23,7 @@ const UserListContext = createContext<UserListContextType>({
   loading: true,
 });
 
-export function UserListProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function UserListProvider({ children }: { children: React.ReactNode }) {
   const { user, authLoading } = useAuth();
 
   const [items, setItems] = useState<Record<number, ListStatus>>({});
@@ -54,22 +40,28 @@ export function UserListProvider({
 
     const db = getFirebaseDB();
 
-    const q = query(
-      collection(db, "users", user.uid, "lists")
+    const q = query(collection(db, "users", user.uid, "lists"));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const next: Record<number, ListStatus> = {};
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          next[data.mediaId] = data.status;
+        });
+
+        setItems(next);
+        setLoading(false);
+      },
+      (error) => {
+        if (error.code === "permission-denied") {
+          setItems({});
+          setLoading(false);
+        }
+      },
     );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const next: Record<number, ListStatus> = {};
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-
-        next[data.mediaId] = data.status;
-      });
-
-      setItems(next);
-      setLoading(false);
-    });
 
     return unsubscribe;
   }, [user, authLoading]);
@@ -79,7 +71,7 @@ export function UserListProvider({
       items,
       loading,
     }),
-    [items, loading]
+    [items, loading],
   );
 
   return (
