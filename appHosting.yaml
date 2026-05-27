@@ -24,6 +24,8 @@ env:
     value: "1:533039372071:web:8e51125262c4e74ecffb02"
   - variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID
     value: 533039372071-45s97vpg0aqu5a5sn9urtck8uhn7ncv3.apps.googleusercontent.com
+  - variable: NEXT_PUBLIC_AUTH_DOMAIN
+    value: watchedthis.com
 
   # ── Server-side secrets ───────────────────────────────────────────────────
   - variable: TMDB_ACCESS_TOKEN

@@ -1,7 +1,7 @@
 "use client";
 
 import ProfilePictureUpdate from "./authComponent/profilePic";
-import { useState, useEffect, useRef, useCallback, useMemo } from  "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SignupForm from "./signUpForm";
 import LoginForm from "./loginForm";
@@ -11,7 +11,7 @@ import EmailVerification from "./authComponent/emailVerification";
 import UsernameUpdate from "./authComponent/userNameUpdate";
 import PasswordUpdate from "./authComponent/passwordUpdate";
 import Message from "./authComponent/message";
-import { useAuth } from "../../context/authContext"; 
+import { useAuth } from "../../context/authContext";
 
 // Cache for Firestore data
 const userInfoCache = new Map<
@@ -82,23 +82,45 @@ export default function AuthPage() {
   // Fetch Firestore created date (background, doesn’t block UI)
   const fetchFirestoreCreatedDate = useCallback(async (uid: string) => {
     try {
+      const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
       const { getFirebaseDB } = await import("../../firebase/firebaseConfig");
       const { doc, getDoc } = await import("firebase/firestore");
-      const db = getFirebaseDB();
 
+      // Wait for auth to be ready before hitting Firestore
+      const auth = await getFirebaseAuth();
+      await new Promise<void>((resolve) => {
+        if (auth.currentUser) return resolve();
+        const unsub = auth.onAuthStateChanged((u) => {
+          if (u) {
+            unsub();
+            resolve();
+          }
+        });
+        // Don't wait forever
+        setTimeout(() => {
+          unsub();
+          resolve();
+        }, 4000);
+      });
+
+      const db = getFirebaseDB();
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Firestore timeout")), 5000)
+        setTimeout(() => reject(new Error("Firestore timeout")), 8000),
       );
+
       const userDoc = await Promise.race([
         getDoc(doc(db, "users", uid)),
         timeout,
       ]);
+
       const snap = userDoc as any;
       if (snap.exists()) {
-        const firestoreDate = snap.data()?.createdAt?.toDate?.()?.toLocaleDateString();
+        const firestoreDate = snap
+          .data()
+          ?.createdAt?.toDate?.()
+          ?.toLocaleDateString();
         if (firestoreDate) {
           setCreatedDate(firestoreDate);
-          // Update cache
           const cached = userInfoCache.get(uid);
           if (cached) {
             userInfoCache.set(uid, { ...cached, createdDate: firestoreDate });
@@ -159,7 +181,8 @@ export default function AuthPage() {
 
     const checkVerification = async () => {
       try {
-        const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+        const { getFirebaseAuth } =
+          await import("../../firebase/firebaseConfig");
         const auth = await getFirebaseAuth();
         const currentUser = auth.currentUser;
         if (!currentUser) return;
@@ -192,7 +215,8 @@ export default function AuthPage() {
         const { customToken } = await res.json();
         if (!customToken) return;
 
-        const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+        const { getFirebaseAuth } =
+          await import("../../firebase/firebaseConfig");
         const { signInWithCustomToken } = await import("firebase/auth");
         const auth = await getFirebaseAuth();
         await signInWithCustomToken(auth, customToken);
@@ -247,7 +271,10 @@ export default function AuthPage() {
       const uid = currentUser.uid;
       const cached = userInfoCache.get(uid);
       if (cached) {
-        userInfoCache.set(uid, { ...cached, displayName: currentUser.displayName || "" });
+        userInfoCache.set(uid, {
+          ...cached,
+          displayName: currentUser.displayName || "",
+        });
       }
 
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
@@ -281,7 +308,8 @@ export default function AuthPage() {
       }
 
       try {
-        const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+        const { getFirebaseAuth } =
+          await import("../../firebase/firebaseConfig");
         const {
           EmailAuthProvider,
           reauthenticateWithCredential,
@@ -289,9 +317,13 @@ export default function AuthPage() {
         } = await import("firebase/auth");
         const auth = await getFirebaseAuth();
         const currentUser = auth.currentUser;
-        if (!currentUser || !currentUser.email) throw new Error("User not found");
+        if (!currentUser || !currentUser.email)
+          throw new Error("User not found");
 
-        const credential = EmailAuthProvider.credential(currentUser.email, oldPassword);
+        const credential = EmailAuthProvider.credential(
+          currentUser.email,
+          oldPassword,
+        );
         await reauthenticateWithCredential(currentUser, credential);
         await updatePassword(currentUser, newPassword);
         await currentUser.getIdToken(true);
@@ -302,7 +334,7 @@ export default function AuthPage() {
         throw err;
       }
     },
-    [user, showMessage]
+    [user, showMessage],
   );
 
   const handleSendVerification = useCallback(async () => {
