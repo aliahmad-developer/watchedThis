@@ -13,13 +13,15 @@ export default function AuthButton() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const pathname = usePathname();
 
   const isAuthPage =
-    pathname === "/user/profile" ||
-    pathname === "/user/library";
-
+    pathname === "/user/profile" || pathname === "/user/library";
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   useEffect(() => {
     setImgError(false);
   }, [user?.photoURL]);
@@ -27,34 +29,24 @@ export default function AuthButton() {
   const displayLetter = useMemo(() => {
     if (!user) return "";
 
-    const name =
-      user.displayName?.trim();
+    const name = user.displayName?.trim();
 
-    const email =
-      user.email?.split("@")[0] ?? "";
+    const email = user.email?.split("@")[0] ?? "";
 
-    return (
-      name?.[0] ||
-      email?.[0] ||
-      ""
-    ).toUpperCase();
+    return (name?.[0] || email?.[0] || "").toUpperCase();
   }, [user]);
 
   const photoURL = useMemo(() => {
     if (!user?.photoURL) return null;
 
-    const sep =
-      user.photoURL.includes("?")
-        ? "&"
-        : "?";
+    const sep = user.photoURL.includes("?") ? "&" : "?";
 
     return `${user.photoURL}${sep}_t=${user.metadata.lastSignInTime ?? Date.now()}`;
   }, [user]);
 
-  const showPhoto =
-    !!photoURL && !imgError;
+  const showPhoto = !!photoURL && !imgError;
 
-  if (status === "loading") {
+  if (!mounted || status === "loading") {
     return (
       <div className="w-9 h-9 rounded-full animate-pulse bg-light-accent dark:bg-dark-accent/30" />
     );
@@ -76,23 +68,17 @@ export default function AuthButton() {
               priority
               className="w-9 h-9 rounded-full object-cover"
               referrerPolicy="no-referrer"
-              onError={() =>
-                setImgError(true)
-              }
+              onError={() => setImgError(true)}
             />
           ) : (
-            <span className="w-9 h-9 rounded-full bg-light-accent dark:bg-dark-accent text-accent-text dark:text-dark-bg flex items-center justify-center text-sm font-medium"
-            >
+            <span className="w-9 h-9 rounded-full bg-light-accent dark:bg-dark-accent text-accent-text dark:text-dark-bg flex items-center justify-center text-sm font-medium">
               {displayLetter}
             </span>
           )}
         </Link>
       ) : (
         <button
-          onClick={() =>
-            !isAuthPage &&
-            setModalOpen(true)
-          }
+          onClick={() => !isAuthPage && setModalOpen(true)}
           className="px-2 text-sm"
         >
           Login
@@ -100,12 +86,7 @@ export default function AuthButton() {
       )}
 
       {modalOpen && (
-        <AuthModal
-          isOpen={modalOpen}
-          onClose={() =>
-            setModalOpen(false)
-          }
-        />
+        <AuthModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
       )}
     </>
   );

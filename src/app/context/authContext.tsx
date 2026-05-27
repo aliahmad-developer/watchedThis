@@ -61,63 +61,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (sessionSyncRef.current && statusRef.current === "authenticated") {
-          setAuthState((prev) => ({ ...prev, user: u }));
-          return;
-        }
-
-        setAuthState({
-          user: u,
-          status: "authenticated",
-        });
-
         if (sessionSyncRef.current) {
+          setAuthState({ user: u, status: "authenticated" });
           return;
         }
+
+        setAuthState({ user: u, status: "authenticated" });
 
         try {
-          const res = await fetch("/api/auth/me", {
+          const check = await fetch("/api/auth/me", {
             credentials: "include",
             cache: "no-store",
           });
 
-          if (!res.ok) {
-            const token = await u.getIdToken();
-
+          if (!check.ok) {
+            const token = await u.getIdToken(true);
             await fetch("/api/auth/session", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
+              headers: { "Content-Type": "application/json" },
               credentials: "include",
-              body: JSON.stringify({
-                idToken: token,
-              }),
+              body: JSON.stringify({ idToken: token }),
             });
           }
 
           sessionSyncRef.current = true;
-        } catch {}
-
-        try {
-          const token = await u.getIdToken(true);
-          const sessionRes = await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ idToken: token }),
-          });
-
-          if (sessionRes.ok && mountedRef.current) {
-            sessionSyncRef.current = true;
-            setAuthState({ user: u, status: "authenticated" });
-          } else if (mountedRef.current) {
-            setAuthState({ user: null, status: "unauthenticated" });
-          }
         } catch {
-          if (mountedRef.current) {
-            setAuthState({ user: null, status: "unauthenticated" });
-          }
+          sessionSyncRef.current = true;
         }
       });
     })();

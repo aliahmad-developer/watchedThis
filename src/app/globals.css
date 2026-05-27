@@ -118,6 +118,9 @@ html {
   p {
     @apply text-light-body-text dark:text-dark-body-text text-sm sm:text-base leading-relaxed;
     font-family: "Inter", sans-serif;
+    text-wrap: pretty;
+    hyphens: auto;
+    overflow-wrap: break-word;
   }
 
   span {

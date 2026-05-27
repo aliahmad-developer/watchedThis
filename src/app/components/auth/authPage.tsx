@@ -1,6 +1,7 @@
 "use client";
+
 import ProfilePictureUpdate from "./authComponent/profilePic";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from  "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SignupForm from "./signUpForm";
 import LoginForm from "./loginForm";
@@ -10,9 +11,9 @@ import EmailVerification from "./authComponent/emailVerification";
 import UsernameUpdate from "./authComponent/userNameUpdate";
 import PasswordUpdate from "./authComponent/passwordUpdate";
 import Message from "./authComponent/message";
-import type { AuthError, FirebaseUser } from "@/types/auth";
-import { User } from "firebase/auth";
+import { useAuth } from "../../context/authContext"; 
 
+// Cache for Firestore data
 const userInfoCache = new Map<
   string,
   { createdDate: string; photoURL: string | null; displayName: string }
@@ -41,8 +42,12 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 export default function AuthPage() {
+  const { user, status } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Local UI state
   const [mode, setMode] = useState<"signup" | "login" | "forgot">("signup");
-  const [user, setUser] = useState<User | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [displayPhotoURL, setDisplayPhotoURL] = useState<string | null>(null);
@@ -51,18 +56,12 @@ export default function AuthPage() {
   const [message, setMessage] = useState("");
   const [messageKey, setMessageKey] = useState(0);
   const [createdDate, setCreatedDate] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [auth, setAuth] = useState<any>(null);
 
-  const authRef = useRef<any>(null);
-  const dbRef = useRef<any>(null);
+  // Refs for polling and cache tracking
   const lastVerifiedRef = useRef(false);
-  const hasFetchedRef = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const fetchedUIDs = useRef(new Set<string>()); // ✅ moved to ref so it persists across renders
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const fetchedUIDs = useRef(new Set<string>());
 
   const showMessage = useCallback((text: string, isError = false) => {
     setMessage(text);
@@ -80,250 +79,185 @@ export default function AuthPage() {
       : new Date().toLocaleDateString();
   }, []);
 
-  const fetchUserInfo = useCallback(
-    async (forceRefresh = false) => {
-      const currentUser = authRef.current?.currentUser;
+  // Fetch Firestore created date (background, doesn’t block UI)
+  const fetchFirestoreCreatedDate = useCallback(async (uid: string) => {
+    try {
+      const { getFirebaseDB } = await import("../../firebase/firebaseConfig");
+      const { doc, getDoc } = await import("firebase/firestore");
+      const db = getFirebaseDB();
 
-      if (!currentUser) return;
-
-      const cached = userInfoCache.get(currentUser.uid);
-
-      if (cached && !forceRefresh && fetchedUIDs.current.has(currentUser.uid)) {
-        setUser(currentUser);
-        setIsVerified(!!currentUser.emailVerified);
-
-        lastVerifiedRef.current = !!currentUser.emailVerified;
-
-        setCreatedDate(cached.createdDate);
-
-        setDisplayPhotoURL(cached.photoURL);
-
-        setNewUsername(cached.displayName);
-
-        hasFetchedRef.current = true;
-
-        setIsLoading(false);
-
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-
-        await currentUser.reload();
-
-        const freshUser = authRef.current?.currentUser;
-
-        if (!freshUser) return;
-
-        const fallbackDate = getSafeCreatedDate(freshUser);
-
-        setUser(freshUser);
-
-        setIsVerified(!!freshUser.emailVerified);
-
-        lastVerifiedRef.current = !!freshUser.emailVerified;
-
-        setNewUsername(freshUser.displayName || "");
-
-        setDisplayPhotoURL(freshUser.photoURL ?? null);
-
-        // Show immediately
-        setCreatedDate(fallbackDate);
-
-        setIsLoading(false);
-
-        fetchedUIDs.current.add(freshUser.uid);
-
-        hasFetchedRef.current = true;
-
-        // Firestore runs in background
-        if (dbRef.current) {
-          void (async () => {
-            try {
-              // Ensure Firebase Auth token is attached
-              await freshUser.getIdToken();
-
-              const { doc, getDoc } = await import("firebase/firestore");
-
-              const timeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Firestore timeout")), 5000),
-              );
-
-              const userDoc = await Promise.race([
-                getDoc(doc(dbRef.current, "users", freshUser.uid)),
-                timeout,
-              ]);
-
-              const snap = userDoc as any;
-
-              if (!snap.exists()) {
-                console.warn("User doc missing:", freshUser.uid);
-
-                return;
-              }
-
-              const firestoreDate = snap
-                .data()
-                ?.createdAt?.toDate?.()
-                ?.toLocaleDateString();
-
-              if (!firestoreDate) return;
-
-              setCreatedDate(firestoreDate);
-
-              userInfoCache.set(freshUser.uid, {
-                createdDate: firestoreDate,
-                photoURL: freshUser.photoURL ?? null,
-                displayName: freshUser.displayName || "",
-              });
-            } catch (err) {
-              console.error("[Firestore User Fetch]", err);
-
-              console.log("Auth UID:", freshUser.uid);
-
-              setCreatedDate(getSafeCreatedDate(freshUser));
-            }
-          })();
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Firestore timeout")), 5000)
+      );
+      const userDoc = await Promise.race([
+        getDoc(doc(db, "users", uid)),
+        timeout,
+      ]);
+      const snap = userDoc as any;
+      if (snap.exists()) {
+        const firestoreDate = snap.data()?.createdAt?.toDate?.()?.toLocaleDateString();
+        if (firestoreDate) {
+          setCreatedDate(firestoreDate);
+          // Update cache
+          const cached = userInfoCache.get(uid);
+          if (cached) {
+            userInfoCache.set(uid, { ...cached, createdDate: firestoreDate });
+          }
         }
-      } catch {
-        showMessage("Failed to refresh user information", true);
-
-        setIsLoading(false);
       }
-    },
-    [getSafeCreatedDate, showMessage],
-  );
+    } catch (err) {
+      console.error("[Firestore User Fetch]", err);
+    }
+  }, []);
 
+  // Sync local state when user changes
   useEffect(() => {
-    let unsubscribe: any;
+    if (!user) {
+      // Reset all local state when signed out
+      setIsVerified(false);
+      setNewUsername("");
+      setDisplayPhotoURL(null);
+      setCreatedDate(null);
+      fetchedUIDs.current.clear();
+      return;
+    }
 
-    const init = async () => {
+    const uid = user.uid;
+    const cached = userInfoCache.get(uid);
+
+    if (cached && fetchedUIDs.current.has(uid)) {
+      // Use cached data
+      setIsVerified(user.emailVerified || false);
+      lastVerifiedRef.current = user.emailVerified || false;
+      setCreatedDate(cached.createdDate);
+      setDisplayPhotoURL(cached.photoURL);
+      setNewUsername(cached.displayName);
+    } else {
+      // Fresh user – set from Firebase and try Firestore in background
+      setIsVerified(user.emailVerified || false);
+      lastVerifiedRef.current = user.emailVerified || false;
+      setDisplayPhotoURL(user.photoURL ?? null);
+      setNewUsername(user.displayName || "");
+      setCreatedDate(getSafeCreatedDate(user));
+      fetchedUIDs.current.add(uid);
+
+      // Cache what we have now
+      userInfoCache.set(uid, {
+        createdDate: getSafeCreatedDate(user),
+        photoURL: user.photoURL ?? null,
+        displayName: user.displayName || "",
+      });
+
+      // Fetch Firestore date in background
+      fetchFirestoreCreatedDate(uid);
+    }
+  }, [user, getSafeCreatedDate, fetchFirestoreCreatedDate]);
+
+  // Periodic email verification check (only when user exists and not verified)
+  useEffect(() => {
+    if (!user || isVerified) return;
+
+    const checkVerification = async () => {
       try {
-        const firebase = await import("../../firebase/firebaseConfig");
-        const authInstance = await firebase.getFirebaseAuth();
-        const dbInstance = firebase.getFirebaseDB();
-
-        setAuth(authInstance);
-        authRef.current = authInstance;
-        dbRef.current = dbInstance;
-
-        unsubscribe = authInstance.onAuthStateChanged(
-          (u: FirebaseUser | null) => {
-            setUser(u ?? null);
-            if (u) {
-              fetchUserInfo();
-            } else {
-              hasFetchedRef.current = false;
-              setIsLoading(false);
-            }
-          },
-        );
-      } catch (err: unknown) {
-        const authError = err as AuthError;
-        console.error({
-          level: "error",
-          component: "authPage",
-          message: authError.message,
-        });
-        showMessage("Failed to initialize authentication", true);
+        const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+        const auth = await getFirebaseAuth();
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        await currentUser.reload();
+        if (currentUser.emailVerified && !lastVerifiedRef.current) {
+          setIsVerified(true);
+          showMessage("Email verified successfully!");
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
+        lastVerifiedRef.current = currentUser.emailVerified || false;
+      } catch (err) {
+        console.error("Verification check failed", err);
       }
     };
 
-    init();
+    const interval = setInterval(checkVerification, 5000);
+    intervalRef.current = interval;
+    return () => clearInterval(interval);
+  }, [user, isVerified, showMessage]);
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [fetchUserInfo, showMessage]);
-
-  // ✅ Auto-login after email verification redirect
-  // Runs only after auth is initialized; skipped if user is already signed in
+  // Auto-login after email verification redirect
   useEffect(() => {
-    if (!auth || user) return;
+    if (user || status !== "unauthenticated") return;
     if (searchParams.get("verified") !== "true") return;
 
     const signInAfterVerification = async () => {
       try {
         const res = await fetch("/api/auth/clientToken");
         if (!res.ok) return;
-
         const { customToken } = await res.json();
         if (!customToken) return;
 
+        const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
         const { signInWithCustomToken } = await import("firebase/auth");
+        const auth = await getFirebaseAuth();
         await signInWithCustomToken(auth, customToken);
-        // onAuthStateChanged will fire and call fetchUserInfo automatically
+        // Context will update automatically
       } catch (err) {
         console.error("[authPage] auto sign-in after verification failed", err);
       }
     };
 
     signInAfterVerification();
-  }, [auth, user, searchParams]); // ✅ depends on auth being ready
+  }, [user, status, searchParams]);
 
-  // Seed username input when user loads
+  // Update local username when user.displayName changes (e.g., after update)
   useEffect(() => {
     if (user?.displayName) {
       setNewUsername(user.displayName);
+      const uid = user.uid;
+      const cached = userInfoCache.get(uid);
+      if (cached) {
+        userInfoCache.set(uid, { ...cached, displayName: user.displayName });
+      }
     }
   }, [user?.displayName]);
 
-  // Periodic email verification check
+  // Update photo URL cache when it changes
   useEffect(() => {
-    if (!user || !authRef.current?.currentUser) return;
-
-    lastVerifiedRef.current = !!authRef.current.currentUser.emailVerified;
-
-    const interval = setInterval(async () => {
-      try {
-        const cu = authRef.current?.currentUser;
-        if (!cu) return;
-        await cu.reload();
-        if (!lastVerifiedRef.current && cu.emailVerified) {
-          setIsVerified(true);
-          showMessage("Email verified successfully!");
-          clearInterval(interval);
-        }
-        lastVerifiedRef.current = !!cu.emailVerified;
-      } catch {}
-    }, 5000);
-
-    intervalRef.current = interval;
-    return () => clearInterval(interval);
-  }, [user, showMessage]);
+    if (user?.photoURL && user.uid) {
+      const uid = user.uid;
+      const cached = userInfoCache.get(uid);
+      if (cached) {
+        userInfoCache.set(uid, { ...cached, photoURL: user.photoURL });
+      }
+    }
+  }, [user?.photoURL, user?.uid]);
 
   const handleUsernameUpdate = useCallback(async () => {
-    const currentUser = authRef.current?.currentUser;
-    if (!currentUser || !newUsername.trim()) return;
+    if (!user || !newUsername.trim()) return;
 
     setIsUpdatingUsername(true);
     try {
       const { updateProfile } = await import("firebase/auth");
+      const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
+      const auth = await getFirebaseAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("No user");
+
       await updateProfile(currentUser, { displayName: newUsername.trim() });
       await currentUser.reload();
-      const updated = authRef.current?.currentUser;
-      setUser(updated);
-      setNewUsername(updated?.displayName || "");
 
-      const uid = updated?.uid;
-      if (uid) {
-        const cached = userInfoCache.get(uid);
-        if (cached) {
-          userInfoCache.set(uid, {
-            ...cached,
-            displayName: updated?.displayName || "",
-          });
-        }
+      // Update local state
+      setNewUsername(currentUser.displayName || "");
+      const uid = currentUser.uid;
+      const cached = userInfoCache.get(uid);
+      if (cached) {
+        userInfoCache.set(uid, { ...cached, displayName: currentUser.displayName || "" });
       }
 
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
+      showMessage("Username updated successfully");
     } catch (err: any) {
+      showMessage(err.message || "Failed to update username", true);
     } finally {
       setIsUpdatingUsername(false);
     }
-  }, [newUsername, showMessage]);
+  }, [user, newUsername, showMessage]);
 
   const handlePasswordUpdate = useCallback(
     async ({
@@ -337,55 +271,71 @@ export default function AuthPage() {
       confirmPassword: string;
       resetFields: () => void;
     }) => {
-      const currentUser = authRef.current?.currentUser;
-      if (
-        !currentUser ||
-        !currentUser.email ||
-        newPassword !== confirmPassword
-      ) {
-        showMessage("Passwords do not match or invalid user", true);
+      if (!user || !user.email) {
+        showMessage("No user logged in", true);
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        showMessage("Passwords do not match", true);
         return;
       }
 
       try {
+        const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
         const {
           EmailAuthProvider,
           reauthenticateWithCredential,
           updatePassword,
         } = await import("firebase/auth");
-        const credential = EmailAuthProvider.credential(
-          currentUser.email,
-          oldPassword,
-        );
+        const auth = await getFirebaseAuth();
+        const currentUser = auth.currentUser;
+        if (!currentUser || !currentUser.email) throw new Error("User not found");
+
+        const credential = EmailAuthProvider.credential(currentUser.email, oldPassword);
         await reauthenticateWithCredential(currentUser, credential);
         await updatePassword(currentUser, newPassword);
         await currentUser.getIdToken(true);
         resetFields();
+        showMessage("Password updated successfully");
       } catch (err: any) {
+        showMessage(err.message || "Failed to update password", true);
         throw err;
       }
     },
-    [showMessage],
+    [user, showMessage]
   );
 
   const handleSendVerification = useCallback(async () => {
-    const currentUser = authRef.current?.currentUser;
-    if (!currentUser?.email) return;
+    if (!user?.email) return;
 
     setIsSendingVerification(true);
     try {
       const res = await fetch("/api/auth/sendVerification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: currentUser.email }),
+        body: JSON.stringify({ email: user.email }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      showMessage("Verification email sent. Check your inbox.");
+    } catch (err: any) {
+      showMessage(err.message || "Failed to send verification", true);
     } finally {
       setIsSendingVerification(false);
     }
-  }, []);
+  }, [user, showMessage]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      const uid = user?.uid;
+      if (uid) userInfoCache.delete(uid);
+      await logout();
+      window.dispatchEvent(new Event("auth-updated"));
+      router.push("/");
+    } catch (err: any) {
+      showMessage(err.message || "Failed to logout", true);
+    }
+  }, [user, router, showMessage]);
 
   const profileCard = useMemo(() => {
     if (!user) return null;
@@ -396,12 +346,10 @@ export default function AuthPage() {
             user={user}
             onUpdated={(newPhotoURL) => {
               setDisplayPhotoURL(newPhotoURL);
-              const uid = authRef.current?.currentUser?.uid;
-              if (uid) {
-                const cached = userInfoCache.get(uid);
-                if (cached) {
-                  userInfoCache.set(uid, { ...cached, photoURL: newPhotoURL });
-                }
+              const uid = user.uid;
+              const cached = userInfoCache.get(uid);
+              if (cached) {
+                userInfoCache.set(uid, { ...cached, photoURL: newPhotoURL });
               }
             }}
           />
@@ -454,24 +402,7 @@ export default function AuthPage() {
         <Message message={message} messageKey={messageKey} />
 
         <button
-          onClick={async () => {
-            try {
-              const uid = authRef.current?.currentUser?.uid;
-              if (uid) userInfoCache.delete(uid);
-              await logout();
-              window.dispatchEvent(new Event("auth-updated"));
-              setUser(null);
-              setIsVerified(false);
-              setCreatedDate(null);
-              setNewUsername("");
-              setDisplayPhotoURL(null);
-              hasFetchedRef.current = false;
-              router.push("/");
-            } catch (err: any) {
-              showMessage(err.message || "Failed to logout", true);
-            }
-          }}
-          disabled={false}
+          onClick={handleLogout}
           className="px-3 py-2 rounded-lg font-medium text-xs w-full bg-light-btn-bg text-light-btn-text hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text dark:bg-dark-btn-bg dark:text-dark-btn-text dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text transition-colors"
         >
           Logout
@@ -485,17 +416,18 @@ export default function AuthPage() {
     createdDate,
     message,
     messageKey,
-    isLoading,
     isUpdatingUsername,
     isSendingVerification,
+    displayPhotoURL,
     handleSendVerification,
     handleUsernameUpdate,
     handlePasswordUpdate,
-    showMessage,
+    handleLogout,
     router,
   ]);
 
-  if (isLoading && !auth) {
+  // Loading state from context
+  if (status === "loading") {
     return (
       <PageWrapper>
         <SkeletonLoader />
@@ -503,10 +435,12 @@ export default function AuthPage() {
     );
   }
 
+  // Authenticated -> show profile card
   if (user) {
     return <PageWrapper>{profileCard}</PageWrapper>;
   }
 
+  // Unauthenticated -> show auth forms
   return (
     <PageWrapper>
       <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md">
