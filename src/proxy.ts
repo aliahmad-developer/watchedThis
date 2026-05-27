@@ -33,16 +33,17 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
   "X-XSS-Protection": "0",
-  // FIX 1: Changed from "same-origin" to "same-origin-allow-popups" to allow
-  // Firebase popup-based auth flows (window.closed calls were being blocked).
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "Cross-Origin-Resource-Policy": "cross-origin",
 
   "Content-Security-Policy": [
     "default-src 'self'",
 
-    // scripts (Google One Tap + GTM)
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.google.com https://www.googletagmanager.com https://tagmanager.google.com",
+    // scripts
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
+      " https://accounts.google.com https://apis.google.com https://www.google.com" +
+      " https://www.googletagmanager.com https://tagmanager.google.com" +
+      " https://www.youtube.com https://s.ytimg.com",
 
     // styles
     "style-src 'self' 'unsafe-inline' https:",
@@ -50,16 +51,26 @@ const SECURITY_HEADERS: Record<string, string> = {
     // images
     "img-src 'self' data: blob: https:",
 
-    // API / auth calls (GTM + Google services + Firebase)
-    "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.googletagmanager.com https://region1.google-analytics.com https://www.google-analytics.com https://*.firebaseio.com wss://*.firebaseio.com https://firestore.googleapis.com https://channel.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebase.googleapis.com wss://*.googleapis.com",
-    // FIX 2: Added https://fyp-movie-4d46d.firebaseapp.com (and wildcard fallback)
-    // to allow Firebase auth iframe used for session management and token refresh.
-    "frame-src 'self' https://accounts.google.com https://www.google.com https://www.googletagmanager.com https://fyp-movie-4d46d.firebaseapp.com https://*.firebaseapp.com",
+    // API / auth / Firebase / YouTube
+    "connect-src 'self'" +
+      " https://accounts.google.com https://oauth2.googleapis.com" +
+      " https://www.googleapis.com https://www.googletagmanager.com" +
+      " https://region1.google-analytics.com https://www.google-analytics.com" +
+      " https://*.firebaseio.com wss://*.firebaseio.com" +
+      " https://firestore.googleapis.com https://channel.googleapis.com" +
+      " https://identitytoolkit.googleapis.com https://securetoken.googleapis.com" +
+      " https://firebase.googleapis.com wss://*.googleapis.com",
+
+    // frames — Firebase auth iframe + Google + YouTube
+    "frame-src 'self'" +
+      " https://accounts.google.com https://www.google.com" +
+      " https://www.googletagmanager.com" +
+      " https://fyp-movie-4d46d.firebaseapp.com https://*.firebaseapp.com" +
+      " https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com",
 
     "font-src 'self' https: data:",
     "media-src 'self' https:",
     "object-src 'none'",
-
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -105,7 +116,6 @@ export default async function proxy(req: NextRequest) {
   const isApi = pathname.startsWith("/api");
   const isRSC = req.headers.has("rsc") || req.nextUrl.searchParams.has("_rsc");
 
-  // Rate limit auth routes
   if (RATE_LIMITED_ROUTES.some((r) => pathname.startsWith(r))) {
     const ip = getIP(req);
     const { success, limit, remaining, reset } = await authRatelimit.limit(ip);
@@ -119,22 +129,18 @@ export default async function proxy(req: NextRequest) {
     }
   }
 
-  // Block bad bots (non-API)
   if (!isApi && isBadBot(req)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // Allow API/RSC with headers only
   if (isApi || isRSC) {
     return applySecurityHeaders(NextResponse.next());
   }
 
-  // Block again for page requests
   if (isBadBot(req)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // Protected route example
   if (pathname.startsWith("/user/library")) {
     const session = req.cookies.get("__session")?.value;
     if (!session) {
