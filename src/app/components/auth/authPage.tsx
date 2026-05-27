@@ -105,7 +105,10 @@ export default function AuthPage() {
 
       const db = getFirebaseDB();
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Firestore timeout")), 8000),
+        setTimeout(
+          () => reject(new Error("Firestore timeout after 20s")),
+          20000,
+        ),
       );
 
       const userDoc = await Promise.race([

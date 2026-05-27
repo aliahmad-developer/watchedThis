@@ -17,14 +17,14 @@ const UserListContext = createContext<UserListContextType>({
 });
 
 export function UserListProvider({ children }: { children: React.ReactNode }) {
-  const { user, status } = useAuth();
+  const { user, status, sessionReady } = useAuth();
   const authLoading = status === "loading";
 
   const [items, setItems] = useState<Record<number, ListStatus>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !sessionReady) return;
 
     if (!user) {
       setItems({});
@@ -88,7 +88,7 @@ export function UserListProvider({ children }: { children: React.ReactNode }) {
     );
 
     return unsubscribe;
-  }, [user, authLoading]);
+  }, [user, authLoading, sessionReady]);
 
   const value = useMemo(() => ({ items, loading }), [items, loading]);
 

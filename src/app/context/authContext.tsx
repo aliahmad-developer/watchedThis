@@ -101,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           }
 
+          // Only mark as synced AFTER successful session sync
           sessionSyncRef.current = true;
           if (mountedRef.current) {
             setAuthState({
@@ -109,7 +110,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               sessionReady: true,
             });
           }
-        } catch {
+        } catch (err) {
+          // Even on error, mark as synced to avoid infinite retries
+          // but still set sessionReady to true so UI can proceed
+          console.warn(
+            "[authContext] Session sync failed, proceeding anyway:",
+            err,
+          );
           sessionSyncRef.current = true;
           if (mountedRef.current) {
             setAuthState({
