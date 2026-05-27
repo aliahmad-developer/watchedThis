@@ -1,17 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
 import { collection, onSnapshot, query } from "firebase/firestore";
-
-import { useAuth } from "./useAuth";
+import { useAuth } from "../../context/authContext";
 import { getFirebaseDB } from "../../firebase/firebaseConfig";
 import { ListStatus } from "../../user/library/types";
-
-interface UserListItem {
-  mediaId: number;
-  status: ListStatus;
-}
 
 interface UserListContextType {
   items: Record<number, ListStatus>;
@@ -24,7 +17,8 @@ const UserListContext = createContext<UserListContextType>({
 });
 
 export function UserListProvider({ children }: { children: React.ReactNode }) {
-  const { user, authLoading } = useAuth();
+  const { user, status } = useAuth();
+  const authLoading = status === "loading";
 
   const [items, setItems] = useState<Record<number, ListStatus>>({});
   const [loading, setLoading] = useState(true);
@@ -39,40 +33,34 @@ export function UserListProvider({ children }: { children: React.ReactNode }) {
     }
 
     const db = getFirebaseDB();
-
     const q = query(collection(db, "users", user.uid, "lists"));
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const next: Record<number, ListStatus> = {};
-
         snapshot.forEach((doc) => {
           const data = doc.data();
           next[data.mediaId] = data.status;
         });
-
         setItems(next);
         setLoading(false);
       },
       (error) => {
-        if (error.code === "permission-denied") {
-          setItems({});
-          setLoading(false);
-        }
+        console.error(
+          "[userListProvider] snapshot error:",
+          error.code,
+          error.message,
+        );
+        setItems({});
+        setLoading(false);
       },
     );
 
     return unsubscribe;
   }, [user, authLoading]);
 
-  const value = useMemo(
-    () => ({
-      items,
-      loading,
-    }),
-    [items, loading],
-  );
+  const value = useMemo(() => ({ items, loading }), [items, loading]);
 
   return (
     <UserListContext.Provider value={value}>

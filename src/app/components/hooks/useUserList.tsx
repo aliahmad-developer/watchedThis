@@ -6,7 +6,7 @@ import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { getFirebaseDB } from "../../firebase/firebaseConfig";
 
-import { useAuth } from "./useAuth";
+import { useAuth } from "../../context/authContext";
 import { useUserListStore } from "./userListProvider";
 
 import { ListStatus } from "../../user/library/types";
