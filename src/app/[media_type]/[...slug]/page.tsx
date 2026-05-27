@@ -1,6 +1,7 @@
 import React from "react";
 import { notFound, redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
+import MoreLikeThis from "@/app/components/randomMedia/moreLike/shelf";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import CastScroll from "@/app/components/mediaCard/castScroll";
 import DetailsPage from "@/app/components/randomMedia/detailsPage";
@@ -22,7 +23,6 @@ interface PageParams {
   media_type: string;
   slug: string[];
 }
-
 type ResolvedMedia =
   | { shouldRedirect: true; redirectTo: string }
   | { shouldRedirect: false; data: any; media_name_slug: string; id: string };
@@ -290,6 +290,7 @@ export default async function SpecificRandomMediaPage({
         {data.credits?.cast && data.credits.cast.length > 0 && (
           <CastScroll cast={data.credits.cast} mediaType={media_type} />
         )}
+        <MoreLikeThis searchParams={{ id, type: media_type }} />
       </div>
     </DetailsClientShell>
   );
