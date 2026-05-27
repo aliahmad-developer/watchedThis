@@ -42,10 +42,13 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true }, { headers: noCacheHeaders });
 
+    const isProd = process.env.NODE_ENV === "production";
     res.cookies.set(COOKIE_NAME, sessionCookie, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProd,
+      // Google OAuth / One Tap redirects are commonly cross-site; this is required so
+      // the cookie is actually sent back to the server in production.
+      sameSite: isProd ? "none" : "lax",
       path: "/",
       maxAge: expiresIn / 1000,
     });
@@ -70,10 +73,11 @@ export async function DELETE(req: NextRequest) {
   }
 
   const res = NextResponse.json({ ok: true }, { headers: noCacheHeaders });
+  const isProd = process.env.NODE_ENV === "production";
   res.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     path: "/",
     maxAge: 0,
   });
