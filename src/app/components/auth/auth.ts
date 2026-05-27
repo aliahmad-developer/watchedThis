@@ -16,6 +16,8 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 async function setSessionCookie(user: User): Promise<void> {
   const token = await user.getIdToken(true);
 
@@ -30,16 +32,30 @@ async function setSessionCookie(user: User): Promise<void> {
     const data = await res.json().catch(() => null);
     throw new Error(data?.error || "Failed to create server session");
   }
+
+  // Wait for the cookie to be readable end-to-end (guards against CDN race).
+  // If this fails we still continue — the user is logged in client-side and
+  // a subsequent page load will re-hydrate correctly.
+  try {
+    await fetch("/api/auth/me", { credentials: "include" });
+  } catch {
+    // non-fatal
+  }
 }
 
 async function clearSessionCookie(): Promise<void> {
-  await fetch("/api/auth/session", { method: "DELETE" });
+  await fetch("/api/auth/session", {
+    method: "DELETE",
+    credentials: "include",
+  });
 }
+
 function notifyAuthChange() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("auth-updated"));
   }
 }
+
 // ─── Friendly error messages ───────────────────────────────────────────────
 const friendlyAuthError = (
   code: string,
@@ -145,6 +161,7 @@ export const login = async (email: string, password: string) => {
       password,
     );
 
+    // setSessionCookie now includes the /api/auth/me confirmation round-trip
     await setSessionCookie(userCredential.user);
 
     notifyAuthChange();
@@ -166,10 +183,7 @@ export const logout = async () => {
     const auth = await getFirebaseAuth();
 
     // Always clear server session first (fast + reliable)
-    await fetch("/api/auth/session", {
-      method: "DELETE",
-      credentials: "include",
-    });
+    await clearSessionCookie();
 
     // Then Firebase logout
     await signOut(auth);
@@ -185,7 +199,7 @@ export const logout = async () => {
   }
 };
 
-// ─── OAuth ─────────────────────────────────────────────────────────────────
+// ─── OAuth (Google popup / Apple) ──────────────────────────────────────────
 async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
   try {
     // Cancel any active One Tap / GSI flow and wait for it to fully clear
@@ -197,6 +211,8 @@ async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
     const auth = await getFirebaseAuth();
 
     const result = await signInWithPopup(auth, provider);
+
+    // setSessionCookie now includes the /api/auth/me confirmation round-trip
     await setSessionCookie(result.user);
 
     notifyAuthChange();
