@@ -9,12 +9,14 @@ interface AuthState {
   user: User | null;
   status: AuthStatus;
   sessionReady: boolean;
+  firebaseInitialized: boolean;
 }
 
 const AuthContext = createContext<AuthState>({
   user: null,
   status: "loading",
   sessionReady: false,
+  firebaseInitialized: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -22,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     status: "loading",
     sessionReady: false,
+    firebaseInitialized: false,
   });
   const mountedRef = useRef(true);
   const sessionSyncRef = useRef(false);
@@ -49,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user: null,
           status: "unauthenticated",
           sessionReady: false,
+          firebaseInitialized: false,
         });
       }
     }, 5000);
@@ -60,6 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { getFirebaseAuth } = await import("../firebase/firebaseConfig");
       const auth = await getFirebaseAuth();
 
+      // Set firebaseInitialized immediately after auth is ready
+      if (mountedRef.current) {
+        setState(prev => ({ ...prev, firebaseInitialized: true }));
+      }
+
       unsub = onIdTokenChanged(auth, async (u) => {
         if (!mountedRef.current) return;
 
@@ -68,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user: null,
             status: "unauthenticated",
             sessionReady: false,
+            firebaseInitialized: true,
           });
           return;
         }
@@ -78,12 +88,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user: u,
             status: "authenticated",
             sessionReady: true,
+            firebaseInitialized: true,
           });
           return;
         }
 
         // Optimistically authenticated, session not ready yet
-        setAuthState({ user: u, status: "authenticated", sessionReady: false });
+        setAuthState({ 
+          user: u, 
+          status: "authenticated", 
+          sessionReady: false,
+          firebaseInitialized: true,
+        });
 
         try {
           const check = await fetch("/api/auth/me", {
@@ -93,12 +109,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (!check.ok) {
             const token = await u.getIdToken(true);
-            await fetch("/api/auth/session", {
+            const sessionRes = await fetch("/api/auth/session", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: JSON.stringify({ idToken: token }),
             });
+            
+            if (!sessionRes.ok) {
+              throw new Error(`Failed to create session: ${sessionRes.status}`);
+            }
+            
+            // Small delay to ensure cookie is set before Firestore queries
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
 
           // Only mark as synced AFTER successful session sync
@@ -108,21 +131,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               user: u,
               status: "authenticated",
               sessionReady: true,
+              firebaseInitialized: true,
             });
           }
         } catch (err) {
           // Even on error, mark as synced to avoid infinite retries
           // but still set sessionReady to true so UI can proceed
-          console.warn(
-            "[authContext] Session sync failed, proceeding anyway:",
-            err,
-          );
+          console.warn("[authContext] Session sync failed, proceeding anyway:", err);
           sessionSyncRef.current = true;
           if (mountedRef.current) {
             setAuthState({
               user: u,
               status: "authenticated",
               sessionReady: true,
+              firebaseInitialized: true,
             });
           }
         }

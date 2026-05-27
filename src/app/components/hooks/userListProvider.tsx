@@ -49,7 +49,7 @@ export function UserListProvider({ children }: { children: React.ReactNode }) {
     const timeoutId = window.setTimeout(() => {
       timedOut = true;
       console.error(
-        "[userListProvider] Firestore onSnapshot timeout; uid:",
+        "[userListProvider] Firestore onSnapshot timeout after 15s; uid:",
         uid,
       );
       setItems({});
