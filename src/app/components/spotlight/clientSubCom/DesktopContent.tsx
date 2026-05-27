@@ -93,7 +93,7 @@ const DesktopContent = ({
         </div>
       </div>
 
-      <div className="hidden md:block relative w-4/5 h-full">
+      <div className="hidden md:block relative w-4/5 h-full isolate">
         {item.backdrop_path && (
           <>
             <Image

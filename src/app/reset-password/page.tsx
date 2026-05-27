@@ -18,28 +18,23 @@ import {
 const rules: { key: string; label: string; test: (p: string) => boolean }[] = [
   {
     key: "minLength",
-    label: "At least 8 characters",
-    test: (p) => p.length >= 8,
+    label: "8+ chars",
+    test: (p: string) => p.length >= 8,
   },
   {
     key: "hasUpper",
-    label: "One uppercase letter",
-    test: (p) => /[A-Z]/.test(p),
+    label: "Uppercase",
+    test: (p: string) => /[A-Z]/.test(p),
   },
   {
     key: "hasLower",
-    label: "One lowercase letter",
-    test: (p) => /[a-z]/.test(p),
+    label: "Lowercase",
+    test: (p: string) => /[a-z]/.test(p),
   },
   {
     key: "hasNumber",
-    label: "One number",
-    test: (p) => /\d/.test(p),
-  },
-  {
-    key: "hasSpecial",
-    label: "One special character",
-    test: (p) => /[^a-zA-Z0-9]/.test(p),
+    label: "Number",
+    test: (p: string) => /\d/.test(p),
   },
 ];
 

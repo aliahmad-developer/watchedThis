@@ -18,10 +18,7 @@ const FEATURED_GENRES = [
   { slug: "fantasy", name: "Fantasy" },
   { slug: "documentary", name: "Documentary" },
   { slug: "adventure", name: "Adventure" },
-  { slug: "biography", name: "Biography" },
   { slug: "history", name: "History" },
-  { slug: "sport", name: "Sport" },
-  { slug: "musical", name: "Musical" },
   { slug: "western", name: "Western" },
 ];
 

@@ -141,7 +141,6 @@ export default function SceneCameraModal({ open, onClose, onSuccess }: Props) {
             setMode("live");
             return;
           } catch (retryErr) {
-            console.error("Retry error:", retryErr);
             setError("Could not start camera. Try uploading an image instead.");
           }
         } else {

@@ -564,7 +564,7 @@ export default function RecommendationShelf({
   */
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
+    <section className="mx-auto max-w-7xl px-4 py-6 bg-transparent">
       {/* HEADER */}
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-2">

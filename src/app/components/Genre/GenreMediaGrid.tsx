@@ -56,11 +56,11 @@ export function GenreMediaGrid({
 
   if (error) {
     return (
-      <div className="text-red-500 text-center mt-8">
+      <div className="text-light-body-text dark:text-dark-body-text text-center mt-8 flex flex-col items-center gap-4">
         {error}
         <button
           onClick={() => window.location.reload()}
-          className="ml-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          className="ml-4 px-4 py-2 rounded"
         >
           Retry
         </button>

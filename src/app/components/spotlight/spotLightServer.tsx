@@ -49,7 +49,7 @@ export default async function PopularSpotlightSliderServer({
     return (
       <section
         aria-label="Popular Spotlight Slider"
-        className={`spotlight-section ${className}`}
+        className={`spotlight-section isolate relative z-10 ${className}`}
         style={{ height: typeof height === "number" ? `${height}px` : height }}
       >
         <div className="flex items-center justify-center h-full">

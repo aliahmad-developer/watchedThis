@@ -172,6 +172,7 @@ body::after {
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  isolation: isolate;
 }
 
 /* Layer 1 — large slow primary orb + secondary depth blob */
