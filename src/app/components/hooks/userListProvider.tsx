@@ -33,20 +33,50 @@ export function UserListProvider({ children }: { children: React.ReactNode }) {
     }
 
     const db = getFirebaseDB();
-    const q = query(collection(db, "users", user.uid, "lists"));
+    const uid = user.uid;
+
+    // Safety: guard against transient auth states that can cause Firestore to hang/timeout.
+    if (!uid) {
+      setItems({});
+      setLoading(false);
+      return;
+    }
+
+    const q = query(collection(db, "users", uid, "lists"));
+
+    // onSnapshot can sometimes hang in production (network/timeout). Track and log.
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      console.error(
+        "[userListProvider] Firestore onSnapshot timeout; uid:",
+        uid,
+      );
+      setItems({});
+      setLoading(false);
+    }, 15000);
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        window.clearTimeout(timeoutId);
+        if (timedOut) return;
+
         const next: Record<number, ListStatus> = {};
         snapshot.forEach((doc) => {
           const data = doc.data();
-          next[data.mediaId] = data.status;
+          // data.mediaId may not be a number at runtime; normalize.
+          const mediaId = Number((data as any).mediaId);
+          const status = (data as any).status as ListStatus;
+          if (!Number.isNaN(mediaId)) next[mediaId] = status;
         });
         setItems(next);
         setLoading(false);
       },
       (error) => {
+        window.clearTimeout(timeoutId);
+        if (timedOut) return;
+
         console.error(
           "[userListProvider] snapshot error:",
           error.code,
