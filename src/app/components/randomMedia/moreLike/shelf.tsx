@@ -1,5 +1,3 @@
-// app/components/randomMedia/moreLike/moreLikethis.tsx
-
 import SimilarMediaShelf from "./moreLikethis";
 
 interface Props {

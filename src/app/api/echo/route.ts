@@ -38,7 +38,7 @@ interface TMDBDetailResponse {
   backdrop_path?: string | null;
   vote_average?: number;
   overview?: string;
-  genres?: { name: string }[];
+  genres?: { id: number; name: string }[];
   runtime?: number | null;
   episode_run_time?: number[];
 }
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
         (i) => i.media_type === "movie" || i.media_type === "tv",
       );
 
-      const PAGE_SIZE = 5;
+      const PAGE_SIZE = 15;
       const slice = all.slice(0, PAGE_SIZE).map((item) => ({
         id: item.id,
         title: item.title ?? item.name ?? "",
@@ -132,11 +132,29 @@ export async function GET(req: NextRequest) {
 
     // ── Similar ───────────────────────────────────────────────────────────────
     if (id && type) {
-      const [det, sim, cred] = await Promise.all([
+      // Fetch detail + credits in parallel
+      const [det, cred] = await Promise.all([
         tmdbFetch<TMDBDetailResponse>(`/${type}/${id}`),
-        tmdbFetch<TMDBPagedResponse>(`/${type}/${id}/similar?page=${page}`),
         tmdbFetch<TMDBCreditsResponse>(`/${type}/${id}/credits`),
       ]);
+
+      const recData = await tmdbFetch<TMDBPagedResponse>(
+        `/${type}/${id}/recommendations?page=${page}`,
+      );
+
+      const hasRecommendations = (recData.results ?? []).length > 0;
+      let sim: TMDBPagedResponse;
+
+      if (hasRecommendations) {
+        sim = recData;
+      } else {
+        const genreIds = (det.genres ?? []).map((g) => g.id).join(",");
+        const discoverEndpoint = genreIds
+          ? `/discover/${type}?with_genres=${genreIds}&sort_by=vote_average.desc&vote_count.gte=100&page=${page}`
+          : `/discover/${type}?sort_by=vote_average.desc&vote_count.gte=100&page=${page}`;
+
+        sim = await tmdbFetch<TMDBPagedResponse>(discoverEndpoint);
+      }
 
       const cast: string[] = (cred.cast ?? []).slice(0, 5).map((c) => c.name);
       const director: string | null =
@@ -162,17 +180,19 @@ export async function GET(req: NextRequest) {
             }
           : undefined;
 
-      const similar = (sim.results ?? []).map((item) => ({
-        id: item.id,
-        title: item.title ?? item.name ?? "",
-        type,
-        year: (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
-        poster: item.poster_path ?? null,
-        backdrop: item.backdrop_path ?? null,
-        vote: item.vote_average ?? 0,
-        overview: item.overview ?? "",
-        genre_ids: item.genre_ids ?? [],
-      }));
+      const similar = (sim.results ?? [])
+        .filter((item) => item.id !== det.id)
+        .map((item) => ({
+          id: item.id,
+          title: item.title ?? item.name ?? "",
+          type,
+          year: (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
+          poster: item.poster_path ?? null,
+          backdrop: item.backdrop_path ?? null,
+          vote: item.vote_average ?? 0,
+          overview: item.overview ?? "",
+          genre_ids: item.genre_ids ?? [],
+        }));
 
       return NextResponse.json({
         source,

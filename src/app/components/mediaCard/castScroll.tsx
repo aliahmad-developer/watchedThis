@@ -1,6 +1,11 @@
-'use client';
-import { useRef, useState, useEffect } from "react";
+"use client";
+
+import { useRef, useState, useEffect, useCallback } from "react";
 import CastCard from "@/app/components/mediaCard/castCard";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCriticalRole } from "@fortawesome/free-brands-svg-icons";
+
+const CHUNK_SIZE = 10;
 
 export default function CastScroll({
   cast,
@@ -10,41 +15,84 @@ export default function CastScroll({
   mediaType: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [visibleCount, setVisibleCount] = useState(10); 
-  const [showGradient, setShowGradient] = useState(true);
-  const CHUNK_SIZE = 10;
+  const [visibleCount, setVisibleCount] = useState(CHUNK_SIZE);
+  const [showRightGradient, setShowRightGradient] = useState(false);
+  const [showLeftGradient, setShowLeftGradient] = useState(false);
+
+  // Reset when cast changes (e.g. navigating between titles)
+  useEffect(() => {
+    setVisibleCount(CHUNK_SIZE);
+    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
+  }, [cast]);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+
+    setShowLeftGradient(scrollLeft > 10);
+    setShowRightGradient(scrollLeft + clientWidth < scrollWidth - 10);
+
+    if (scrollLeft + clientWidth >= scrollWidth - 100) {
+      setVisibleCount((prev) =>
+        prev >= cast.length ? prev : Math.min(prev + CHUNK_SIZE, cast.length),
+      );
+    }
+  }, [cast.length]);
 
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      const { scrollLeft, scrollWidth, clientWidth } = container;
+    // Run once to set initial gradient state
+    handleScroll();
 
-      // Show/hide gradient based on how far we've scrolled
-      setShowGradient(scrollLeft + clientWidth < scrollWidth - 10);
-
-      // Load more when near the end
-      if (scrollLeft + clientWidth >= scrollWidth - 100) {
-        setVisibleCount((prev) => {
-          if (prev >= cast.length) return prev;
-          return Math.min(prev + CHUNK_SIZE, cast.length);
-        });
-      }
-    };
-
-    container.addEventListener("scroll", handleScroll);
+    container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [cast.length]);
+  }, [handleScroll]);
 
   return (
     <section className="mt-10 max-w-6xl mx-auto relative">
-      <h2 className="text-xl sm:text-2xl font-bold mb-4 px-1">Cast</h2>
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4 px-1">
+        <span className="flex items-center justify-center shrink-0 w-5 h-5 mb-1">
+          <FontAwesomeIcon
+            icon={faCriticalRole}
+            className="w-full h-full text-light-accent dark:text-dark-accent"
+          />
+        </span>
 
+        <h2
+          className="
+      text-xl
+      sm:text-2xl
+      font-bold
+      leading-none
+      text-light-header
+      dark:text-dark-header
+    "
+        >
+          Cast
+        </h2>
+      </div>
+
+      {/* Scroll */}
       <div className="relative">
         <div
           ref={scrollRef}
-          className="relative overflow-x-auto max-w-full scrollbar-radius-full"
+          style={{ touchAction: "pan-x pan-y" }}
+          className="
+    no-scrollbar
+    flex
+    gap-4
+    overflow-x-auto
+    overflow-y-hidden
+    pb-2
+    scroll-smooth
+    overscroll-x-contain
+    [-webkit-overflow-scrolling:touch]
+  "
         >
           <div className="flex gap-4 min-w-max pb-2">
             {cast.slice(0, visibleCount).map((actor) => (
@@ -58,15 +106,23 @@ export default function CastScroll({
           </div>
         </div>
 
-        {/* Gradient overlay — only if there's more content */}
-        {showGradient && (
+        {/* Left gradient */}
+        {showLeftGradient && (
           <div
-            className="absolute right-0 top-0 h-full w-20 pointer-events-none 
-               bg-linear-to-l from-light-bg/95 
-               dark:from-dark-bg/95 
-               via-light-bg/80 
-               dark:via-dark-bg/80 
-               to-transparent"
+            aria-hidden="true"
+            className="absolute left-0 top-0 h-full w-20 pointer-events-none
+              bg-linear-to-r from-light-bg/95 dark:from-dark-bg/95
+              via-light-bg/80 dark:via-dark-bg/80 to-transparent"
+          />
+        )}
+
+        {/* Right gradient */}
+        {showRightGradient && (
+          <div
+            aria-hidden="true"
+            className="absolute right-0 top-0 h-full w-20 pointer-events-none
+              bg-linear-to-l from-light-bg/95 dark:from-dark-bg/95
+              via-light-bg/80 dark:via-dark-bg/80 to-transparent"
           />
         )}
       </div>

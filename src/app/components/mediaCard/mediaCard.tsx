@@ -317,39 +317,49 @@ function MediaCard({ item, displayTitle, index = 0 }: MediaCardProps) {
                   </h3>
 
                   {/* RATING */}
-                  {hasRating && (
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <FontAwesomeIcon
-                        icon={faStar}
-                        className="
-                          w-4 h-4
-                          text-light-secondary-text
-                          dark:text-white
-                        "
-                      />
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <FontAwesomeIcon
+                      icon={faStar}
+                      className="
+      w-4 h-4
+      text-light-secondary-text
+      dark:text-white
+    "
+                    />
 
-                      <span
-                        className="
-                          text-sm font-semibold
-                          text-gray-900 dark:text-white
-                        "
-                      >
-                        {rating}
-                      </span>
-
-                      {item.vote_count && (
+                    {hasRating ? (
+                      <>
                         <span
                           className="
-                            text-sm
-                            text-gray-700 dark:text-gray-300
-                          "
+          text-sm font-semibold
+          text-gray-900 dark:text-white
+        "
                         >
-                          ({(item.vote_count / 1000).toFixed(1)}
-                          K)
+                          {rating}
                         </span>
-                      )}
-                    </div>
-                  )}
+
+                        {item.vote_count && (
+                          <span
+                            className="
+            text-sm
+            text-gray-700 dark:text-gray-300
+          "
+                          >
+                            ({(item.vote_count / 1000).toFixed(1)}K)
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span
+                        className="
+        text-sm font-medium
+        text-gray-500 dark:text-gray-400
+      "
+                      >
+                        Not rated yet
+                      </span>
+                    )}
+                  </div>
 
                   {/* META */}
                   {hasMeta && (
