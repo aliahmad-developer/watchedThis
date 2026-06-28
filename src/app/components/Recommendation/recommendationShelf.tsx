@@ -331,7 +331,7 @@ const GuestCTA = memo(function GuestCTA() {
   const [authOpen, setAuthOpen] = useState(false);
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-6 bg-light-bg dark:bg-dark-bg">
+    <section className="mx-auto max-w-7xl px-4 py-6 bg-transparent">
       <div className="flex items-center gap-2 mb-6 px-1">
         <FontAwesomeIcon
           icon={faWandMagicSparkles}
