@@ -10,7 +10,10 @@ export async function POST(req: Request) {
 
     const { id, media_type, title, name } = body;
 
-    if (typeof id !== "number" || !media_type) {
+    if (
+      typeof id !== "number" ||
+      (media_type !== "movie" && media_type !== "tv")
+    ) {
       return NextResponse.json(
         { error: "Invalid id or media_type" },
         { status: 400 },
@@ -33,10 +36,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ token });
   } catch (err) {
     console.error("SIGN ROUTE ERROR:", err);
-
-    return NextResponse.json(
-      { error: "Failed to sign", detail: String(err) },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to sign" }, { status: 500 });
   }
 }
