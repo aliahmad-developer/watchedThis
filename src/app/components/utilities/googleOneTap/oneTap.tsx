@@ -15,6 +15,7 @@ declare global {
             cancel_on_tap_outside?: boolean;
             context?: string;
             use_fedcm_for_prompt?: boolean;
+            nonce?: string;
           }) => void;
           prompt: (
             momentListener?: (notification: PromptMomentNotification) => void,
@@ -43,11 +44,21 @@ declare global {
   }
 }
 
+async function sha256Hex(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export default function GoogleOneTap() {
   const { user, status } = useAuth();
   const authLoading = status === "loading";
   const initializedRef = useRef(false);
   const signingInRef = useRef(false);
+  const nonceRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && user === null) {
@@ -69,7 +80,7 @@ export default function GoogleOneTap() {
     let attempts = 0;
     const maxAttempts = 30;
 
-    const init = () => {
+    const init = async () => {
       if (cancelled) return;
 
       const google = window.google;
@@ -80,6 +91,13 @@ export default function GoogleOneTap() {
         return;
       }
 
+      // Generate a fresh raw nonce for this session, hash it for Google.
+      // Supabase will hash the raw value we send it and compare against
+      // the token's nonce claim — they must correspond to the same raw value.
+      const rawNonce = crypto.randomUUID();
+      const hashedNonce = await sha256Hex(rawNonce);
+      nonceRef.current = rawNonce;
+
       google.accounts.id.initialize({
         client_id: clientId,
         callback: handleCredentialResponse,
@@ -87,6 +105,7 @@ export default function GoogleOneTap() {
         cancel_on_tap_outside: true,
         context: "signin",
         use_fedcm_for_prompt: true,
+        nonce: hashedNonce,
       });
 
       google.accounts.id.prompt((notification) => {
@@ -119,12 +138,10 @@ export default function GoogleOneTap() {
     try {
       const supabase = createClient();
 
-      // Supabase signs in directly from the Google ID token and syncs the
-      // session cookie via the @supabase/ssr client — no manual session/me
-      // round-trip needed.
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
         token: response.credential,
+        nonce: nonceRef.current ?? undefined,
       });
 
       if (error) throw error;
