@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-import { adminApp } from "@/lib/firebaseAdmin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getEmailVerificationTemplate } from "@/lib/emailTemplates";
 import { Resend } from "resend";
 import * as crypto from "crypto";
@@ -18,12 +16,7 @@ function encrypt(text: string): string {
   const key = crypto.scryptSync(HMAC_SECRET, "pendingSignup", 32);
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
-
-  const encrypted = Buffer.concat([
-    cipher.update(text, "utf8"),
-    cipher.final(),
-  ]);
-
+  const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
   return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
 }
 
@@ -34,15 +27,31 @@ function validateEmail(v: unknown): string | null {
   if (!EMAIL_RE.test(v.trim())) return "Invalid email.";
   return null;
 }
-
 function validateUsername(v: unknown): string | null {
   if (typeof v !== "string" || v.length < 3) return "Invalid username.";
   return null;
 }
-
 function validatePassword(v: unknown): string | null {
   if (typeof v !== "string" || v.length < 8) return "Weak password.";
   return null;
+}
+
+// Supabase Admin has no getUserByEmail() — paginate + filter.
+// Fine for small/medium user bases; if you cross tens of thousands of users,
+// switch this to a `profiles` table (email column, unique index) synced via
+// a Postgres trigger on auth.users insert, and query that table instead.
+async function findUserByEmail(email: string) {
+  const supabase = createAdminClient();
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const found = data.users.find((u) => u.email?.toLowerCase() === email);
+    if (found) return found;
+    if (data.users.length < perPage) return null;
+    page++;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -51,61 +60,43 @@ export async function POST(req: NextRequest) {
     const { email, password, username } = body;
 
     const emailErr = validateEmail(email);
-    if (emailErr)
-      return NextResponse.json({ error: emailErr }, { status: 400 });
+    if (emailErr) return NextResponse.json({ error: emailErr }, { status: 400 });
 
     const usernameErr = validateUsername(username);
-    if (usernameErr)
-      return NextResponse.json({ error: usernameErr }, { status: 400 });
+    if (usernameErr) return NextResponse.json({ error: usernameErr }, { status: 400 });
 
     const passwordErr = validatePassword(password);
-    if (passwordErr)
-      return NextResponse.json({ error: passwordErr }, { status: 400 });
+    if (passwordErr) return NextResponse.json({ error: passwordErr }, { status: 400 });
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanUsername = username.trim();
 
-    const auth = getAuth(adminApp);
-    const db = getFirestore(adminApp);
+    const supabase = createAdminClient();
 
-    // Check if a verified account already exists in Firebase Auth
-    try {
-      await auth.getUserByEmail(cleanEmail);
-      return NextResponse.json(
-        { error: "Account already exists." },
-        { status: 409 },
-      );
-    } catch (e: any) {
-      if (e.code !== "auth/user-not-found") throw e;
-      // User not found in Auth — fall through to pending check
+    const existingUser = await findUserByEmail(cleanEmail);
+    if (existingUser) {
+      return NextResponse.json({ error: "Account already exists." }, { status: 409 });
     }
 
-    // Check if there's already a pending (unverified) signup
-    const existingPending = await db
-      .collection("pendingSignups")
-      .where("email", "==", cleanEmail)
+    const { data: existingPending } = await supabase
+      .from("pending_signups")
+      .select("*")
+      .eq("email", cleanEmail)
       .limit(1)
-      .get();
+      .maybeSingle();
 
-    if (!existingPending.empty) {
-      const doc = existingPending.docs[0];
-      const { expiresAt, username: existingUsername } = doc.data();
+    if (existingPending && existingPending.expires_at > Date.now()) {
+      const sig = signToken(existingPending.id);
+      const confirmUrl = `${baseUrl}/api/auth/confirmSignUp?token=${existingPending.id}.${sig}`;
 
-      // Check expiry in code instead of Firestore query
-      if (expiresAt > Date.now()) {
-        const existingId = doc.id;
-        const sig = signToken(existingId);
-        const confirmUrl = `${baseUrl}/api/auth/confirmSignUp?token=${existingId}.${sig}`;
+      await resend.emails.send({
+        from: process.env.EMAIL_FROM!,
+        to: cleanEmail,
+        subject: "Verify your email address",
+        html: getEmailVerificationTemplate(confirmUrl),
+      });
 
-        await resend.emails.send({
-          from: process.env.EMAIL_FROM!,
-          to: cleanEmail,
-          subject: "Verify your email address",
-          html: getEmailVerificationTemplate(confirmUrl),
-        });
-
-        return NextResponse.json({ unverifiedResent: true });
-      }
+      return NextResponse.json({ unverifiedResent: true });
     }
 
     const id = crypto.randomBytes(32).toString("hex");
@@ -113,13 +104,15 @@ export async function POST(req: NextRequest) {
     const sig = signToken(id);
     const passwordEncrypted = encrypt(password);
 
-    await db.collection("pendingSignups").doc(id).set({
+    const { error: insertError } = await supabase.from("pending_signups").upsert({
+      id,
       email: cleanEmail,
       username: cleanUsername,
-      passwordEncrypted,
-      expiresAt,
-      createdAt: Date.now(),
+      password_encrypted: passwordEncrypted,
+      expires_at: expiresAt,
+      created_at: Date.now(),
     });
+    if (insertError) throw insertError;
 
     const confirmUrl = `${baseUrl}/api/auth/confirmSignUp?token=${id}.${sig}`;
 

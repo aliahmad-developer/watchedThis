@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { adminApp } from "@/lib/firebaseAdmin";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import * as crypto from "crypto";
 
 const HMAC_SECRET = process.env.RANDOM_HMAC_SECRET!;
@@ -12,39 +11,33 @@ function deriveKey(): Buffer {
 }
 
 function verifyToken(id: string, sig: string): boolean {
-  const expected = crypto
-    .createHmac("sha256", HMAC_SECRET)
-    .update(id)
-    .digest("hex");
-
-  return crypto.timingSafeEqual(
-    Buffer.from(sig, "hex"),
-    Buffer.from(expected, "hex"),
-  );
+  const expected = crypto.createHmac("sha256", HMAC_SECRET).update(id).digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"));
 }
 
 function decrypt(text: string): string {
   const [ivHex, encryptedHex] = text.split(":");
   const iv = Buffer.from(ivHex, "hex");
-
   const decipher = crypto.createDecipheriv("aes-256-cbc", deriveKey(), iv);
-
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(encryptedHex, "hex")),
     decipher.final(),
   ]);
-
   return decrypted.toString("utf8");
 }
 
-function setSessionCookie(res: NextResponse, sessionCookie: string) {
-  res.cookies.set("__session", sessionCookie, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 5, // 5 days
-  });
+async function findUserByEmail(email: string) {
+  const supabase = createAdminClient();
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const found = data.users.find((u) => u.email?.toLowerCase() === email);
+    if (found) return found;
+    if (data.users.length < perPage) return null;
+    page++;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -53,7 +46,6 @@ export async function GET(req: NextRequest) {
   }
 
   const rawToken = new URL(req.url).searchParams.get("token");
-
   if (!rawToken || !rawToken.includes(".")) {
     return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
@@ -62,105 +54,66 @@ export async function GET(req: NextRequest) {
   const id = rawToken.slice(0, lastDot);
   const sig = rawToken.slice(lastDot + 1);
 
-  if (!id || !sig) {
-    return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
-  }
-
-  if (!verifyToken(id, sig)) {
+  if (!id || !sig || !verifyToken(id, sig)) {
     return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
   }
 
   try {
-    const auth = getAuth(adminApp);
-    const db = getFirestore(adminApp);
+    const admin = createAdminClient();
 
-    const docRef = db.collection("pendingSignups").doc(id);
-    const docSnap = await docRef.get();
+    const { data: pending } = await admin
+      .from("pending_signups")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
 
-    if (!docSnap.exists) {
-      return NextResponse.redirect(
-        `${baseUrl}/user/profile?error=invalid_token`,
-      );
+    if (!pending) {
+      return NextResponse.redirect(`${baseUrl}/user/profile?error=invalid_token`);
     }
 
-    const data = docSnap.data()!;
-
-    if (Date.now() > data.expiresAt) {
-      await docRef.delete();
-      return NextResponse.redirect(
-        `${baseUrl}/user/profile?error=expired_token`,
-      );
+    if (Date.now() > pending.expires_at) {
+      await admin.from("pending_signups").delete().eq("id", id);
+      return NextResponse.redirect(`${baseUrl}/user/profile?error=expired_token`);
     }
 
-    const { email, username, passwordEncrypted } = data;
-    const password = decrypt(passwordEncrypted);
+    const { email, username, password_encrypted } = pending;
+    const password = decrypt(password_encrypted);
 
-    // If user already exists → just clean up and redirect
-    try {
-      await auth.getUserByEmail(email);
-      await docRef.delete();
+    // If user already exists — clean up and redirect
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      await admin.from("pending_signups").delete().eq("id", id);
       return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
-    } catch (e: any) {
-      if (e.code !== "auth/user-not-found") throw e;
     }
 
-    const userRecord = await auth.createUser({
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
       password,
-      displayName: username,
-      emailVerified: true,
+      email_confirm: true, // skip Supabase's own verification — we already verified via our custom flow
+      user_metadata: { full_name: username },
     });
 
-    await db.collection("users").doc(userRecord.uid).set({
-      email,
-      displayName: username,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-
-    await docRef.delete();
-
-    // Exchange custom token for ID token
-    const customToken = await auth.createCustomToken(userRecord.uid);
-
-    const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API;
-    if (!firebaseApiKey) {
-      throw new Error("Missing FIREBASE_API_KEY");
+    if (createError || !created.user) {
+      throw createError ?? new Error("User creation failed");
     }
 
-    const exchangeRes = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${firebaseApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: customToken,
-          returnSecureToken: true,
-        }),
-      },
-    );
+    await admin.from("pending_signups").delete().eq("id", id);
 
-    if (!exchangeRes.ok) {
-      console.error("[auth] token exchange failed", exchangeRes.status);
-      // User was created successfully, just skip auto-login
+    // Log the user in — this sets the session cookie via the route handler's
+    // cookie adapter (middleware picks it up on next request)
+    const supabase = await createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      console.error("[confirmSignUp] auto sign-in failed", signInError);
+      // Account exists and is verified — just skip auto-login
       return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
     }
 
-    const { idToken } = (await exchangeRes.json()) as { idToken: string };
-
-    await auth.verifyIdToken(idToken);
-
-    const expiresIn = 5 * 24 * 60 * 60 * 1000;
-    const sessionCookie = await auth.createSessionCookie(idToken, {
-      expiresIn,
-    });
-
-    const response = NextResponse.redirect(
-      `${baseUrl}/user/profile?verified=true`,
-    );
-
-    setSessionCookie(response, sessionCookie);
-
-    return response;
+    return NextResponse.redirect(`${baseUrl}/user/profile?verified=true`);
   } catch (err) {
     console.error("[confirmSignUp] unexpected error", err);
     return NextResponse.redirect(`${baseUrl}/user/profile?error=server_error`);

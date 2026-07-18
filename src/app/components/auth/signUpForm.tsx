@@ -9,7 +9,7 @@ import {
   faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
-import type { User } from "firebase/auth";
+import type { User } from "@supabase/supabase-js";
 import VerifyEmailModal from "./verifyEmailModal";
 import { useId } from "react";
 
@@ -73,9 +73,7 @@ export default function SignupForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [shakeTerms, setShakeTerms] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
@@ -150,6 +148,7 @@ export default function SignupForm({
       setLoading(false);
     }
   };
+
   const handleOAuth = async (provider: "google" | "apple") => {
     if (!acceptedTerms) {
       triggerTermsError();
@@ -165,7 +164,10 @@ export default function SignupForm({
           : await signInWithApple();
       if (result.redirect) return;
       if (result.success && result.user && onSuccess) {
-        onSuccess(result.user, result.user.displayName ?? "");
+        onSuccess(
+          result.user,
+          (result.user.user_metadata?.full_name as string) ?? "",
+        );
       } else {
         const msg = result.message ?? "OAuth sign-in failed.";
         setMessage(msg);
@@ -473,14 +475,14 @@ export default function SignupForm({
             className="cursor-pointer ml-2 text-xs text-light-secondary-text dark:text-dark-secondary-text leading-tight"
           >
             I agree to the{" "}
-            <a
+            
               href="/terms"
               className="text-light-accent dark:text-dark-accent hover:underline"
             >
               Terms
             </a>{" "}
             and{" "}
-            <a
+            
               href="/privacy"
               className="text-light-accent dark:text-dark-accent hover:underline"
             >

@@ -19,29 +19,32 @@ export default function AuthButton() {
 
   const isAuthPage =
     pathname === "/user/profile" || pathname === "/user/library";
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
   useEffect(() => {
     setImgError(false);
-  }, [user?.photoURL]);
+  }, [user?.user_metadata?.avatar_url]);
 
   const displayLetter = useMemo(() => {
     if (!user) return "";
 
-    const name = user.displayName?.trim();
-
+    const name = (user.user_metadata?.full_name as string | undefined)?.trim();
     const email = user.email?.split("@")[0] ?? "";
 
     return (name?.[0] || email?.[0] || "").toUpperCase();
   }, [user]);
 
   const photoURL = useMemo(() => {
-    if (!user?.photoURL) return null;
+    const rawPhoto = user?.user_metadata?.avatar_url as string | undefined;
+    if (!rawPhoto) return null;
 
-    const sep = user.photoURL.includes("?") ? "&" : "?";
+    const sep = rawPhoto.includes("?") ? "&" : "?";
+    const cacheBust = user?.last_sign_in_at ?? Date.now();
 
-    return `${user.photoURL}${sep}_t=${user.metadata.lastSignInTime ?? Date.now()}`;
+    return `${rawPhoto}${sep}_t=${cacheBust}`;
   }, [user]);
 
   const showPhoto = !!photoURL && !imgError;

@@ -2,7 +2,7 @@
 
 import ProfilePictureUpdate from "./authComponent/profilePic";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import SignupForm from "./signUpForm";
 import LoginForm from "./loginForm";
 import ForgotPasswordForm from "./forgotPasswordForm";
@@ -12,12 +12,7 @@ import UsernameUpdate from "./authComponent/userNameUpdate";
 import PasswordUpdate from "./authComponent/passwordUpdate";
 import Message from "./authComponent/message";
 import { useAuth } from "../../context/authContext";
-
-// Cache for Firestore data
-const userInfoCache = new Map<
-  string,
-  { createdDate: string; photoURL: string | null; displayName: string }
->();
+import { createClient } from "@/lib/supabase/client";
 
 const SkeletonLoader = () => (
   <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md space-y-3">
@@ -44,9 +39,7 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
 export default function AuthPage() {
   const { user, status } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
-  // Local UI state
   const [mode, setMode] = useState<"signup" | "login" | "forgot">("signup");
   const [isVerified, setIsVerified] = useState(false);
   const [newUsername, setNewUsername] = useState("");
@@ -55,13 +48,15 @@ export default function AuthPage() {
   const [isSendingVerification, setIsSendingVerification] = useState(false);
   const [message, setMessage] = useState("");
   const [messageKey, setMessageKey] = useState(0);
-  const [createdDate, setCreatedDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Refs for polling and cache tracking
   const lastVerifiedRef = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const fetchedUIDs = useRef(new Set<string>());
+
+  const createdDate = useMemo(() => {
+    if (!user?.created_at) return null;
+    return new Date(user.created_at).toLocaleDateString();
+  }, [user?.created_at]);
 
   const showMessage = useCallback((text: string, isError = false) => {
     setMessage(text);
@@ -73,129 +68,41 @@ export default function AuthPage() {
     }, 5000);
   }, []);
 
-  const getSafeCreatedDate = useCallback((u: any) => {
-    return u.metadata?.creationTime
-      ? new Date(u.metadata.creationTime).toLocaleDateString()
-      : new Date().toLocaleDateString();
-  }, []);
-
-  // Fetch Firestore created date (background, doesn’t block UI)
-  const fetchFirestoreCreatedDate = useCallback(async (uid: string) => {
-    try {
-      const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
-      const { getFirebaseDB } = await import("../../firebase/firebaseConfig");
-      const { doc, getDoc } = await import("firebase/firestore");
-
-      // Wait for auth to be ready before hitting Firestore
-      const auth = await getFirebaseAuth();
-      await new Promise<void>((resolve) => {
-        if (auth.currentUser) return resolve();
-        const unsub = auth.onAuthStateChanged((u) => {
-          if (u) {
-            unsub();
-            resolve();
-          }
-        });
-        // Don't wait forever
-        setTimeout(() => {
-          unsub();
-          resolve();
-        }, 4000);
-      });
-
-      const db = getFirebaseDB();
-      const timeout = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Firestore timeout after 20s")),
-          20000,
-        ),
-      );
-
-      const userDoc = await Promise.race([
-        getDoc(doc(db, "users", uid)),
-        timeout,
-      ]);
-
-      const snap = userDoc as any;
-      if (snap.exists()) {
-        const firestoreDate = snap
-          .data()
-          ?.createdAt?.toDate?.()
-          ?.toLocaleDateString();
-        if (firestoreDate) {
-          setCreatedDate(firestoreDate);
-          const cached = userInfoCache.get(uid);
-          if (cached) {
-            userInfoCache.set(uid, { ...cached, createdDate: firestoreDate });
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[Firestore User Fetch]", err);
-    }
-  }, []);
-
   // Sync local state when user changes
   useEffect(() => {
     if (!user) {
-      // Reset all local state when signed out
       setIsVerified(false);
       setNewUsername("");
       setDisplayPhotoURL(null);
-      setCreatedDate(null);
-      fetchedUIDs.current.clear();
       return;
     }
 
-    const uid = user.uid;
-    const cached = userInfoCache.get(uid);
+    const verified = !!user.email_confirmed_at;
+    setIsVerified(verified);
+    lastVerifiedRef.current = verified;
+    setDisplayPhotoURL((user.user_metadata?.avatar_url as string) ?? null);
+    setNewUsername((user.user_metadata?.full_name as string) ?? "");
+  }, [user]);
 
-    if (cached && fetchedUIDs.current.has(uid)) {
-      // Use cached data
-      setIsVerified(user.emailVerified || false);
-      lastVerifiedRef.current = user.emailVerified || false;
-      setCreatedDate(cached.createdDate);
-      setDisplayPhotoURL(cached.photoURL);
-      setNewUsername(cached.displayName);
-    } else {
-      // Fresh user – set from Firebase and try Firestore in background
-      setIsVerified(user.emailVerified || false);
-      lastVerifiedRef.current = user.emailVerified || false;
-      setDisplayPhotoURL(user.photoURL ?? null);
-      setNewUsername(user.displayName || "");
-      setCreatedDate(getSafeCreatedDate(user));
-      fetchedUIDs.current.add(uid);
-
-      // Cache what we have now
-      userInfoCache.set(uid, {
-        createdDate: getSafeCreatedDate(user),
-        photoURL: user.photoURL ?? null,
-        displayName: user.displayName || "",
-      });
-
-      // Fetch Firestore date in background
-      fetchFirestoreCreatedDate(uid);
-    }
-  }, [user, getSafeCreatedDate, fetchFirestoreCreatedDate]);
-
-  // Periodic email verification check (only when user exists and not verified)
+  // Periodic email verification check
   useEffect(() => {
     if (!user || isVerified) return;
 
     const checkVerification = async () => {
       try {
-        const { getFirebaseAuth } =
-          await import("../../firebase/firebaseConfig");
-        const auth = await getFirebaseAuth();
-        const currentUser = auth.currentUser;
-        if (!currentUser) return;
-        await currentUser.reload();
-        if (currentUser.emailVerified && !lastVerifiedRef.current) {
+        const supabase = createClient();
+        const {
+          data: { user: freshUser },
+        } = await supabase.auth.getUser();
+        if (!freshUser) return;
+
+        const verified = !!freshUser.email_confirmed_at;
+        if (verified && !lastVerifiedRef.current) {
           setIsVerified(true);
           showMessage("Email verified successfully!");
           if (intervalRef.current) clearInterval(intervalRef.current);
         }
-        lastVerifiedRef.current = currentUser.emailVerified || false;
+        lastVerifiedRef.current = verified;
       } catch (err) {
         console.error("Verification check failed", err);
       }
@@ -206,84 +113,24 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, [user, isVerified, showMessage]);
 
-  // Auto-login after email verification redirect
-  useEffect(() => {
-    if (user || status !== "unauthenticated") return;
-    if (searchParams.get("verified") !== "true") return;
-
-    const signInAfterVerification = async () => {
-      try {
-        const res = await fetch("/api/auth/clientToken");
-        if (!res.ok) return;
-        const { customToken } = await res.json();
-        if (!customToken) return;
-
-        const { getFirebaseAuth } =
-          await import("../../firebase/firebaseConfig");
-        const { signInWithCustomToken } = await import("firebase/auth");
-        const auth = await getFirebaseAuth();
-        await signInWithCustomToken(auth, customToken);
-        // Context will update automatically
-      } catch (err) {
-        console.error("[authPage] auto sign-in after verification failed", err);
-      }
-    };
-
-    signInAfterVerification();
-  }, [user, status, searchParams]);
-
-  // Update local username when user.displayName changes (e.g., after update)
-  useEffect(() => {
-    if (user?.displayName) {
-      setNewUsername(user.displayName);
-      const uid = user.uid;
-      const cached = userInfoCache.get(uid);
-      if (cached) {
-        userInfoCache.set(uid, { ...cached, displayName: user.displayName });
-      }
-    }
-  }, [user?.displayName]);
-
-  // Update photo URL cache when it changes
-  useEffect(() => {
-    if (user?.photoURL && user.uid) {
-      const uid = user.uid;
-      const cached = userInfoCache.get(uid);
-      if (cached) {
-        userInfoCache.set(uid, { ...cached, photoURL: user.photoURL });
-      }
-    }
-  }, [user?.photoURL, user?.uid]);
-
   const handleUsernameUpdate = useCallback(async () => {
     if (!user || !newUsername.trim()) return;
 
     setIsUpdatingUsername(true);
     try {
-      const { updateProfile } = await import("firebase/auth");
-      const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
-      const auth = await getFirebaseAuth();
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error("No user");
-
-      await updateProfile(currentUser, { displayName: newUsername.trim() });
-      await currentUser.reload();
-
-      // Update local state
-      setNewUsername(currentUser.displayName || "");
-      const uid = currentUser.uid;
-      const cached = userInfoCache.get(uid);
-      if (cached) {
-        userInfoCache.set(uid, {
-          ...cached,
-          displayName: currentUser.displayName || "",
-        });
-      }
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { full_name: newUsername.trim() },
+      });
+      if (updateError) throw updateError;
 
       window.dispatchEvent(new CustomEvent("signup-username-ready"));
       showMessage("Username updated successfully");
-    } catch (err: any) {
-      showMessage(err.message || "Failed to update username", true);
+    } catch (err) {
+      showMessage(
+        err instanceof Error ? err.message : "Failed to update username",
+        true,
+      );
     } finally {
       setIsUpdatingUsername(false);
     }
@@ -311,29 +158,26 @@ export default function AuthPage() {
       }
 
       try {
-        const { getFirebaseAuth } =
-          await import("../../firebase/firebaseConfig");
-        const {
-          EmailAuthProvider,
-          reauthenticateWithCredential,
-          updatePassword,
-        } = await import("firebase/auth");
-        const auth = await getFirebaseAuth();
-        const currentUser = auth.currentUser;
-        if (!currentUser || !currentUser.email)
-          throw new Error("User not found");
+        const supabase = createClient();
 
-        const credential = EmailAuthProvider.credential(
-          currentUser.email,
-          oldPassword,
-        );
-        await reauthenticateWithCredential(currentUser, credential);
-        await updatePassword(currentUser, newPassword);
-        await currentUser.getIdToken(true);
+        // Reauth: Supabase has no reauthenticateWithCredential equivalent —
+        // sign in again with the old password to confirm identity
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: oldPassword,
+        });
+        if (reauthError) throw new Error("Current password is incorrect");
+
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+        if (updateError) throw updateError;
+
         resetFields();
         showMessage("Password updated successfully");
-      } catch (err: any) {
-        showMessage(err.message || "Failed to update password", true);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to update password";
+        showMessage(msg, true);
         throw err;
       }
     },
@@ -345,16 +189,18 @@ export default function AuthPage() {
 
     setIsSendingVerification(true);
     try {
-      const res = await fetch("/api/auth/sendVerification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email }),
+      const supabase = createClient();
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: user.email,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (resendError) throw resendError;
       showMessage("Verification email sent. Check your inbox.");
-    } catch (err: any) {
-      showMessage(err.message || "Failed to send verification", true);
+    } catch (err) {
+      showMessage(
+        err instanceof Error ? err.message : "Failed to send verification",
+        true,
+      );
     } finally {
       setIsSendingVerification(false);
     }
@@ -362,15 +208,13 @@ export default function AuthPage() {
 
   const handleLogout = useCallback(async () => {
     try {
-      const uid = user?.uid;
-      if (uid) userInfoCache.delete(uid);
       await logout();
       window.dispatchEvent(new Event("auth-updated"));
       router.push("/");
-    } catch (err: any) {
-      showMessage(err.message || "Failed to logout", true);
+    } catch (err) {
+      showMessage(err instanceof Error ? err.message : "Failed to logout", true);
     }
-  }, [user, router, showMessage]);
+  }, [router, showMessage]);
 
   const profileCard = useMemo(() => {
     if (!user) return null;
@@ -381,11 +225,6 @@ export default function AuthPage() {
             user={user}
             onUpdated={(newPhotoURL) => {
               setDisplayPhotoURL(newPhotoURL);
-              const uid = user.uid;
-              const cached = userInfoCache.get(uid);
-              if (cached) {
-                userInfoCache.set(uid, { ...cached, photoURL: newPhotoURL });
-              }
             }}
           />
           <h2 className="text-sm sm:text-base font-semibold text-center">
@@ -453,7 +292,6 @@ export default function AuthPage() {
     messageKey,
     isUpdatingUsername,
     isSendingVerification,
-    displayPhotoURL,
     handleSendVerification,
     handleUsernameUpdate,
     handlePasswordUpdate,
@@ -461,7 +299,6 @@ export default function AuthPage() {
     router,
   ]);
 
-  // Loading state from context
   if (status === "loading") {
     return (
       <PageWrapper>
@@ -470,12 +307,10 @@ export default function AuthPage() {
     );
   }
 
-  // Authenticated -> show profile card
   if (user) {
     return <PageWrapper>{profileCard}</PageWrapper>;
   }
 
-  // Unauthenticated -> show auth forms
   return (
     <PageWrapper>
       <div className="bg-light-card dark:bg-dark-card shadow-lg rounded-xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md">

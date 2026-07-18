@@ -1,54 +1,6 @@
-import {
-  signInWithEmailAndPassword,
-  signOut,
-  signInWithPopup,
-  sendPasswordResetEmail,
-  GoogleAuthProvider,
-  OAuthProvider,
-  User,
-} from "firebase/auth";
-
-// ─── Providers ─────────────────────────────────────────────────────────────
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
-
-const appleProvider = new OAuthProvider("apple.com");
-appleProvider.addScope("email");
-appleProvider.addScope("name");
+import { createClient } from "@/lib/supabase/client";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-async function setSessionCookie(user: User): Promise<void> {
-  const token = await user.getIdToken(true);
-
-  const res = await fetch("/api/auth/session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ idToken: token }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    throw new Error(data?.error || "Failed to create server session");
-  }
-
-  // Wait for the cookie to be readable end-to-end (guards against CDN race).
-  // If this fails we still continue — the user is logged in client-side and
-  // a subsequent page load will re-hydrate correctly.
-  try {
-    await fetch("/api/auth/me", { credentials: "include" });
-  } catch {
-    // non-fatal
-  }
-}
-
-async function clearSessionCookie(): Promise<void> {
-  await fetch("/api/auth/session", {
-    method: "DELETE",
-    credentials: "include",
-  });
-}
 
 function notifyAuthChange() {
   if (typeof window !== "undefined") {
@@ -57,48 +9,42 @@ function notifyAuthChange() {
 }
 
 // ─── Friendly error messages ───────────────────────────────────────────────
+// Supabase errors don't use Firebase's "auth/xxx" code format — they're plain
+// message strings (sometimes a .status). Matching on message substrings instead.
 const friendlyAuthError = (
-  code: string,
+  message: string,
 ): { message: string; accountExists?: boolean; noAccount?: boolean } => {
-  switch (code) {
-    case "auth/email-already-in-use":
-      return {
-        message:
-          "An account with this email already exists. Try logging in instead.",
-        accountExists: true,
-      };
-    case "auth/invalid-email":
-      return { message: "Please enter a valid email address." };
-    case "auth/weak-password":
-      return { message: "Password is too weak. Please choose a stronger one." };
-    case "auth/user-not-found":
-    case "auth/invalid-credential":
-      return {
-        message: "No account found with these details.",
-        noAccount: true,
-      };
-    case "auth/wrong-password":
-      return { message: "Incorrect password." };
-    case "auth/too-many-requests":
-      return { message: "Too many attempts. Try again later." };
-    case "auth/user-disabled":
-      return { message: "This account has been disabled." };
-    case "auth/popup-blocked":
-      return { message: "Popup blocked. Allow popups and try again." };
-    case "auth/popup-closed-by-user":
-    case "auth/cancelled-popup-request":
-      return { message: "Sign-in cancelled." };
-    case "auth/account-exists-with-different-credential":
-      return {
-        message: "Account exists with different sign-in method.",
-        accountExists: true,
-      };
-    default:
-      return { message: "Something went wrong." };
+  const m = message.toLowerCase();
+
+  if (m.includes("already registered") || m.includes("already exists")) {
+    return {
+      message: "An account with this email already exists. Try logging in instead.",
+      accountExists: true,
+    };
   }
+  if (m.includes("invalid login credentials")) {
+    return { message: "Incorrect email or password.", noAccount: true };
+  }
+  if (m.includes("invalid email")) {
+    return { message: "Please enter a valid email address." };
+  }
+  if (m.includes("password") && m.includes("least")) {
+    return { message: "Password is too weak. Please choose a stronger one." };
+  }
+  if (m.includes("too many requests") || m.includes("rate limit")) {
+    return { message: "Too many attempts. Try again later." };
+  }
+  if (m.includes("user disabled") || m.includes("banned")) {
+    return { message: "This account has been disabled." };
+  }
+  return { message: "Something went wrong." };
 };
 
 // ─── Sign up ───────────────────────────────────────────────────────────────
+// Unchanged in shape — still routes through your custom SendGrid/Resend flow.
+// NOTE: the underlying /api/auth/sendVerification route needs to be rewritten
+// to use Supabase Admin (createUser) instead of Firebase Admin — send me that
+// file next.
 export async function signup(
   email: string,
   password: string,
@@ -135,7 +81,6 @@ export async function signup(
       success: false,
       unverifiedResent: false,
       message: "Sign up failed. Please try again.",
-      accountExists: false,
     };
   }
 }
@@ -150,28 +95,21 @@ export async function resendVerificationEmail(
 }
 
 // ─── Login ─────────────────────────────────────────────────────────────────
+// Session cookie handling is now automatic via middleware (@supabase/ssr) —
+// no manual /api/auth/session round-trip needed.
 export const login = async (email: string, password: string) => {
   try {
-    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
-    const auth = await getFirebaseAuth();
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password,
-    );
-
-    // setSessionCookie now includes the /api/auth/me confirmation round-trip
-    await setSessionCookie(userCredential.user);
-
-    notifyAuthChange();
-
-    return { success: true, message: "Login successful!" };
-  } catch (error: any) {
-    if (error.code) {
-      const { message, noAccount } = friendlyAuthError(error.code);
+    if (error) {
+      const { message, noAccount } = friendlyAuthError(error.message);
       return { success: false, message, noAccount };
     }
+
+    notifyAuthChange();
+    return { success: true, message: "Login successful!" };
+  } catch {
     return { success: false, message: "Login failed. Please try again." };
   }
 };
@@ -179,51 +117,41 @@ export const login = async (email: string, password: string) => {
 // ─── Logout ────────────────────────────────────────────────────────────────
 export const logout = async () => {
   try {
-    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
-    const auth = await getFirebaseAuth();
-
-    // Always clear server session first (fast + reliable)
-    await clearSessionCookie();
-
-    // Then Firebase logout
-    await signOut(auth);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
 
     notifyAuthChange();
-
     return { success: true, message: "Logged out successfully!" };
   } catch {
-    return {
-      success: false,
-      message: "Logout failed. Please try again.",
-    };
+    return { success: false, message: "Logout failed. Please try again." };
   }
 };
 
-// ─── OAuth (Google popup / Apple) ──────────────────────────────────────────
-async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
+// ─── OAuth (Google / Apple) — redirect flow ────────────────────────────────
+// Supabase's default OAuth is a full-page redirect, not a popup. This function
+// now navigates away from the page — it does NOT return a user synchronously.
+// Your authContext picks up the session automatically via onAuthStateChange
+// once the user lands back on your site after the provider redirect.
+async function oauthSignIn(provider: "google" | "apple") {
   try {
-    // Cancel any active One Tap / GSI flow and wait for it to fully clear
-    window.google?.accounts?.id?.cancel();
-    window.google?.accounts?.id?.disableAutoSelect?.();
-    await new Promise((res) => setTimeout(res, 500));
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
-    const { getFirebaseAuth } = await import("../../firebase/firebaseConfig");
-    const auth = await getFirebaseAuth();
-
-    const result = await signInWithPopup(auth, provider);
-
-    // setSessionCookie now includes the /api/auth/me confirmation round-trip
-    await setSessionCookie(result.user);
-
-    notifyAuthChange();
-
-    return { success: true, redirect: false, user: result.user };
-  } catch (error: any) {
-    if (error.code) {
-      const { message } = friendlyAuthError(error.code);
+    if (error) {
+      const { message } = friendlyAuthError(error.message);
       return { success: false, redirect: false, user: null, message };
     }
 
+    // Browser is navigating away now — this return rarely matters,
+    // but kept for type compatibility with existing call sites.
+    return { success: true, redirect: true, user: null };
+  } catch {
     return {
       success: false,
       redirect: false,
@@ -234,11 +162,11 @@ async function oauthSignIn(provider: GoogleAuthProvider | OAuthProvider) {
 }
 
 export async function signInWithGoogle() {
-  return oauthSignIn(googleProvider);
+  return oauthSignIn("google");
 }
 
 export async function signInWithApple() {
-  return oauthSignIn(appleProvider);
+  return oauthSignIn("apple");
 }
 
 export async function checkRedirectResult() {
@@ -258,7 +186,7 @@ export async function forgotPassword(email: string) {
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
 
     return { success: true, message: "Password reset email sent!" };
-  } catch (error: any) {
+  } catch {
     return {
       success: false,
       message: "Failed to send reset email. Please try again.",
