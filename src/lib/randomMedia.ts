@@ -1,7 +1,17 @@
-import { MediaItem } from "./dailyMedia";
+// src/lib/randomMedia.ts
 
-const TMDB_API_KEY = process.env.TMDB_API_KEY;
-const TMDB_BASE = "https://api.themoviedb.org/3";
+export interface MediaItem {
+  id: number;
+  title?: string;
+  name?: string;
+  overview?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
+  media_type?: "movie" | "tv";
+}
 
 interface DiscoverResponse {
   results?: RawMedia[];
@@ -162,7 +172,7 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
       // Don't retry 401/403 — key issue, fail fast
       if (res.status === 401 || res.status === 403) {
         throw new Error(
-          `TMDB auth failed: ${res.status} — check TMDB_API_KEY on Cloud Run`,
+          `TMDB auth failed: ${res.status} — check TMDB_API_KEY in Vercel`,
         );
       }
     } catch (err: any) {
@@ -182,25 +192,26 @@ export async function getRandomMedia(
   seenIds = new Set<number>(),
   count = 1,
 ): Promise<MediaItem[]> {
-  if (!TMDB_API_KEY) {
+  if (!process.env.TMDB_API_KEY) {
     throw new Error(
-      "TMDB_API_KEY is not set — add it to Cloud Run environment variables",
+      "TMDB_API_KEY is not set — add it to your Vercel environment variables",
     );
   }
+
   const results: MediaItem[] = [];
   const maxAttempts = count * 8; // generous attempts to find unseen items
 
   for (let i = 0; i < maxAttempts && results.length < count; i++) {
-    const media_type = Math.random() < 0.55 ? "movie" : "tv";
+    const media_type: "movie" | "tv" = Math.random() < 0.55 ? "movie" : "tv";
     const eras = media_type === "movie" ? MOVIE_ERAS : TV_ERAS;
     const era = pickWeightedEra(eras);
     const year = randomInt(era.min, era.max);
     const genre = pick(media_type === "movie" ? MOVIE_GENRES : TV_GENRES);
     const sort = pick(SORT_ORDERS);
-    const page = randomInt(1, 10); // skip probe — pick page directly
+    const page = randomInt(1, 10);
 
     const url =
-      `${TMDB_BASE}/discover/${media_type}?api_key=${TMDB_API_KEY}` +
+      `https://api.themoviedb.org/3/discover/${media_type}?api_key=${process.env.TMDB_API_KEY}` +
       `&language=en-US&sort_by=${sort}&${era.dateParam}=${year}` +
       `&with_genres=${genre}&vote_count.gte=${era.minVotes}&page=${page}`;
 
@@ -231,9 +242,7 @@ export async function getRandomMedia(
       });
     } catch (err: any) {
       console.error(`[randomMedia] attempt ${i + 1} error:`, err?.message);
-      // If it's an auth error, stop immediately
       if (err?.message?.includes("TMDB auth failed")) throw err;
-      // Otherwise continue to next attempt
     }
   }
 
