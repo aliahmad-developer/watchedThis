@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron/dailyMedia",
+      "path": "/api/cron/cron-temp",
       "schedule": "0 0 * * *"
     },
     {
