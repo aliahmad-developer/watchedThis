@@ -4,16 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 const ROW_ID = "singleton";
 
 export async function GET() {
-  console.log("[DEBUG] SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log(
-    "[DEBUG] ANON_KEY length:",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length,
-  );
-  console.log(
-    "[DEBUG] ANON_KEY prefix:",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 12),
-  );
-
   try {
     const supabase = await createClient();
 
@@ -22,9 +12,6 @@ export async function GET() {
       .select("items")
       .eq("id", ROW_ID)
       .maybeSingle();
-
-    console.log("[DEBUG] Supabase error:", error);
-    console.log("[DEBUG] Supabase data:", data);
 
     if (error) {
       console.error("Failed to fetch daily media from Supabase:", error);
