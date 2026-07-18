@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const SITE_URL = "https://watchedthis.com";
 
@@ -17,67 +17,18 @@ type ChangeFreq =
 const STATIC_LAST_MODIFIED = new Date("2026-05-13");
 
 const staticRoutes: MetadataRoute.Sitemap = [
-  {
-    url: SITE_URL,
-    changeFrequency: "daily" as ChangeFreq,
-    priority: 1.0,
-  },
-  {
-    url: `${SITE_URL}/movie`,
-    changeFrequency: "daily" as ChangeFreq,
-    priority: 0.9,
-  },
-  {
-    url: `${SITE_URL}/tv`,
-    changeFrequency: "daily" as ChangeFreq,
-    priority: 0.9,
-  },
-  {
-    url: `${SITE_URL}/find`,
-    changeFrequency: "weekly" as ChangeFreq,
-    priority: 0.8,
-  },
-  {
-    url: `${SITE_URL}/echo`,
-    changeFrequency: "always" as ChangeFreq,
-    priority: 0.8,
-  },
-  {
-    url: `${SITE_URL}/genre`,
-    changeFrequency: "weekly" as ChangeFreq,
-    priority: 0.7,
-  },
-  {
-    url: `${SITE_URL}/production`,
-    changeFrequency: "weekly" as ChangeFreq,
-    priority: 0.6,
-  },
-  {
-    url: `${SITE_URL}/random`,
-    changeFrequency: "always" as ChangeFreq,
-    priority: 0.6,
-  },
-  {
-    url: `${SITE_URL}/spinner`,
-    changeFrequency: "always" as ChangeFreq,
-    priority: 0.5,
-  },
-  {
-    url: `${SITE_URL}/about`,
-    changeFrequency: "monthly" as ChangeFreq,
-    priority: 0.5,
-  },
-  {
-    url: `${SITE_URL}/privacy`,
-    changeFrequency: "yearly" as ChangeFreq,
-    priority: 0.3,
-  },
-  {
-    url: `${SITE_URL}/terms`,
-    changeFrequency: "yearly" as ChangeFreq,
-    priority: 0.3,
-  },
-
+  { url: SITE_URL, changeFrequency: "daily" as ChangeFreq, priority: 1.0 },
+  { url: `${SITE_URL}/movie`, changeFrequency: "daily" as ChangeFreq, priority: 0.9 },
+  { url: `${SITE_URL}/tv`, changeFrequency: "daily" as ChangeFreq, priority: 0.9 },
+  { url: `${SITE_URL}/find`, changeFrequency: "weekly" as ChangeFreq, priority: 0.8 },
+  { url: `${SITE_URL}/echo`, changeFrequency: "always" as ChangeFreq, priority: 0.8 },
+  { url: `${SITE_URL}/genre`, changeFrequency: "weekly" as ChangeFreq, priority: 0.7 },
+  { url: `${SITE_URL}/production`, changeFrequency: "weekly" as ChangeFreq, priority: 0.6 },
+  { url: `${SITE_URL}/random`, changeFrequency: "always" as ChangeFreq, priority: 0.6 },
+  { url: `${SITE_URL}/spinner`, changeFrequency: "always" as ChangeFreq, priority: 0.5 },
+  { url: `${SITE_URL}/about`, changeFrequency: "monthly" as ChangeFreq, priority: 0.5 },
+  { url: `${SITE_URL}/privacy`, changeFrequency: "yearly" as ChangeFreq, priority: 0.3 },
+  { url: `${SITE_URL}/terms`, changeFrequency: "yearly" as ChangeFreq, priority: 0.3 },
 ].map((r) => ({ ...r, lastModified: STATIC_LAST_MODIFIED }));
 
 type SitemapEntry = {
@@ -95,10 +46,6 @@ type SitemapCache = {
   genres: { slug: string }[];
 };
 
-/**
- * Safely constructs a Date from a string.
- * Falls back to STATIC_LAST_MODIFIED if the string is missing or invalid.
- */
 function safeDate(updatedAt?: string): Date {
   if (!updatedAt) return STATIC_LAST_MODIFIED;
   const d = new Date(updatedAt);
@@ -115,18 +62,22 @@ export function chunkArray<T>(arr: T[], size: number): T[][] {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
-    const snap = await adminDb.collection("appData").doc("sitemapCache").get();
+    const supabase = createAdminClient();
+    const { data: row, error } = await supabase
+      .from("sitemap_cache")
+      .select("data")
+      .eq("id", "singleton")
+      .maybeSingle();
 
-    if (!snap.exists) {
-      console.warn(
-        "Sitemap cache not built yet — returning static routes only",
-      );
+    if (error) throw error;
+
+    if (!row) {
+      console.warn("Sitemap cache not built yet — returning static routes only");
       return staticRoutes;
     }
 
-    const data = snap.data() as SitemapCache;
+    const data = row.data as SitemapCache;
 
-    // Movie routes — weekly changeFreq since ratings/reviews update regularly
     const movieRoutes: MetadataRoute.Sitemap = (data.movies ?? []).map(
       ({ id, slug, updatedAt }) => ({
         url: `${SITE_URL}/movie/${slug}/${id}`,
@@ -136,7 +87,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
     );
 
-    // TV show routes — weekly changeFreq for same reason
     const tvRoutes: MetadataRoute.Sitemap = (data.tvShows ?? []).map(
       ({ id, slug, updatedAt }) => ({
         url: `${SITE_URL}/tv/${slug}/${id}`,
@@ -146,7 +96,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
     );
 
-    // Person routes — monthly; cast/crew info rarely changes
     const personRoutes: MetadataRoute.Sitemap = (data.persons ?? []).map(
       ({ id, slug }) => ({
         url: `${SITE_URL}/person/${slug}/${id}`,
@@ -156,7 +105,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
     );
 
-    // Genre routes — clean URLs, no query params (Google skips those in sitemaps)
     const genreRoutes: MetadataRoute.Sitemap = (data.genres ?? []).map(
       ({ slug }) => ({
         url: `${SITE_URL}/genre/${slug}`,

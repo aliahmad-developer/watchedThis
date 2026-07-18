@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { createServerClient } from "@supabase/ssr";
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -39,33 +40,26 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy": [
     "default-src 'self'",
 
-    // scripts
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
       " https://accounts.google.com https://apis.google.com https://www.google.com" +
       " https://www.googletagmanager.com https://tagmanager.google.com" +
       " https://www.youtube.com https://s.ytimg.com",
 
-    // styles
     "style-src 'self' 'unsafe-inline' https:",
 
-    // images
     "img-src 'self' data: blob: https:",
 
-    // API / auth / Firebase / YouTube
+    // API / auth / Supabase / YouTube — swapped Firebase domains for Supabase
     "connect-src 'self'" +
       " https://accounts.google.com https://oauth2.googleapis.com" +
       " https://www.googleapis.com https://www.googletagmanager.com" +
       " https://region1.google-analytics.com https://www.google-analytics.com" +
-      " https://*.firebaseio.com wss://*.firebaseio.com" +
-      " https://firestore.googleapis.com https://channel.googleapis.com" +
-      " https://identitytoolkit.googleapis.com https://securetoken.googleapis.com" +
-      " https://firebase.googleapis.com wss://*.googleapis.com",
+      " https://*.supabase.co wss://*.supabase.co",
 
-    // frames — Firebase auth iframe + Google + YouTube
+    // frames — swapped firebaseapp.com for your Supabase project domain
     "frame-src 'self'" +
       " https://accounts.google.com https://www.google.com" +
       " https://www.googletagmanager.com" +
-      " https://fyp-movie-4d46d.firebaseapp.com https://*.firebaseapp.com" +
       " https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com",
 
     "font-src 'self' https: data:",
@@ -133,24 +127,47 @@ export default async function proxy(req: NextRequest) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
+  // ── Supabase session refresh — must run before response is finalized ──
+  let response = applySecurityHeaders(NextResponse.next({ request: req }));
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+          response = applySecurityHeaders(NextResponse.next({ request: req }));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (isApi || isRSC) {
-    return applySecurityHeaders(NextResponse.next());
+    return response;
   }
 
   if (isBadBot(req)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  if (pathname.startsWith("/user/library")) {
-    const session = req.cookies.get("__session")?.value;
-    if (!session) {
-      const loginUrl = new URL("/user/profile", req.url);
-      loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  if (pathname.startsWith("/user/library") && !user) {
+    const loginUrl = new URL("/user/profile", req.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  return applySecurityHeaders(NextResponse.next());
+  return response;
 }
 
 export const config = {
