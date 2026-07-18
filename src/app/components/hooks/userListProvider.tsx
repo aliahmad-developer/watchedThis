@@ -1,19 +1,20 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/authContext";
-import { getFirebaseDB } from "../../firebase/firebaseConfig";
+import { createClient } from "@/lib/supabase/client";
 import { ListStatus } from "../../user/library/types";
 
 interface UserListContextType {
   items: Record<number, ListStatus>;
   loading: boolean;
+  refetch: () => void;
 }
 
 const UserListContext = createContext<UserListContextType>({
   items: {},
   loading: true,
+  refetch: () => {},
 });
 
 export function UserListProvider({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,9 @@ export function UserListProvider({ children }: { children: React.ReactNode }) {
 
   const [items, setItems] = useState<Record<number, ListStatus>>({});
   const [loading, setLoading] = useState(true);
+  const [refetchTick, setRefetchTick] = useState(0);
+
+  const refetch = useCallback(() => setRefetchTick((t) => t + 1), []);
 
   useEffect(() => {
     if (authLoading || !sessionReady) return;
@@ -32,65 +36,38 @@ export function UserListProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const db = getFirebaseDB();
-    const uid = user.uid;
+    let cancelled = false;
+    const supabase = createClient();
+    setLoading(true);
 
-    // Safety: guard against transient auth states that can cause Firestore to hang/timeout.
-    if (!uid) {
-      setItems({});
-      setLoading(false);
-      return;
-    }
+    supabase
+      .from("user_lists")
+      .select("media_id, status")
+      .eq("user_id", user.id)
+      .then(({ data, error }) => {
+        if (cancelled) return;
 
-    const q = query(collection(db, "users", uid, "lists"));
-
-    // onSnapshot can sometimes hang in production (network/timeout). Track and log.
-    let timedOut = false;
-    const timeoutId = window.setTimeout(() => {
-      timedOut = true;
-      console.error(
-        "[userListProvider] Firestore onSnapshot timeout after 15s; uid:",
-        uid,
-      );
-      setItems({});
-      setLoading(false);
-    }, 15000);
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        window.clearTimeout(timeoutId);
-        if (timedOut) return;
+        if (error) {
+          console.error("[userListProvider] fetch error:", error.message);
+          setItems({});
+          setLoading(false);
+          return;
+        }
 
         const next: Record<number, ListStatus> = {};
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          // data.mediaId may not be a number at runtime; normalize.
-          const mediaId = Number((data as any).mediaId);
-          const status = (data as any).status as ListStatus;
-          if (!Number.isNaN(mediaId)) next[mediaId] = status;
+        (data ?? []).forEach((row) => {
+          next[row.media_id as number] = row.status as ListStatus;
         });
         setItems(next);
         setLoading(false);
-      },
-      (error) => {
-        window.clearTimeout(timeoutId);
-        if (timedOut) return;
+      });
 
-        console.error(
-          "[userListProvider] snapshot error:",
-          error.code,
-          error.message,
-        );
-        setItems({});
-        setLoading(false);
-      },
-    );
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, sessionReady, refetchTick]);
 
-    return unsubscribe;
-  }, [user, authLoading, sessionReady]);
-
-  const value = useMemo(() => ({ items, loading }), [items, loading]);
+  const value = useMemo(() => ({ items, loading, refetch }), [items, loading, refetch]);
 
   return (
     <UserListContext.Provider value={value}>

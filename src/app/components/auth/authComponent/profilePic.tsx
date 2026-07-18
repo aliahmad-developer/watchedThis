@@ -1,16 +1,10 @@
 "use client";
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
-
 import toast from "react-hot-toast";
-import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
-import { updateProfile } from "firebase/auth";
-import { doc, updateDoc } from "firebase/firestore";
-import {
-  getFirebaseStorage,
-  getFirebaseDB,
-} from "../../../firebase/firebaseConfig";
+import type { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
-type Props = { user: any; onUpdated?: (newPhotoURL: string) => void };
+type Props = { user: User; onUpdated?: (newPhotoURL: string) => void };
 
 /* ─── module-level constants ─────────────────────────────────────────────── */
 const RING_CIRCUMFERENCE = 2 * Math.PI * 46;
@@ -23,21 +17,18 @@ const MIN_ZOOM = 0.5;
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 function validateImage(file: File): Promise<boolean> {
-  // Client-side: MIME, size, magic bytes, dimensions
   if (!file.type.startsWith("image/")) return Promise.resolve(false);
   if (file.size > MAX_FILE_SIZE) return Promise.resolve(false);
 
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      // Max 4K resolution (prevent huge uploads)
       if (
         img.naturalWidth > MAX_RESOLUTION ||
         img.naturalHeight > MAX_RESOLUTION
       ) {
         resolve(false);
       } else {
-        // Magic bytes check
         const reader = new FileReader();
         reader.onloadend = () => {
           const arr = new Uint8Array(reader.result as ArrayBuffer).subarray(
@@ -48,10 +39,10 @@ function validateImage(file: File): Promise<boolean> {
             .map((b) => b.toString(16).padStart(2, "0"))
             .join("");
           const isValid =
-            header.startsWith("ffd8ff") || // JPEG
-            header.startsWith("89504e47") || // PNG
-            header.startsWith("47494638") || // GIF
-            header.startsWith("52494646"); // WEBP
+            header.startsWith("ffd8ff") ||
+            header.startsWith("89504e47") ||
+            header.startsWith("47494638") ||
+            header.startsWith("52494646");
           resolve(isValid);
         };
         reader.readAsArrayBuffer(file.slice(0, 4));
@@ -60,27 +51,19 @@ function validateImage(file: File): Promise<boolean> {
     img.onerror = () => resolve(false);
     img.src = URL.createObjectURL(file);
   });
-  // NOTE: Server-side validation in Firebase Storage rules & API proxy required!
 }
 
 /* ─── crop hook ──────────────────────────────────────────────────────────── */
 function useCrop(imgSrc: string | null, canvasSize: number) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
-
-  // Drive canvas imperatively via refs — avoids the state → useCallback → useEffect
-  // re-creation chain triggered on every single drag event
   const offsetRef = useRef({ x: 0, y: 0 });
   const scaleRef = useRef(1);
-
-  // Thin state scalar only for the range slider UI
   const [scaleState, setScaleState] = useState(1);
-
   const dragging = useRef(false);
   const dragStart = useRef({ mx: 0, my: 0, ox: 0, oy: 0 });
   const lastPinchDist = useRef<number | null>(null);
 
-  // draw is now fully stable — reads everything from refs
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
@@ -116,7 +99,7 @@ function useCrop(imgSrc: string | null, canvasSize: number) {
     ctx.beginPath();
     ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2 - 2, 0, Math.PI * 2);
     ctx.stroke();
-  }, []); // stable — no deps; reads refs directly
+  }, []);
 
   useEffect(() => {
     if (!imgSrc) return;
@@ -135,7 +118,6 @@ function useCrop(imgSrc: string | null, canvasSize: number) {
     img.src = imgSrc;
   }, [imgSrc, canvasSize, draw]);
 
-  // Non-passive wheel — must be a native listener
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -247,7 +229,6 @@ function useCrop(imgSrc: string | null, canvasSize: number) {
     [throttledDraw],
   );
 
-  // Uses a separate offscreen canvas — never corrupts the preview
   const getCroppedBlob = useCallback(
     (): Promise<Blob> =>
       new Promise((resolve, reject) => {
@@ -309,8 +290,7 @@ const CropModal = memo(function CropModal({
   onApply: (blob: Blob) => void;
   onCancel: () => void;
 }) {
-  // Stable for the modal's lifetime
-  const canvasSize = useMemo(() => Math.min(280, window.innerWidth - 48), []); // TODO: Extract 280
+  const canvasSize = useMemo(() => Math.min(280, window.innerWidth - 48), []);
   const crop = useCrop(imgSrc, canvasSize);
 
   useEffect(() => {
@@ -385,7 +365,6 @@ const CropModal = memo(function CropModal({
             onTouchStart={crop.onTouchStart}
             onTouchMove={crop.onTouchMove}
             onTouchEnd={crop.stopDrag}
-            // onWheel intentionally omitted — handled via native non-passive listener
           />
 
           <div className="flex items-center gap-2 w-full">
@@ -452,46 +431,24 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
 }: Props) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadTaskRef = useRef<ReturnType<typeof uploadBytesResumable> | null>(
-    null,
-  );
   const prevImgSrc = useRef<string | null>(null);
-  const cacheKey = `profilePhoto_${user?.uid}`;
+  const cacheKey = `profilePhoto_${user?.id}`;
 
-  // Cache profile photo URL (1h TTL)
-  useEffect(() => {
-    if (!user?.photoURL || !user.uid) return;
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const { url, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_TTL) {
-          // 1h
-          // Already cached, no action needed (displayed via prop)
-        }
-      }
-    } catch {}
-  }, [user?.photoURL, user?.uid, cacheKey]);
+  const photoURL = (user?.user_metadata?.avatar_url as string) || null;
 
-  // Update cache on successful upload
   const updateCache = useCallback(
     (newUrl: string) => {
       try {
         localStorage.setItem(
           cacheKey,
-          JSON.stringify({
-            url: newUrl,
-            timestamp: Date.now(),
-          }),
+          JSON.stringify({ url: newUrl, timestamp: Date.now() }),
         );
       } catch {}
     },
     [cacheKey],
   );
 
-  // Revoke stale object URLs to prevent memory leaks
   useEffect(() => {
     if (prevImgSrc.current) URL.revokeObjectURL(prevImgSrc.current);
     prevImgSrc.current = imgSrc;
@@ -500,18 +457,11 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
     };
   }, [imgSrc]);
 
-  // Cancel any in-flight upload on unmount
-  useEffect(() => {
-    return () => {
-      uploadTaskRef.current?.cancel();
-    };
-  }, []);
-
   const initials = useMemo(() => {
-    const name = user.displayName?.trim();
+    const name = (user.user_metadata?.full_name as string)?.trim();
     const email = user.email?.split("@")[0] || "";
     return (name ? name.charAt(0) : email.charAt(0)).toUpperCase();
-  }, [user.displayName, user.email]);
+  }, [user.user_metadata?.full_name, user.email]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -536,55 +486,42 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
         return;
       }
       setUploading(true);
-      setProgress(0);
 
       try {
-        const storageRef = ref(
-          getFirebaseStorage(),
-          `profile_pictures/profile_${user.uid}.jpg`,
-        );
-        const uploadTask = uploadBytesResumable(storageRef, blob);
-        uploadTaskRef.current = uploadTask;
+        const supabase = createClient();
+        const path = `${user.id}/profile.jpg`;
 
-        await new Promise<void>((resolve, reject) => {
-          uploadTask.on(
-            "state_changed",
-            (snap) =>
-              setProgress(
-                Math.round((snap.bytesTransferred / snap.totalBytes) * 100),
-              ),
-            reject,
-            resolve,
-          );
-        });
-
-        const downloadURL = await getDownloadURL(storageRef);
-        await updateProfile(user, { photoURL: downloadURL });
-        await user.reload();
-
-        // Force token refresh so the session cookie gets the new photoURL
-        await user.getIdToken(true);
-
-        try {
-          await updateDoc(doc(getFirebaseDB(), "users", user.uid), {
-            photoURL: downloadURL,
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(path, blob, {
+            contentType: "image/jpeg",
+            upsert: true,
+            cacheControl: "3600",
           });
-        } catch (err) {
-          console.warn("Firestore update non-critical:", err);
-        }
 
-        updateCache(downloadURL);
-        onUpdated?.(downloadURL);
+        if (uploadError) throw uploadError;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(path);
+
+        // Cache-bust so the browser doesn't reuse a stale cached image
+        const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { avatar_url: bustedUrl },
+        });
+        if (updateError) throw updateError;
+
+        updateCache(bustedUrl);
+        onUpdated?.(bustedUrl);
         window.dispatchEvent(new Event("auth-updated"));
         toast.success("Profile picture updated!");
       } catch (err: any) {
-        if (err?.code === "storage/canceled") return;
         console.error("Upload error:", err);
         toast.error(err?.message || "Failed to upload photo.");
       } finally {
         setUploading(false);
-        setProgress(0);
-        uploadTaskRef.current = null;
       }
     },
     [user, onUpdated, updateCache],
@@ -619,16 +556,16 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
           onClick={handleAvatarClick}
           title="Click to change profile picture"
         >
-          {user.photoURL ? (
+          {photoURL ? (
             <img
-              src={user.photoURL}
+              src={photoURL}
               alt="Profile"
               width={96}
               height={96}
               fetchPriority="high"
               referrerPolicy="no-referrer"
               onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none"; // Hide broken images
+                (e.target as HTMLImageElement).style.display = "none";
               }}
               className="rounded-full object-cover w-24 h-24 ring-2 ring-light-border dark:ring-dark-border group-hover:ring-light-accent dark:group-hover:ring-dark-accent transition-all duration-200"
             />
@@ -668,8 +605,9 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
 
           {uploading && (
             <svg
-              className="absolute inset-0 w-24 h-24 -rotate-90"
+              className="absolute inset-0 w-24 h-24 -rotate-90 animate-spin"
               viewBox="0 0 96 96"
+              style={{ animationDuration: "1.2s" }}
             >
               <circle
                 cx="48"
@@ -686,10 +624,10 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
                 r="46"
                 fill="none"
                 strokeWidth="3"
-                className="text-light-accent dark:text-dark-accent transition-all duration-150"
+                className="text-light-accent dark:text-dark-accent"
                 stroke="currentColor"
                 strokeDasharray={RING_CIRCUMFERENCE}
-                strokeDashoffset={RING_CIRCUMFERENCE * (1 - progress / 100)}
+                strokeDashoffset={RING_CIRCUMFERENCE * 0.7}
                 strokeLinecap="round"
               />
             </svg>
@@ -697,7 +635,7 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
         </div>
 
         <p className="text-xs text-light-secondary-text dark:text-dark-secondary-text h-4">
-          {uploading ? `Uploading… ${progress}%` : ""}
+          {uploading ? "Uploading…" : ""}
         </p>
 
         <input

@@ -1,14 +1,9 @@
 "use client";
 
 import { useState } from "react";
-
-import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
-
-import { getFirebaseDB } from "../../firebase/firebaseConfig";
-
+import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../../context/authContext";
 import { useUserListStore } from "./userListProvider";
-
 import { ListStatus } from "../../user/library/types";
 
 interface MediaMeta {
@@ -18,11 +13,10 @@ interface MediaMeta {
   poster_path?: string;
   genre_ids?: number[];
 }
+
 export function useUserList(mediaMeta: MediaMeta) {
   const { user } = useAuth();
-
-  const { items } = useUserListStore();
-
+  const { items, refetch } = useUserListStore();
   const [loading, setLoading] = useState(false);
 
   const currentStatus = items[mediaMeta.mediaId] ?? null;
@@ -31,31 +25,28 @@ export function useUserList(mediaMeta: MediaMeta) {
     if (!user) return;
 
     setLoading(true);
-
     try {
-      const db = getFirebaseDB();
-
-      const ref = doc(
-        db,
-        "users",
-        user.uid,
-        "lists",
-        String(mediaMeta.mediaId),
-      );
+      const supabase = createClient();
 
       if (currentStatus === status) {
-        await deleteDoc(ref);
+        await supabase
+          .from("user_lists")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("media_id", mediaMeta.mediaId);
       } else {
-        await setDoc(ref, {
-          mediaId: mediaMeta.mediaId,
-          mediaType: mediaMeta.mediaType,
+        await supabase.from("user_lists").upsert({
+          user_id: user.id,
+          media_id: mediaMeta.mediaId,
+          media_type: mediaMeta.mediaType,
           title: mediaMeta.title,
           poster_path: mediaMeta.poster_path ?? null,
-          genre_ids: mediaMeta.genre_ids ?? [], 
+          genre_ids: mediaMeta.genre_ids ?? [],
           status,
-          addedAt: serverTimestamp(),
+          added_at: new Date().toISOString(),
         });
       }
+      refetch();
     } finally {
       setLoading(false);
     }

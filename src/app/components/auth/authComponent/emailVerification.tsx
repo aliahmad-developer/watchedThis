@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { User } from "firebase/auth";
+import type { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheckCircle,
@@ -14,7 +15,7 @@ type Props = {
   isVerified: boolean;
   handleSendVerification: () => Promise<void>;
   isSendingVerification: boolean;
-  onVerified?: () => void; // callback so parent can react too
+  onVerified?: () => void;
 };
 
 const COOLDOWN_SECONDS = 30;
@@ -31,19 +32,22 @@ export default function EmailVerification({
   const [verified, setVerified] = useState(isVerifiedProp);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Keep in sync if parent prop changes
   useEffect(() => {
     if (isVerifiedProp) setVerified(true);
   }, [isVerifiedProp]);
 
-  // Poll Firebase for verification — runs as long as unverified
+  // Poll Supabase for verification — runs as long as unverified
   useEffect(() => {
     if (verified) return;
 
+    const supabase = createClient();
+
     pollRef.current = setInterval(async () => {
       try {
-        await user.reload();
-        if (user.emailVerified) {
+        const {
+          data: { user: freshUser },
+        } = await supabase.auth.getUser();
+        if (freshUser?.email_confirmed_at) {
           clearInterval(pollRef.current!);
           pollRef.current = null;
           setVerified(true);
@@ -56,9 +60,8 @@ export default function EmailVerification({
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [verified, user, onVerified]);
+  }, [verified, onVerified]);
 
-  // Countdown timer
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);

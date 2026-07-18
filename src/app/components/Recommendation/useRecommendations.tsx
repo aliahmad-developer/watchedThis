@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "../../context/authContext";
+import { createClient } from "@/lib/supabase/client";
 import { getRecommendations, deriveTasteProfile } from "./scorer";
 import { loadBehaviour } from "./behaviourTracker";
 
@@ -18,32 +19,23 @@ async function tmdbGet<T>(
 ): Promise<T | null> {
   try {
     const url = new URL("/api/tmdb", window.location.origin);
-
     url.searchParams.set("path", path);
-
     if (Object.keys(params).length) {
       url.searchParams.set("params", JSON.stringify(params));
     }
-
-    const res = await fetch(url.toString(), {
-      cache: "no-store",
-    });
-
+    const res = await fetch(url.toString(), { cache: "no-store" });
     if (!res.ok) {
       const text = await res.text();
-
       console.error("[tmdb] failed:", res.status, text);
-
       return null;
     }
-
     return await res.json();
   } catch (e) {
     console.error("[tmdb] fetch failed:", path, e);
-
     return null;
   }
 }
+
 async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
   const results: MediaItem[] = [];
 
@@ -53,17 +45,10 @@ async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
   ]);
 
   (trendMovies?.results ?? []).forEach((m) =>
-    results.push({
-      ...m,
-      media_type: "movie",
-    }),
+    results.push({ ...m, media_type: "movie" }),
   );
-
   (trendTV?.results ?? []).forEach((m) =>
-    results.push({
-      ...m,
-      media_type: "tv",
-    }),
+    results.push({ ...m, media_type: "tv" }),
   );
 
   const genreRequests = topGenreIds.slice(0, 3).flatMap((genreId) => [
@@ -72,7 +57,6 @@ async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
       sort_by: "popularity.desc",
       page: "1",
     }),
-
     tmdbGet<{ results: MediaItem[] }>("/discover/tv", {
       with_genres: String(genreId),
       sort_by: "popularity.desc",
@@ -84,24 +68,16 @@ async function fetchCandidates(topGenreIds: number[]): Promise<MediaItem[]> {
 
   genreResults.forEach((page, i) => {
     const mediaType: "movie" | "tv" = i % 2 === 0 ? "movie" : "tv";
-
     (page?.results ?? []).forEach((m) =>
-      results.push({
-        ...m,
-        media_type: mediaType,
-      }),
+      results.push({ ...m, media_type: mediaType }),
     );
   });
 
   const seen = new Set<string>();
-
   return results.filter((m) => {
     const key = `${m.id}-${m.media_type}`;
-
     if (seen.has(key)) return false;
-
     seen.add(key);
-
     return true;
   });
 }
@@ -110,22 +86,15 @@ async function enrichItem(item: ScoredItem): Promise<ScoredItem> {
   try {
     const path =
       item.media_type === "movie" ? `/movie/${item.id}` : `/tv/${item.id}`;
-
     const detail = await tmdbGet<MediaItem>(path);
-
     if (!detail) return item;
 
     return {
       ...item,
-
       runtime: detail.runtime ?? item.runtime,
-
       episode_run_time: detail.episode_run_time ?? item.episode_run_time,
-
       number_of_episodes: detail.number_of_episodes ?? item.number_of_episodes,
-
       number_of_seasons: detail.number_of_seasons ?? item.number_of_seasons,
-
       genres: detail.genres ?? item.genres,
     };
   } catch {
@@ -139,21 +108,33 @@ interface ListDoc {
   status: string;
   title?: string;
   poster_path?: string;
-  genre_ids?: number[]; // add this
+  genre_ids?: number[];
 }
 
 async function fetchUserList(uid: string): Promise<ListDoc[]> {
-  const { getDocs, collection } = await import("firebase/firestore");
-  const firebase = await import("../../firebase/firebaseConfig");
-  const db = firebase.getFirebaseDB();
+  const supabase = createClient();
 
   try {
-    const snap = await getDocs(collection(db, "users", uid, "lists"));
-    return snap.docs.map((d) => d.data() as ListDoc);
+    const { data, error } = await supabase
+      .from("user_lists")
+      .select("media_id, media_type, status, title, poster_path, genre_ids")
+      .eq("user_id", uid);
+
+    if (error || !data) return [];
+
+    return data.map((d) => ({
+      mediaId: d.media_id as number,
+      mediaType: d.media_type as "movie" | "tv",
+      status: d.status as string,
+      title: d.title ?? undefined,
+      poster_path: d.poster_path ?? undefined,
+      genre_ids: d.genre_ids ?? [],
+    }));
   } catch {
     return [];
   }
 }
+
 interface UseRecommendationsOptions {
   limit?: number;
   excludeWatched?: boolean;
@@ -180,16 +161,12 @@ export function useRecommendations(
   } = opts;
 
   const { user, status, sessionReady } = useAuth();
-  const uid = user?.uid;
+  const uid = user?.id;
 
   const [recommendations, setRecommendations] = useState<ScoredItem[]>([]);
-
   const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null);
-
   const [isLoading, setIsLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
-
   const [tick, setTick] = useState(0);
 
   const abortRef = useRef(false);
@@ -204,7 +181,6 @@ export function useRecommendations(
   const getCacheKey = useCallback(
     (userId: string) => {
       const d = new Date();
-
       const today = [
         d.getUTCFullYear(),
         String(d.getUTCMonth() + 1).padStart(2, "0"),
@@ -234,11 +210,9 @@ export function useRecommendations(
     }
 
     abortRef.current = false;
-
     setIsLoading(true);
     setError(null);
 
-    // Production safety: never get stuck in loading forever.
     loadingTimeoutRef.current = window.setTimeout(() => {
       if (abortRef.current) return;
       console.warn("[recs] loading timeout reached; forcing stop");
@@ -251,28 +225,19 @@ export function useRecommendations(
 
         try {
           const raw = localStorage.getItem(cacheKey);
-
           if (raw) {
             const parsed = JSON.parse(raw);
-
             if (
               parsed?.recommendations &&
               Array.isArray(parsed.recommendations)
             ) {
               setRecommendations(parsed.recommendations);
-
               setTasteProfile(parsed.tasteProfile ?? null);
-
               setIsLoading(false);
-
               return;
             }
           }
         } catch {}
-
-        // ─────────────────────────────
-        // FETCH USER DATA
-        // ─────────────────────────────
 
         const [listDocs, behaviour] = await Promise.all([
           fetchUserList(uid),
@@ -284,11 +249,9 @@ export function useRecommendations(
         const favouriteIds = listDocs
           .filter((d) => d.status === "favourite")
           .map((d) => d.mediaId);
-
         const libraryIds = listDocs
           .filter((d) => d.status === "plan_to_watch")
           .map((d) => d.mediaId);
-
         const watchedIds = listDocs
           .filter((d) => d.status === "completed")
           .map((d) => d.mediaId);
@@ -299,55 +262,39 @@ export function useRecommendations(
             media_type: d.mediaType,
             title: d.title,
             poster_path: d.poster_path,
-            genre_ids: d.genre_ids ?? [], // add this
+            genre_ids: d.genre_ids ?? [],
           })),
-
           favouriteIds,
           libraryIds,
           watchedIds,
-
           clickLog: behaviour.clickLog ?? [],
-
           searchHistory: behaviour.searchHistory ?? [],
-
           findFilters: behaviour.findFilters ?? [],
-
           ratings: {},
         };
 
         const taste = deriveTasteProfile(tempProfile);
-
-        // ─────────────────────────────
-        // TOP GENRES
-        // ─────────────────────────────
-
         const topGenreNames = taste.topGenres.map((g) => g.genre);
 
         const { TMDB_GENRES } = await import("./types");
-
         const nameToId = Object.fromEntries(
           Object.entries(TMDB_GENRES).map(([id, name]) => [name, Number(id)]),
         );
-
         const topGenreIds = topGenreNames
           .map((n) => nameToId[n])
           .filter(Boolean) as number[];
+
         const candidates = await fetchCandidates(topGenreIds);
         if (abortRef.current) return;
 
         const profile: RecommendationProfile = {
           allMedia: candidates,
-
           favouriteIds,
           libraryIds,
           watchedIds,
-
           clickLog: behaviour.clickLog ?? [],
-
           searchHistory: behaviour.searchHistory ?? [],
-
           findFilters: behaviour.findFilters ?? [],
-
           ratings: {},
         };
 
@@ -361,21 +308,9 @@ export function useRecommendations(
         setRecommendations(recs);
 
         const tasteProfileData = deriveTasteProfile(profile);
-
         setTasteProfile(tasteProfileData);
-
         setIsLoading(false);
-        if (recs.length > 0) {
-          try {
-            localStorage.setItem(
-              cacheKey,
-              JSON.stringify({
-                recommendations: recs,
-                tasteProfile: tasteProfileData,
-              }),
-            );
-          } catch {}
-        }
+
         try {
           localStorage.setItem(
             cacheKey,
@@ -390,15 +325,10 @@ export function useRecommendations(
 
         if (enrichBatchSize > 0) {
           const enrichTargets = recs.slice(0, enrichBatchSize);
-
           enrichTargets.forEach(async (item, index) => {
             const enriched = await enrichItem(item);
-
             if (abortRef.current) return;
-
-            // stagger enrich slightly
             await new Promise((r) => setTimeout(r, index * 80));
-
             setRecommendations((prev) =>
               prev.map((p) =>
                 p.id === enriched.id && p.media_type === enriched.media_type
@@ -409,7 +339,7 @@ export function useRecommendations(
           });
         }
       } catch (err) {
-        console.error("[recs] error:", err); // ← add so you can see what's throwing
+        console.error("[recs] error:", err);
         if (!abortRef.current) {
           setError("Could not load recommendations.");
         }
@@ -437,11 +367,5 @@ export function useRecommendations(
     sessionReady,
   ]);
 
-  return {
-    recommendations,
-    tasteProfile,
-    isLoading,
-    error,
-    refresh,
-  };
+  return { recommendations, tasteProfile, isLoading, error, refresh };
 }

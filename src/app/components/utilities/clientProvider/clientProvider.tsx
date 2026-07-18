@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider } from "../../../context/authContext";
 import { UserListProvider } from "../../hooks/userListProvider";
+import { createClient } from "@/lib/supabase/client";
 
 const Membership = dynamic(() => import("../../MemberShips/paid"), {
   ssr: false,
@@ -39,49 +40,33 @@ export default function ClientProviders({
 
   useEffect(() => {
     let cancelled = false;
-    let unsubscribe: any;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    (async () => {
-      const firebaseAuth = await import("firebase/auth");
-      const firebaseConfig = await import("../../../firebase/firebaseConfig");
-      const auth = await firebaseConfig.getFirebaseAuth();
+    const supabase = createClient();
 
-      unsubscribe = firebaseAuth.onIdTokenChanged(auth, async (u: any) => {
-        if (cancelled) return;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (cancelled || !user || user.email_confirmed_at) return;
 
-        if (u && !u.emailVerified) {
+      pollInterval = setInterval(async () => {
+        if (cancelled) {
           if (pollInterval) clearInterval(pollInterval);
-
-          pollInterval = setInterval(async () => {
-            if (cancelled) {
-              clearInterval(pollInterval!);
-              return;
-            }
-            try {
-              await u.reload();
-              const refreshed = auth.currentUser;
-              if (refreshed?.emailVerified) {
-                clearInterval(pollInterval!);
-                pollInterval = null;
-                const freshToken = await refreshed.getIdToken(true);
-                document.cookie = `firebase-auth-token=${freshToken}; path=/; SameSite=Strict; Secure; max-age=3600`;
-                router.refresh();
-              }
-            } catch {}
-          }, 3000);
-        } else {
-          if (pollInterval) {
-            clearInterval(pollInterval);
-            pollInterval = null;
-          }
+          return;
         }
-      });
-    })();
+        try {
+          const {
+            data: { user: refreshed },
+          } = await supabase.auth.getUser();
+          if (refreshed?.email_confirmed_at) {
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = null;
+            router.refresh();
+          }
+        } catch {}
+      }, 3000);
+    });
 
     return () => {
       cancelled = true;
-      if (unsubscribe) unsubscribe();
       if (pollInterval) clearInterval(pollInterval);
     };
   }, [router]);

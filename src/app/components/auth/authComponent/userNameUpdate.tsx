@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import type { User } from "@supabase/supabase-js";
 
 type Props = {
   newUsername: string;
   setNewUsername: (value: string) => void;
   handleUsernameUpdate: () => Promise<void>;
   isUpdatingUsername: boolean;
-  user: any;
+  user: User;
 };
 
 export default function UsernameUpdate({
@@ -17,8 +18,7 @@ export default function UsernameUpdate({
   isUpdatingUsername,
   user,
 }: Props) {
-  // Always compare against live user prop (updated from parent useAuth)
-  const savedUsername = user?.displayName || "";
+  const savedUsername = (user?.user_metadata?.full_name as string) || "";
   const isUnchanged =
     newUsername === savedUsername || newUsername.trim() === "";
 

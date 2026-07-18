@@ -7,8 +7,8 @@ import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { checkRedirectResult } from "./auth";
-import type { User } from "firebase/auth";
-import { onAuthStateChanged } from "firebase/auth";
+import type { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 
 type AuthModalProps = {
@@ -23,7 +23,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isVerified, setIsVerified] = useState(false);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const [auth, setAuth] = useState<any>(null);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
@@ -33,27 +32,23 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isSnapping, setIsSnapping] = useState(false);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
+    const supabase = createClient();
 
-    const init = async () => {
-      try {
-        const firebase = await import("../../firebase/firebaseConfig");
-        const { getFirebaseAuth } = firebase;
-        const authInstance = await getFirebaseAuth();
-        setAuth(authInstance);
+    supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
+      setUser(currentUser ?? null);
+      setIsVerified(!!currentUser?.email_confirmed_at);
+    });
 
-        unsubscribe = onAuthStateChanged(authInstance, (u) => {
-          setUser(u ?? null);
-          setIsVerified(u?.emailVerified ?? false);
-        });
-      } catch (err) {
-        console.error("Auth init failed:", err);
-      }
-    };
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+      setIsVerified(!!sessionUser?.email_confirmed_at);
+    });
 
-    init();
     return () => {
-      unsubscribe?.();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -287,15 +282,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         <div className="p-4 pb-8 overflow-y-auto">{innerContent}</div>
       </div>
-      // Desktop: Centered dialog
+      {/* Desktop: Centered dialog */}
       <div className="fixed inset-0 z-50 hidden sm:flex items-center justify-center p-4">
-        {/* Backdrop overlay */}
         <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           onClick={onClose}
         />
 
-        {/* Dialog */}
         <div
           className="relative w-full max-w-md bg-light-card dark:bg-dark-card rounded-2xl shadow-2xl p-6 transition-all duration-300"
           style={{

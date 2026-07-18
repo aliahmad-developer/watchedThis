@@ -1,6 +1,5 @@
 "use client";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import { getFirebaseAuth } from "../../../firebase/firebaseConfig";
+import { createClient } from "@/lib/supabase/client";
 import { useEffect, useRef } from "react";
 import { useAuth } from "../../../context/authContext";
 
@@ -48,10 +47,8 @@ export default function GoogleOneTap() {
   const { user, status } = useAuth();
   const authLoading = status === "loading";
   const initializedRef = useRef(false);
-  // Guard against double-fires from FedCM / GSI calling the callback twice
   const signingInRef = useRef(false);
 
-  // Reset so One Tap can re-show after logout
   useEffect(() => {
     if (!authLoading && user === null) {
       initializedRef.current = false;
@@ -116,40 +113,22 @@ export default function GoogleOneTap() {
   }, [user, authLoading]);
 
   async function handleCredentialResponse(response: CredentialResponse) {
-    // Prevent double-fire from FedCM/GSI
     if (signingInRef.current) return;
     signingInRef.current = true;
 
     try {
-      const auth = await getFirebaseAuth();
-      const credential = GoogleAuthProvider.credential(response.credential);
+      const supabase = createClient();
 
-      // 1. Sign in to Firebase client SDK to get a fully hydrated User object
-      const result = await signInWithCredential(auth, credential);
-
-      // 2. Exchange for a fresh id token and create the server-side session cookie.
-      //    This MUST complete before we notify the rest of the app, otherwise
-      //    any server fetch that fires on auth state change will get a 401 and
-      //    wipe the user's library / recommendations.
-      const idToken = await result.user.getIdToken(true);
-
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ idToken }),
+      // Supabase signs in directly from the Google ID token and syncs the
+      // session cookie via the @supabase/ssr client — no manual session/me
+      // round-trip needed.
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: response.credential,
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "Failed to create server session");
-      }
+      if (error) throw error;
 
-      // 3. Confirm the cookie is readable end-to-end before triggering UI updates.
-      //    This serialises the race: cookie set → CDN propagates → me resolves → UI.
-      await fetch("/api/auth/me", { credentials: "include" });
-
-      // 4. Now it's safe to notify the rest of the app.
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth-updated"));
       }

@@ -73,7 +73,9 @@ export default function SignupForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
   const [shakeTerms, setShakeTerms] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
@@ -162,17 +164,15 @@ export default function SignupForm({
         provider === "google"
           ? await signInWithGoogle()
           : await signInWithApple();
+
+      // Supabase OAuth uses a full-page redirect.
+      // If successful, the browser navigates away, so we return early.
       if (result.redirect) return;
-      if (result.success && result.user && onSuccess) {
-        onSuccess(
-          result.user,
-          (result.user.user_metadata?.full_name as string) ?? "",
-        );
-      } else {
-        const msg = result.message ?? "OAuth sign-in failed.";
-        setMessage(msg);
-        if (onError) onError(msg);
-      }
+
+      // If redirect is false, it means an error occurred.
+      const msg = result.message ?? "OAuth sign-in failed.";
+      setMessage(msg);
+      if (onError) onError(msg);
     } catch (error: any) {
       const msg = error.message || "OAuth sign-in failed.";
       setMessage(msg);
@@ -181,7 +181,6 @@ export default function SignupForm({
       setOauthLoading(null);
     }
   };
-
   return (
     <>
       <style>{`
@@ -467,22 +466,21 @@ export default function SignupForm({
             cursor-pointer
             transition-all duration-150 ease-out
             hover:brightness-110 hover:border-light-accent hover:dark:border-dark-accent
-    
-  "
+          "
           />
           <label
             htmlFor={termsId}
             className="cursor-pointer ml-2 text-xs text-light-secondary-text dark:text-dark-secondary-text leading-tight"
           >
             I agree to the{" "}
-            
+            <a
               href="/terms"
               className="text-light-accent dark:text-dark-accent hover:underline"
             >
               Terms
             </a>{" "}
             and{" "}
-            
+            <a
               href="/privacy"
               className="text-light-accent dark:text-dark-accent hover:underline"
             >
