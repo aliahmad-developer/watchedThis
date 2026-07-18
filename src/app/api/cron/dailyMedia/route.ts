@@ -48,7 +48,9 @@ export async function GET(req: NextRequest) {
       if (updateError) throw updateError;
     } else {
       console.log("🆕 [CRON] Case 3/4: New day. Fetching new items...");
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86400000)
+        .toISOString()
+        .slice(0, 10);
       const { data: yesterdayData } = await supabase
         .from("daily_media")
         .select("*")
@@ -62,17 +64,17 @@ export async function GET(req: NextRequest) {
       const newItems = await getRandomMedia(seenIds, 1);
       finalItems = [...newItems, ...carryover].slice(0, 3);
 
+      // Remove updated_at from this object
       const { data: upsertData, error: upsertError } = await supabase
         .from("daily_media")
         .upsert(
           {
             date: today,
             items: finalItems,
-            updated_at: new Date().toISOString(),
           },
-          { onConflict: "date" }
+          { onConflict: "date" },
         )
-        .select(); // Add .select() to see what it actually inserted
+        .select();
 
       console.log("📝 [CRON] Upsert Result:", { upsertData, upsertError });
       if (upsertError) throw upsertError;
@@ -84,7 +86,7 @@ export async function GET(req: NextRequest) {
     console.error("💥 [CRON] FATAL ERROR:", error);
     return NextResponse.json(
       { error: "Internal Server Error", details: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
