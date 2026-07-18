@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/dailyMedia",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sitemap",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
