@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { TmdbImage } from "../utilities/TmdbImage";
 import Link from "next/link";
 import { tmdbImage } from "@/lib/imageTmdb";
 import { Film } from "lucide-react";
@@ -43,12 +43,12 @@ export default function CastCard({
       style={{ animationDelay: delay }}
       role="listitem"
     >
-      {/* IMAGE WRAPPER */}
+      {/* TmdbImage WRAPPER */}
       <div className="w-28 sm:w-32 h-40 sm:h-48 relative rounded-xl overflow-hidden bg-light-border dark:bg-dark-border">
         {actor.profile_path ? (
           <>
             <div className="relative w-full h-full">
-              <Image
+              <TmdbImage
                 src={tmdbImage(actor.profile_path, "w185")!}
                 alt={actorName}
                 fill

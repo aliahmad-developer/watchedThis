@@ -45,4 +45,5 @@ export const TTL = {
   SHORT: 1000 * 60 * 5,
   MEDIUM: 1000 * 60 * 15,
   LONG: 1000 * 60 * 60,
+  DAY: 1000 * 60 * 60 * 24,
 };

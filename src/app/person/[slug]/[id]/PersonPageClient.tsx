@@ -1,6 +1,6 @@
 "use client";
 import type { PersonData, Credit } from "./types";
-import Image from "next/image";
+import { TmdbImage } from "@/app/components/utilities/TmdbImage";
 import Link from "next/link";
 import { useMediaType } from "@/app/components/hooks/Genre/useMediaType";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
@@ -211,7 +211,7 @@ export default function PersonPageClient({
       <div className="flex flex-col md:flex-row gap-8 bg-light-card dark:bg-dark-card p-6 rounded-xl shadow-md">
         <div className="shrink-0 mx-auto md:mx-0">
           {details.profile_path ? (
-            <Image
+            <TmdbImage
               draggable={false}
               src={tmdbImage(details.profile_path, "w500")!}
               alt={details.name}
@@ -250,7 +250,7 @@ export default function PersonPageClient({
                 </p>
               </div>
               {showFade && (
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 rounded-b-xl bg-gradient-to-t from-light-bg dark:from-dark-bg to-transparent" />
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 rounded-b-xl bg-linear-to-t from-light-bg dark:from-dark-bg to-transparent" />
               )}
             </div>
           </div>
@@ -306,7 +306,7 @@ export default function PersonPageClient({
                 key={image.file_path}
                 className="overflow-hidden rounded-lg shadow-md"
               >
-                <Image
+                <TmdbImage
                   draggable={false}
                   src={tmdbImage(image.file_path, "w300")!}
                   alt={`${details.name} portrait`}

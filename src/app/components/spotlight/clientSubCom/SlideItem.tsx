@@ -2,7 +2,7 @@ import { MediaItem } from "../types";
 import GradientOverlay from "./GradientOverlay";
 import MobileContent from "./MobileContent";
 import DesktopContent from "./DesktopContent";
-import Image from "next/image";
+import { TmdbImage } from "../../utilities/TmdbImage";
 import { tmdbImage } from "@/lib/imageTmdb"
 
 interface SlideItemProps {
@@ -40,7 +40,7 @@ const SlideItem = ({
         <div className="relative w-full h-full">
           {item.backdrop_path && (
             <>
-              <Image
+              <TmdbImage
                 draggable={false}
               src={tmdbImage(item.backdrop_path, tmdbSize)!}
                 alt={item.title || item.name || "Media backdrop"}

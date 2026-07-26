@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import { TmdbImage } from "../utilities/TmdbImage";
 import { memo, useState } from "react";
 import type { AmbientTextColors } from "./detailsPage";
 import { tmdbImage } from "@/lib/imageTmdb";
@@ -52,7 +52,7 @@ const FALLBACK_AMBIENT: AmbientTextColors = {
 };
 
 const BLUR_DATA_URL =
-  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  "data:TmdbImage/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
 function MediaPoster({
   data,
@@ -80,7 +80,7 @@ function MediaPoster({
           {!loaded && (
             <div className="absolute inset-0 animate-pulse bg-linear-to-br from-white/5 via-white/10 to-white/5" />
           )}
-          <Image
+          <TmdbImage
             draggable={false}
             src={posterSrc}
             alt={`${displayTitle} ${data.media_type === "tv" ? "TV series" : "movie"} poster`}

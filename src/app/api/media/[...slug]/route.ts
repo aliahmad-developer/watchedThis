@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tmdbFetch } from "@/lib/tmdbRequest";
+import { cache, TTL } from "@/lib/cache";
 
 interface TMDBReleaseDates {
   results: {
@@ -68,6 +69,15 @@ export async function GET(
     return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
   }
 
+  const cacheKey = `media:${media_type}:${id}`;
+  const cached = cache.get<Record<string, unknown>>(cacheKey, TTL.DAY);
+
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: { "X-Cache": "HIT" },
+    });
+  }
+
   try {
     const creditsPath =
       media_type === "movie"
@@ -100,7 +110,7 @@ export async function GET(
       certification = usRating?.rating?.trim() || null;
     }
 
-    return NextResponse.json({
+    const payload = {
       status: data.status,
       id: data.id,
       tagline: data.tagline,
@@ -121,6 +131,12 @@ export async function GET(
       certification,
       credits,
       keywords: data.keywords ?? null,
+    };
+
+    cache.set(cacheKey, payload);
+
+    return NextResponse.json(payload, {
+      headers: { "X-Cache": "MISS" },
     });
   } catch (error) {
     console.error("TMDB API request failed:", error);

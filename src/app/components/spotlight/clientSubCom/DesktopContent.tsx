@@ -6,7 +6,7 @@ import {
   faPlay,
   faAngleRight,
 } from "@fortawesome/free-solid-svg-icons";
-import Image from "next/image";
+import { TmdbImage } from "../../utilities/TmdbImage";
 import Link from "next/link";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import GradientOverlay from "./GradientOverlay";
@@ -96,7 +96,7 @@ const DesktopContent = ({
       <div className="hidden md:block relative w-4/5 h-full isolate">
         {item.backdrop_path && (
           <>
-            <Image
+            <TmdbImage
               draggable={false}
               src={tmdbImage(item.backdrop_path, "w1280")!}
               alt={item.title || item.name || "Media backdrop"}

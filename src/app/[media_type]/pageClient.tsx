@@ -112,7 +112,7 @@ function MediaTypeContent() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <h1 className="text-center text-2xl md:text-3xl lg:text-4xl font-bold mb-8 bg-gradient-to-r from-light-accent to-dark-accent bg-clip-text text-transparent pb-2">
+      <h1 className="text-center text-2xl md:text-3xl lg:text-4xl font-bold mb-8 bg-linear-to-r from-light-accent to-dark-accent bg-clip-text text-transparent pb-2">
         {title}
       </h1>
       {results.length === 0 ? (

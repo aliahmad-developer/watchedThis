@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import { TmdbImage } from "../../utilities/TmdbImage";
 import Link from "next/link";
 import { memo, useMemo } from "react";
 import { MediaItem } from "./types";
@@ -90,7 +90,7 @@ export const CarouselItem = memo(function CarouselItem({
           </div>
 
           {item.poster_path ? (
-            <Image
+            <TmdbImage
               draggable={false}
               src={tmdbImage(item.poster_path, "w500")!}
               alt={item.title || item.name || "Media poster"}
@@ -102,7 +102,7 @@ export const CarouselItem = memo(function CarouselItem({
           ) : (
             <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
               <span className="text-gray-500 dark:text-gray-400 text-sm">
-                No image
+                No TmdbImage
               </span>
             </div>
           )}

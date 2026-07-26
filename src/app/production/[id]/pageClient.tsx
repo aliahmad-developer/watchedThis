@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
-import Image from "next/image";
+import { TmdbImage } from "@/app/components/utilities/TmdbImage";
 import { tmdbImage } from "@/lib/imageTmdb";
 
 // ── In-memory cache (lives for the lifetime of the browser tab) ───────────────
@@ -170,7 +170,7 @@ export default function ProductionPageClient({ id }: { id: string }) {
       <div className="flex flex-col sm:flex-row items-center gap-6 bg-light-card dark:bg-dark-card p-6 rounded-2xl shadow-md border border-light-border dark:border-dark-border">
         <div className="shrink-0 w-35 h-35 flex items-center justify-center bg-white dark:bg-white/5 rounded-xl shadow-sm border border-light-border dark:border-dark-border p-3">
           {company.logo_path ? (
-            <Image
+            <TmdbImage
               draggable={false}
               src={tmdbImage(company.logo_path, "w300")!}
               alt={company.name}

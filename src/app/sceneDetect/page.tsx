@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { TmdbImage } from "../components/utilities/TmdbImage";
 import Link from "next/link";
 import ColorThief from "color-thief-browser";
 import { createSlug } from "../components/utilities/createSlug";
@@ -187,7 +187,7 @@ function SceneResultCard({
       <div className="relative w-full aspect-4/3 sm:aspect-16/6 lg:aspect-16/5">
         <div className="group/img absolute inset-0 overflow-hidden">
           {imageUrl ? (
-            <Image
+            <TmdbImage
               ref={imgRef}
               src={imageUrl}
               alt={movie.title}

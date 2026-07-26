@@ -1,4 +1,3 @@
-import React from "react";
 import { notFound, redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import MoreLikeThis from "@/app/components/randomMedia/moreLike/shelf";

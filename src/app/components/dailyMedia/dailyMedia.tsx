@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { TmdbImage } from "../utilities/TmdbImage";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ColorThief from "color-thief-browser";
 import { createSlug } from "../utilities/createSlug";
@@ -377,7 +377,7 @@ const FeaturedCard = memo(({ item, index }: CardProps) => {
       }}
     >
       <div className="absolute inset-0">
-        <Image
+        <TmdbImage
           ref={imgRef}
           src={imageUrl}
           alt={item.title || "Media"}
@@ -467,7 +467,7 @@ const RightStackCard = memo(({ item, index }: CardProps) => {
       }}
     >
       <div className="absolute inset-0">
-        <Image
+        <TmdbImage
           ref={imgRef}
           src={imageUrl}
           alt={item.title || "Media"}

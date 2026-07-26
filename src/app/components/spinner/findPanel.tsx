@@ -13,7 +13,7 @@ import {
   faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { SpinnerItem } from "./types";
-import Image from "next/image";
+import { TmdbImage } from "../utilities/TmdbImage";
 import { tmdbImage } from "@/lib/imageTmdb";
 
 interface Filters {
@@ -407,7 +407,7 @@ export default function FindPanel({ isOpen, onClose, onAdd }: FindPanelProps) {
                   >
                     <div className="relative w-9 h-14 rounded-lg overflow-hidden shrink-0 bg-light-border dark:bg-dark-border">
                       {item.poster_path && (
-                        <Image
+                        <TmdbImage
                           src={tmdbImage(item.poster_path, "w92")!}
                           alt={item.title}
                           fill

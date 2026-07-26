@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { TmdbImage } from "../../utilities/TmdbImage";
 import { useMemo } from "react";
 import { MediaResult } from "./searchInput";
 import { tmdbImage } from "@/lib/imageTmdb";
@@ -78,7 +78,7 @@ export default function SearchResultsDropdown({
                   className="flex items-start gap-2.5 px-3 sm:px-4 py-2 hover:bg-light-card dark:hover:bg-dark-card transition-colors"
                 >
                   {item.poster ? (
-                    <Image
+                    <TmdbImage
                       draggable={false}
                       src={tmdbImage(item.poster, "w92")!}
                       alt={item.title}

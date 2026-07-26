@@ -1,23 +1,26 @@
 import { NextResponse } from "next/server";
 import type { TMDBPersonCredit } from "@/types/tmdb";
-
 import { tmdbFetch } from "@/lib/tmdbRequest";
+import { cache, TTL } from "@/lib/cache";
 
-export const revalidate = 86400;
+async function fetchRuntimeCached(id: number, media_type: string) {
+  const key = `runtime:${media_type}:${id}`;
+  const cached = cache.get<Record<string, unknown>>(key, TTL.DAY);
+  if (cached) return cached;
 
-async function fetchRuntime(id: number, media_type: string) {
   try {
     const data = await tmdbFetch<any>(`/${media_type}/${id}?language=en-US`);
 
+    let result: Record<string, unknown> = {};
+
     if (media_type === "movie") {
-      return {
+      result = {
         runtime: data.runtime ?? null,
         vote_average: data.vote_average ?? null,
         overview: data.overview ?? null,
       };
-    }
-    if (media_type === "tv") {
-      return {
+    } else if (media_type === "tv") {
+      result = {
         episode_run_time: data.episode_run_time ?? [],
         number_of_seasons: data.number_of_seasons ?? null,
         number_of_episodes: data.number_of_episodes ?? null,
@@ -25,7 +28,9 @@ async function fetchRuntime(id: number, media_type: string) {
         overview: data.overview ?? null,
       };
     }
-    return {};
+
+    cache.set(key, result);
+    return result;
   } catch {
     return {};
   }
@@ -41,18 +46,22 @@ export async function GET(
     return NextResponse.json({ error: "Invalid person ID" }, { status: 400 });
   }
 
+  const cacheKey = `person:${id}`;
+  const cached = cache.get<Record<string, unknown>>(cacheKey, TTL.DAY);
+
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: { "X-Cache": "HIT" },
+    });
+  }
+
   try {
-    // Fetch person details, credits, and images (no api_key in URL)
     const [details, credits, imagesData] = await Promise.all([
       tmdbFetch<any>(`/person/${id}?language=en-US`),
       tmdbFetch<any>(`/person/${id}/combined_credits?language=en-US`),
       tmdbFetch<any>(`/person/${id}/images`),
     ]);
 
-    // If tmdbFetch throws, we handle it in the catch below.
-    // (We no longer have access to HTTP status from a separate Response object here.)
-
-    // Process credits
     let filteredCredits = null;
 
     if (credits) {
@@ -64,35 +73,51 @@ export async function GET(
       const crew = (credits.crew as TMDBPersonCredit[]).filter(
         (item) => item.job === "Director" || item.job === "Producer",
       );
-      // Fetch runtimes in parallel for cast + crew
+
       const allCredits = [...cast, ...crew];
-      const runtimeData = await Promise.all(
-        allCredits.map((c) => fetchRuntime(c.id, c.media_type)),
+
+      // Dedupe: same movie/show can appear multiple times (e.g. actor + director)
+      const uniqueKeys = Array.from(
+        new Set(allCredits.map((c) => `${c.media_type}:${c.id}`)),
       );
 
-      // Merge runtime info back into cast/crew
-      const enrichedCast = cast.map((c, i) => ({
-        ...runtimeData[i],
-        id: c.id,
-        title: c.title || c.name,
-        character: c.character,
-        poster_path: c.poster_path,
-        media_type: c.media_type,
-        release_date: c.release_date || c.first_air_date,
-        vote_average: runtimeData[i]?.vote_average ?? c.vote_average,
-      }));
+      const uniqueRuntimeEntries = await Promise.all(
+        uniqueKeys.map(async (key) => {
+          const [media_type, tmdbId] = key.split(":");
+          const data = await fetchRuntimeCached(Number(tmdbId), media_type);
+          return [key, data] as const;
+        }),
+      );
 
-      const enrichedCrew = crew.map((c, i) => ({
-        ...runtimeData[cast.length + i],
-        id: c.id,
-        title: c.title || c.name,
-        job: c.job,
-        poster_path: c.poster_path,
-        media_type: c.media_type,
-        release_date: c.release_date || c.first_air_date,
-        vote_average:
-          runtimeData[cast.length + i]?.vote_average ?? c.vote_average,
-      }));
+      const runtimeMap = new Map(uniqueRuntimeEntries);
+
+      const enrichedCast = cast.map((c) => {
+        const rt = runtimeMap.get(`${c.media_type}:${c.id}`) ?? {};
+        return {
+          ...rt,
+          id: c.id,
+          title: c.title || c.name,
+          character: c.character,
+          poster_path: c.poster_path,
+          media_type: c.media_type,
+          release_date: c.release_date || c.first_air_date,
+          vote_average: (rt as any)?.vote_average ?? c.vote_average,
+        };
+      });
+
+      const enrichedCrew = crew.map((c) => {
+        const rt = runtimeMap.get(`${c.media_type}:${c.id}`) ?? {};
+        return {
+          ...rt,
+          id: c.id,
+          title: c.title || c.name,
+          job: c.job,
+          poster_path: c.poster_path,
+          media_type: c.media_type,
+          release_date: c.release_date || c.first_air_date,
+          vote_average: (rt as any)?.vote_average ?? c.vote_average,
+        };
+      });
 
       filteredCredits = { cast: enrichedCast, crew: enrichedCrew };
     }
@@ -101,7 +126,7 @@ export async function GET(
       ? { profiles: imagesData.profiles.slice(0, 10) }
       : null;
 
-    return NextResponse.json({
+    const payload = {
       details: {
         id: details.id,
         name: details.name,
@@ -115,6 +140,12 @@ export async function GET(
       },
       credits: filteredCredits,
       images: filteredImages,
+    };
+
+    cache.set(cacheKey, payload);
+
+    return NextResponse.json(payload, {
+      headers: { "X-Cache": "MISS" },
     });
   } catch (error: unknown) {
     console.error({
@@ -127,7 +158,10 @@ export async function GET(
     const status = msg.includes("404") ? 404 : 500;
 
     return NextResponse.json(
-      { error: status === 404 ? "Person not found" : "Failed to fetch person data" },
+      {
+        error:
+          status === 404 ? "Person not found" : "Failed to fetch person data",
+      },
       { status },
     );
   }

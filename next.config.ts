@@ -53,13 +53,13 @@ const nextConfig: NextConfig = {
  images: {
   dangerouslyAllowLocalIP: true,
 
-  formats: ["image/avif", "image/webp"],
+  formats: ["image/webp"],
   minimumCacheTTL: 60 * 60 * 24 * 31,
 
   deviceSizes: [640, 750, 828, 1080, 1200],
   imageSizes: [64, 128, 256, 500],
 
-  qualities: [55, 75],
+  qualities: [75],
 
   remotePatterns: [
     { protocol: "https", hostname: "lh3.googleusercontent.com" },

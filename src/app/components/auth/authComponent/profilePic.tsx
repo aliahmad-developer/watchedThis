@@ -489,6 +489,7 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
 
       try {
         const supabase = createClient();
+        const version = Date.now();
         const path = `${user.id}/profile.jpg`;
 
         const { error: uploadError } = await supabase.storage
@@ -496,7 +497,7 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
           .upload(path, blob, {
             contentType: "image/jpeg",
             upsert: true,
-            cacheControl: "3600",
+            cacheControl: "31536000",
           });
 
         if (uploadError) throw uploadError;
@@ -505,8 +506,7 @@ const ProfilePictureUpdate = memo(function ProfilePictureUpdate({
           data: { publicUrl },
         } = supabase.storage.from("avatars").getPublicUrl(path);
 
-        // Cache-bust so the browser doesn't reuse a stale cached image
-        const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+        const bustedUrl = `${publicUrl}?v=${version}`;
 
         const { error: updateError } = await supabase.auth.updateUser({
           data: { avatar_url: bustedUrl },

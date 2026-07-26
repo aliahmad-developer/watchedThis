@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { TmdbImage } from "../utilities/TmdbImage";
 import { SpinnerItem } from "./types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faArrowRight } from "@fortawesome/free-solid-svg-icons";
@@ -29,7 +29,7 @@ export default function ResultModal({ item, onClose }: ResultModalProps) {
       <div className="relative z-10 w-full max-w-sm rounded-2xl overflow-hidden bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border shadow-2xl">
         {item.poster_path && (
           <div className="relative w-full aspect-video overflow-hidden">
-            <Image
+            <TmdbImage
               src={tmdbImage(item.poster_path, "w500")!}
               alt={item.title}
               fill
