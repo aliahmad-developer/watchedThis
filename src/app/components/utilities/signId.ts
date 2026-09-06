@@ -1,10 +1,12 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-const SECRET = process.env.RANDOM_HMAC_SECRET;
-if (!SECRET) {
-  throw new Error("RANDOM_HMAC_SECRET is not set in environment variables");
+function getKey(): string {
+  const secret = process.env.RANDOM_HMAC_SECRET;
+  if (!secret) {
+    throw new Error("RANDOM_HMAC_SECRET is not set in environment variables");
+  }
+  return secret;
 }
-const KEY = SECRET;
 
 type Payload = {
   id: number;
@@ -15,7 +17,9 @@ type Payload = {
 export function signToken(payload: Payload): string {
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
 
-  const sig = createHmac("sha256", KEY).update(encoded).digest("base64url");
+  const sig = createHmac("sha256", getKey())
+    .update(encoded)
+    .digest("base64url");
 
   return `${encoded}.${sig}`;
 }
@@ -27,7 +31,7 @@ export function verifyToken(token: string): Payload | null {
   const encoded = token.slice(0, dotIndex);
   const sig = token.slice(dotIndex + 1);
 
-  const expected = createHmac("sha256", KEY)
+  const expected = createHmac("sha256", getKey())
     .update(encoded)
     .digest("base64url");
 
