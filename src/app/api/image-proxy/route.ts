@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
 
     // ─── Return image ────────────────────────────────────────────────────────
 
-    return new NextResponse(upstream.body, {
+    return new Response(upstream.body, {
       status: 200,
 
       headers: {
@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
     const name = error instanceof Error ? error.name : "";
 
     if (name === "TimeoutError" || name === "AbortError") {
-      return new NextResponse("Upstream timed out", {
+      return new Response("Upstream timed out", {
         status: 504,
         headers: {
           "Access-Control-Allow-Origin": corsOrigin,
@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
 
     console.error("Image proxy error:", error);
 
-    return new NextResponse("Failed to fetch image", {
+    return new Response("Failed to fetch image", {
       status: 502,
       headers: {
         "Access-Control-Allow-Origin": corsOrigin,

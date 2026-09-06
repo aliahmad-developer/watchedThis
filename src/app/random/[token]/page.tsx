@@ -8,39 +8,25 @@ import { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import { tmdbImage } from "@/lib/imageTmdb";
 
+import { fetchMediaById } from "@/lib/mediaDetails";
+import type { MediaDetails } from "@/lib/mediaDetails";
+
 interface PageParams {
   token: string;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
-
-// Single fetch — gets everything
-const fetchMediaDetails = cache(async (media_type: string, id: number) => {
-  const url = `${baseUrl}/api/media/${media_type}/placeholder/${id}`;
-
-  try {
-    console.log("FETCHING MEDIA:", url);
-
-    const res = await fetch(url, {
-      next: { revalidate: 3600 },
-    });
-
-    console.log("MEDIA RESPONSE:", {
-      status: res.status,
-      ok: res.ok,
-    });
-
-    if (!res.ok) {
-      console.error("MEDIA FETCH FAILED:", await res.text());
+// Direct TMDB fetch — no HTTP self-fetch, no middleware re-entry
+const fetchMediaDetails = cache(
+  async (media_type: string, id: number): Promise<MediaDetails | null> => {
+    try {
+      return await fetchMediaById(media_type, id);
+    } catch (err) {
+      console.error("MEDIA FETCH ERROR:", err);
       return null;
     }
+  },
+);
 
-    return await res.json();
-  } catch (err) {
-    console.error("MEDIA FETCH ERROR:", err);
-    return null;
-  }
-});
 
 export async function generateMetadata({
   params,
@@ -48,27 +34,8 @@ export async function generateMetadata({
   params: Promise<PageParams>;
 }): Promise<Metadata> {
   const { token } = await params;
-
-  console.log("=== RANDOM PAGE ===");
-  console.log("TOKEN EXISTS:", Boolean(token));
-  console.log("HMAC SECRET EXISTS:", Boolean(process.env.RANDOM_HMAC_SECRET));
-
   const payload = verifyToken(token);
-
-  console.log("TOKEN VERIFIED:", Boolean(payload));
-
-  if (payload) {
-    console.log("TOKEN PAYLOAD:", {
-      id: payload.id,
-      media_type: payload.media_type,
-      slug: payload.slug,
-    });
-  }
-
-  if (!payload) {
-    console.error("RANDOM TOKEN VERIFICATION FAILED");
-    notFound();
-  }
+  if (!payload) notFound();
 
   const data = await fetchMediaDetails(payload.media_type, payload.id);
 
