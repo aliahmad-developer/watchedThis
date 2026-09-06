@@ -20,6 +20,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@heroicons/react": "^2.2.0",
+    "@opentelemetry/api": "^1.9.1",
     "@sendgrid/mail": "^8.1.6",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
