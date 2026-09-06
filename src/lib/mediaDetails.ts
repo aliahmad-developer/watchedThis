@@ -75,7 +75,7 @@ export async function fetchMediaById(
     tmdbFetch<TMDBDetailResponse>(
       `/${media_type}/${id}?language=en-US&append_to_response=videos,images,release_dates,content_ratings,keywords`,
     ),
-    tmdbFetch<unknown>(creditsPath),
+    tmdbFetch<{ cast?: any[] }>(creditsPath),
   ]);
 
   let certification: string | null = null;
