@@ -46,6 +46,7 @@ const SECURITY_HEADERS: Record<string, string> = {
       " https://accounts.google.com https://apis.google.com https://www.google.com" +
       " https://www.googletagmanager.com https://tagmanager.google.com" +
       " https://www.youtube.com https://s.ytimg.com",
+    " https://static.cloudflareinsights.com",
 
     "style-src 'self' 'unsafe-inline' https:",
 
@@ -96,8 +97,7 @@ function getIP(req: NextRequest): string {
   );
 }
 
-export default async function middleware
-(req: NextRequest) {
+export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (
