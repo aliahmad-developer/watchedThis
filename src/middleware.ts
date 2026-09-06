@@ -111,6 +111,13 @@ function getIP(req: NextRequest): string {
 }
 
 export default async function middleware(req: NextRequest) {
+  // Enforce canonical domain (watchedthis.com) to prevent split sessions and SEO penalties
+  if (req.nextUrl.hostname === "www.watchedthis.com") {
+    const canonicalUrl = req.nextUrl.clone();
+    canonicalUrl.hostname = "watchedthis.com";
+    return NextResponse.redirect(canonicalUrl, 301);
+  }
+
   const { pathname } = req.nextUrl;
 
   if (
