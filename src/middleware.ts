@@ -43,10 +43,14 @@ const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'self'",
 
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
-      " https://accounts.google.com https://apis.google.com https://www.google.com" +
-      " https://www.googletagmanager.com https://tagmanager.google.com" +
-      " https://www.youtube.com https://s.ytimg.com",
-    " https://static.cloudflareinsights.com",
+      " https://accounts.google.com" +
+      " https://apis.google.com" +
+      " https://www.google.com" +
+      " https://www.googletagmanager.com" +
+      " https://tagmanager.google.com" +
+      " https://www.youtube.com" +
+      " https://s.ytimg.com" +
+      " https://static.cloudflareinsights.com",
 
     "style-src 'self' 'unsafe-inline' https:",
 
