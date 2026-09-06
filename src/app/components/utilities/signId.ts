@@ -31,11 +31,11 @@ export function verifyToken(token: string): Payload | null {
   const encoded = token.slice(0, dotIndex);
   const sig = token.slice(dotIndex + 1);
 
-  const expected = createHmac("sha256", getKey())
-    .update(encoded)
-    .digest("base64url");
-
   try {
+    const expected = createHmac("sha256", getKey())
+      .update(encoded)
+      .digest("base64url");
+
     const sigBuf = Buffer.from(sig);
     const expBuf = Buffer.from(expected);
 

@@ -165,9 +165,17 @@ export default async function middleware(req: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const SUPABASE_TIMEOUT_MS = 5000;
+
+  const { user } = await Promise.race([
+    supabase.auth.getUser().then((r) => ({ user: r.data.user })),
+    new Promise<{ user: null }>((resolve) =>
+      setTimeout(() => {
+        console.warn("[middleware] supabase.auth.getUser() timed out");
+        resolve({ user: null });
+      }, SUPABASE_TIMEOUT_MS),
+    ),
+  ]);
 
   if (isApi || isRSC) {
     return response;

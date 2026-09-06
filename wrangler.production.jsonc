@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "watchedthis",
+  "name": "random",
   "compatibility_date": "2026-09-06",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 
@@ -13,6 +13,7 @@
   "images": {
     "binding": "IMAGES",
   },
+
   "observability": {
     "logs": {
       "enabled": true,
