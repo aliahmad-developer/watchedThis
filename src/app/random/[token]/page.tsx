@@ -138,9 +138,9 @@ export default async function Page({
           />
         </div>
 
-        {safeData?.credits?.cast?.length > 0 && (
+        {(safeData?.credits?.cast?.length ?? 0) > 0 && (
           <CastScroll
-            cast={safeData.credits.cast}
+            cast={safeData.credits!.cast!}
             mediaType={safeData.media_type}
           />
         )}

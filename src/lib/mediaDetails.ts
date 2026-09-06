@@ -58,7 +58,7 @@ export interface MediaDetails {
   media_type: string;
   production_companies?: unknown[];
   certification?: string | null;
-  credits?: unknown;
+  credits?: { cast?: any[] };
   keywords?: unknown;
 }
 
