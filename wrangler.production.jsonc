@@ -21,11 +21,29 @@
       "head_sampling_rate": 1,
       "invocation_logs": true,
       "persist": true,
-    },
-    "traces": {
-      "enabled": false,
-      "head_sampling_rate": 1,
-      "persist": true,
-    },
+    }
   },
+
+  "routes": [
+    {
+      "pattern": "watchedthis.com",
+      "zone_name": "watchedthis.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.watchedthis.com",
+      "zone_name": "watchedthis.com",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": false,
+
+  "vars": {
+    "CRON_SECRET": "593901045e006bb555b9bee05717691f",
+    "NEXT_PUBLIC_APP_URL": "https://watchedthis.com",
+    "NEXT_PUBLIC_BASE_URL": "https://watchedthis.com",
+    "NEXT_PUBLIC_GOOGLE_CLIENT_ID": "533039372071-45s97vpg0aqu5a5sn9urtck8uhn7ncv3.apps.googleusercontent.com",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://ouhkvfyeqaxqbnclinfr.supabase.co",
+    "TMDB_BASE_URL": "https://api.themoviedb.org/3"
+  }
 }

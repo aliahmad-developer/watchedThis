@@ -148,41 +148,53 @@ export default async function middleware(req: NextRequest) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  // ── Supabase session refresh — must run before response is finalized ──
+  // ─── Supabase session refresh — must run before response is finalized ──
   let response = applySecurityHeaders(NextResponse.next({ request: req }));
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            req.cookies.set(name, value),
-          );
-          response = applySecurityHeaders(NextResponse.next({ request: req }));
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
+  let user = null;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const SUPABASE_TIMEOUT_MS = 5000;
+  // Skip Supabase auth for image proxy and routes that don't need it
+  const isImageProxy = pathname.startsWith("/api/image-proxy");
 
-  const { user } = await Promise.race([
-    supabase.auth.getUser().then((r) => ({ user: r.data.user })),
-    new Promise<{ user: null }>((resolve) =>
-      setTimeout(() => {
-        console.warn("[middleware] supabase.auth.getUser() timed out");
-        resolve({ user: null });
-      }, SUPABASE_TIMEOUT_MS),
-    ),
-  ]);
+  if (supabaseUrl && supabaseKey && !isImageProxy) {
+    try {
+      const supabase = createServerClient(supabaseUrl, supabaseKey, {
+        cookies: {
+          getAll() {
+            return req.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              req.cookies.set(name, value),
+            );
+            response = applySecurityHeaders(
+              NextResponse.next({ request: req }),
+            );
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options),
+            );
+          },
+        },
+      });
+
+      const SUPABASE_TIMEOUT_MS = 5000;
+
+      const result = await Promise.race([
+        supabase.auth.getUser().then((r) => ({ user: r.data.user })),
+        new Promise<{ user: null }>((resolve) =>
+          setTimeout(() => {
+            console.warn("[middleware] supabase.auth.getUser() timed out");
+            resolve({ user: null });
+          }, SUPABASE_TIMEOUT_MS),
+        ),
+      ]);
+      user = result.user;
+    } catch (err) {
+      console.warn("[middleware] Supabase auth failed:", err);
+    }
+  }
 
   if (isApi || isRSC) {
     return response;
