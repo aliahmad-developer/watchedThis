@@ -17,7 +17,6 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 // Single fetch — gets everything
 const fetchMediaDetails = cache(async (media_type: string, id: number) => {
   const url = `${baseUrl}/api/media/${media_type}/placeholder/${id}`;
-  
 
   try {
     console.log("FETCHING MEDIA:", url);
@@ -50,18 +49,21 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { token } = await params;
 
+  console.log("=== RANDOM PAGE ===");
+  console.log("TOKEN EXISTS:", Boolean(token));
+  console.log("HMAC SECRET EXISTS:", Boolean(process.env.RANDOM_HMAC_SECRET));
+
   const payload = verifyToken(token);
 
-  console.log("🔥 TOKEN RESULT", {
-    verified: Boolean(payload),
-    payload: payload
-      ? {
-          id: payload.id,
-          media_type: payload.media_type,
-          slug: payload.slug,
-        }
-      : null,
-  });
+  console.log("TOKEN VERIFIED:", Boolean(payload));
+
+  if (payload) {
+    console.log("TOKEN PAYLOAD:", {
+      id: payload.id,
+      media_type: payload.media_type,
+      slug: payload.slug,
+    });
+  }
 
   if (!payload) {
     console.error("RANDOM TOKEN VERIFICATION FAILED");
