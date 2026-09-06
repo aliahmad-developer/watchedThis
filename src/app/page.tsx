@@ -66,12 +66,18 @@ export default async function Home() {
 
   const dailyItems =
     dailyRes.status === "fulfilled" && dailyRes.value.ok
-      ? ((await dailyRes.value.json()).data ?? [])
+      ? await dailyRes.value
+          .json()
+          .then((d) => d.data ?? [])
+          .catch(() => [])
       : [];
 
   const trendingItems =
     trendingRes.status === "fulfilled" && trendingRes.value.ok
-      ? ((await trendingRes.value.json()).results ?? [])
+      ? await trendingRes.value
+          .json()
+          .then((d) => d.results ?? [])
+          .catch(() => [])
       : [];
 
   return (
