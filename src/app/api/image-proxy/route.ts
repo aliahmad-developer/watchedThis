@@ -49,26 +49,6 @@ const rateLimitMap = new Map<
 
 const RATE_LIMIT = 500;
 const RATE_WINDOW_MS = 60_000;
-const CLEANUP_INTERVAL_MS = 5 * 60_000;
-
-function pruneRateLimitMap() {
-  const now = Date.now();
-
-  for (const [ip, entry] of rateLimitMap.entries()) {
-    if (now > entry.resetAt) {
-      rateLimitMap.delete(ip);
-    }
-  }
-}
-
-if (typeof globalThis !== "undefined") {
-  const key = "__image_proxy_cleanup__";
-
-  if (!(globalThis as Record<string, unknown>)[key]) {
-    setInterval(pruneRateLimitMap, CLEANUP_INTERVAL_MS);
-    (globalThis as Record<string, unknown>)[key] = true;
-  }
-}
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -191,8 +171,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const contentType =
-      upstream.headers.get("content-type") || "image/jpeg";
+    const contentType = upstream.headers.get("content-type") || "image/jpeg";
 
     const baseType = contentType.split(";")[0].trim().toLowerCase();
 
@@ -210,30 +189,23 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": baseType,
 
-        "Cache-Control":
-          "public, max-age=31536000, immutable",
+        "Cache-Control": "public, max-age=31536000, immutable",
 
         "X-Content-Type-Options": "nosniff",
 
-        "Access-Control-Allow-Origin":
-          getCorsOrigin(request),
+        "Access-Control-Allow-Origin": getCorsOrigin(request),
 
-        "Vary": "Origin",
+        Vary: "Origin",
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.name : "";
+    const message = error instanceof Error ? error.name : "";
 
-    if (
-      message === "TimeoutError" ||
-      message === "AbortError"
-    ) {
+    if (message === "TimeoutError" || message === "AbortError") {
       return new NextResponse("Upstream timed out", {
         status: 504,
         headers: {
-          "Access-Control-Allow-Origin":
-            getCorsOrigin(request),
+          "Access-Control-Allow-Origin": getCorsOrigin(request),
         },
       });
     }
@@ -243,8 +215,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Failed to fetch image", {
       status: 502,
       headers: {
-        "Access-Control-Allow-Origin":
-          getCorsOrigin(request),
+        "Access-Control-Allow-Origin": getCorsOrigin(request),
       },
     });
   }
