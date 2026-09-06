@@ -16,15 +16,28 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 // Single fetch — gets everything
 const fetchMediaDetails = cache(async (media_type: string, id: number) => {
+  const url = `${baseUrl}/api/media/${media_type}/placeholder/${id}`;
+
   try {
-    const res = await fetch(
-      `${baseUrl}/api/media/${media_type}/placeholder/${id}`,
-      { next: { revalidate: 3600 } },
-    );
-    if (!res.ok) return null;
+    console.log("FETCHING MEDIA:", url);
+
+    const res = await fetch(url, {
+      next: { revalidate: 3600 },
+    });
+
+    console.log("MEDIA RESPONSE:", {
+      status: res.status,
+      ok: res.ok,
+    });
+
+    if (!res.ok) {
+      console.error("MEDIA FETCH FAILED:", await res.text());
+      return null;
+    }
+
     return await res.json();
   } catch (err) {
-    console.error("fetchMediaDetails failed:", err);
+    console.error("MEDIA FETCH ERROR:", err);
     return null;
   }
 });
@@ -38,14 +51,21 @@ export async function generateMetadata({
 
   const payload = verifyToken(token);
 
+  console.log("RANDOM TOKEN:", {
+    tokenLength: token.length,
+    verified: Boolean(payload),
+    payload: payload
+      ? {
+          id: payload.id,
+          media_type: payload.media_type,
+          slug: payload.slug,
+        }
+      : null,
+  });
+
   if (!payload) {
-    return {
-      title: "Not Found | WatchedThis",
-      robots: {
-        index: false,
-        follow: false,
-      },
-    };
+    console.error("RANDOM TOKEN VERIFICATION FAILED");
+    notFound();
   }
 
   const data = await fetchMediaDetails(payload.media_type, payload.id);

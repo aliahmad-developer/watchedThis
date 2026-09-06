@@ -3,9 +3,6 @@
   "main": ".open-next/worker.js",
   "name": "watchedthis",
   "compatibility_date": "2026-09-06",
-
-  "keep_names": false,
-
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 
   "assets": {
