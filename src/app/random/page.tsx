@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DiceRoll from "./[token]/diceRoll";
 
 export default function RandomPage() {
+  
   const router = useRouter();
   const [finishing, setFinishing] = useState(false);
 

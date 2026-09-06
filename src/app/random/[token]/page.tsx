@@ -17,6 +17,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 // Single fetch — gets everything
 const fetchMediaDetails = cache(async (media_type: string, id: number) => {
   const url = `${baseUrl}/api/media/${media_type}/placeholder/${id}`;
+  
 
   try {
     console.log("FETCHING MEDIA:", url);
@@ -51,8 +52,7 @@ export async function generateMetadata({
 
   const payload = verifyToken(token);
 
-  console.log("RANDOM TOKEN:", {
-    tokenLength: token.length,
+  console.log("🔥 TOKEN RESULT", {
     verified: Boolean(payload),
     payload: payload
       ? {
