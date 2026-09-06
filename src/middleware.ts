@@ -96,7 +96,7 @@ function getIP(req: NextRequest): string {
   );
 }
 
-export default async function proxy(req: NextRequest) {
+export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (

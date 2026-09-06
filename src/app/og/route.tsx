@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import satori from "satori";
-import sharp from "sharp";
+import { ImageResponse } from "@cf-wasm/og";
+import { imageSize } from "image-size";
 
 const W = 1200;
 const H = 630;
@@ -25,10 +25,7 @@ const APP_URL =
 let _fontRegular: ArrayBuffer | null = null;
 let _fontBold: ArrayBuffer | null = null;
 
-async function getFonts(): Promise<{
-  regular: ArrayBuffer;
-  bold: ArrayBuffer;
-}> {
+async function getFonts(): Promise<{ regular: ArrayBuffer; bold: ArrayBuffer }> {
   const [regular, bold] = await Promise.all([
     _fontRegular
       ? Promise.resolve(_fontRegular)
@@ -66,8 +63,14 @@ async function fetchBuffer(url: string): Promise<Buffer | null> {
   }
 }
 
-function toBase64Url(buffer: Buffer, mime = "image/png"): string {
+function toBase64Url(buffer: Buffer, mime: string): string {
   return `data:${mime};base64,${buffer.toString("base64")}`;
+}
+
+function mimeFromType(type?: string): string {
+  if (type === "png") return "image/png";
+  if (type === "webp") return "image/webp";
+  return "image/jpeg"; // TMDB posters are jpg
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────
@@ -92,172 +95,159 @@ export async function GET(req: NextRequest) {
   const textWidth = W - textLeft - 60;
   const HEADER_H = 80;
 
-  // Logo as base64 for satori (only in no-poster layout)
   let logoDataUrl: string | null = null;
   if (!hasPoster && logoBuffer) {
     try {
-      logoDataUrl = toBase64Url(logoBuffer);
+      logoDataUrl = toBase64Url(logoBuffer, "image/png");
     } catch {}
   }
 
-  // ─── Satori layout ──────────────────────────────────────────────────────────
-  const svg = await satori(
-    <div
-      style={{
-        display: "flex",
-        width: W,
-        height: H,
-        background: `linear-gradient(180deg, ${COLORS.bg} 0%, ${COLORS.card} 100%)`,
-        position: "relative",
-        overflow: "hidden",
-        fontFamily: "Inter",
-      }}
-    >
-      {/* Top accent stripe */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: W,
-          height: 4,
-          background: COLORS.accent,
-        }}
-      />
-
-      {/* No-poster: header bar with logo */}
-      {!hasPoster && (
-        <div
-          style={{
-            position: "absolute",
-            top: 4,
-            left: 0,
-            width: W,
-            height: HEADER_H,
-            display: "flex",
-            alignItems: "center",
-            paddingLeft: 30,
-            borderBottomWidth: 1,
-            borderBottomStyle: "solid",
-            borderBottomColor: `${COLORS.accent}55`,
-          }}
-        >
-          {logoDataUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logoDataUrl}
-              width={150}
-              height={50}
-              alt="WatchedThis"
-              style={{ objectFit: "contain" }}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Text block */}
-      <div
-        style={{
-          position: "absolute",
-          left: textLeft,
-          top: !hasPoster ? HEADER_H + 4 : 0,
-          width: textWidth,
-          height: !hasPoster ? H - HEADER_H - 4 : H,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          gap: 20,
-        }}
-      >
-        {/* Title */}
-        <div
-          style={{
-            fontSize: 44,
-            fontWeight: 700,
-            color: COLORS.title,
-            lineHeight: 1.2,
-          }}
-        >
-          {title}
-        </div>
-
-        {/* Subtitle */}
-        <div
-          style={{
-            fontSize: 22,
-            fontWeight: 400,
-            color: COLORS.subtitle,
-            lineHeight: 1.5,
-          }}
-        >
-          {subtitle}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 20,
-          right: 30,
-          fontSize: 14,
-          color: COLORS.footer,
-        }}
-      >
-        watchedthis.com
-      </div>
-    </div>,
-    {
-      width: W,
-      height: H,
-      fonts: [
-        { name: "Inter", data: regular, weight: 400, style: "normal" },
-        { name: "Inter", data: bold, weight: 700, style: "normal" },
-      ],
-    },
-  );
-
-  // ─── Poster composite ────────────────────────────────────────────────────────
-  const composites: sharp.OverlayOptions[] = [];
-
+  // Compute the fitted poster box (replaces sharp's .metadata() + resize)
+  let posterNode: React.ReactNode = null;
   if (posterBuffer) {
     try {
-      const meta = await sharp(posterBuffer).metadata();
-      const origW = meta.width || POSTER_WIDTH;
-      const origH = meta.height || POSTER_MAX_H;
-      const scale = Math.min(POSTER_WIDTH / origW, POSTER_MAX_H / origH);
-      const actualW = Math.round(origW * scale);
-      const actualH = Math.round(origH * scale);
+      const { width: origW, height: origH, type } = imageSize(posterBuffer);
+      const scale = Math.min(
+        POSTER_WIDTH / (origW || POSTER_WIDTH),
+        POSTER_MAX_H / (origH || POSTER_MAX_H),
+      );
+      const actualW = Math.round((origW || POSTER_WIDTH) * scale);
+      const actualH = Math.round((origH || POSTER_MAX_H) * scale);
 
-      const resized = await sharp(posterBuffer)
-        .resize(actualW, actualH)
-        .png()
-        .toBuffer();
-
-      composites.push({
-        input: resized,
-        top: Math.round((H - actualH) / 2),
-        left: POSTER_LEFT + Math.round((POSTER_WIDTH - actualW) / 2),
-      });
+      posterNode = (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={toBase64Url(posterBuffer, mimeFromType(type))}
+          width={actualW}
+          height={actualH}
+          style={{
+            position: "absolute",
+            top: Math.round((H - actualH) / 2),
+            left: POSTER_LEFT + Math.round((POSTER_WIDTH - actualW) / 2),
+          }}
+        />
+      );
     } catch (err) {
       console.error("Poster error:", err);
     }
   }
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
   try {
-    const png = await sharp(Buffer.from(svg))
-      .composite(composites)
-      .png()
-      .toBuffer();
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            display: "flex",
+            width: W,
+            height: H,
+            background: `linear-gradient(180deg, ${COLORS.bg} 0%, ${COLORS.card} 100%)`,
+            position: "relative",
+            overflow: "hidden",
+            fontFamily: "Inter",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: W,
+              height: 4,
+              background: COLORS.accent,
+            }}
+          />
 
-    return new NextResponse(new Uint8Array(png), {
-      status: 200,
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+          {!hasPoster && (
+            <div
+              style={{
+                position: "absolute",
+                top: 4,
+                left: 0,
+                width: W,
+                height: HEADER_H,
+                display: "flex",
+                alignItems: "center",
+                paddingLeft: 30,
+                borderBottomWidth: 1,
+                borderBottomStyle: "solid",
+                borderBottomColor: `${COLORS.accent}55`,
+              }}
+            >
+              {logoDataUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoDataUrl}
+                  width={150}
+                  height={50}
+                  alt="WatchedThis"
+                  style={{ objectFit: "contain" }}
+                />
+              )}
+            </div>
+          )}
+
+          {posterNode}
+
+          <div
+            style={{
+              position: "absolute",
+              left: textLeft,
+              top: !hasPoster ? HEADER_H + 4 : 0,
+              width: textWidth,
+              height: !hasPoster ? H - HEADER_H - 4 : H,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              gap: 20,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 44,
+                fontWeight: 700,
+                color: COLORS.title,
+                lineHeight: 1.2,
+              }}
+            >
+              {title}
+            </div>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 400,
+                color: COLORS.subtitle,
+                lineHeight: 1.5,
+              }}
+            >
+              {subtitle}
+            </div>
+          </div>
+
+          <div
+            style={{
+              position: "absolute",
+              bottom: 20,
+              right: 30,
+              fontSize: 14,
+              color: COLORS.footer,
+            }}
+          >
+            watchedthis.com
+          </div>
+        </div>
+      ),
+      {
+        width: W,
+        height: H,
+        fonts: [
+          { name: "Inter", data: regular, weight: 400, style: "normal" },
+          { name: "Inter", data: bold, weight: 700, style: "normal" },
+        ],
+        headers: {
+          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+        },
       },
-    });
+    );
   } catch (err) {
     console.error("OG render error:", err);
     return new NextResponse("Failed to generate image", { status: 500 });

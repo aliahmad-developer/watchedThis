@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["sharp", "satori"],
-
+  serverExternalPackages: ["@cf-wasm/og"],
   async headers() {
     return [
       {

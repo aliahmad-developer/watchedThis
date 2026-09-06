@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import sharp from "sharp";
-
 // ─── Allowlist ────────────────────────────────────────────────────────────────
 const ALLOWED_HOSTNAME = "image.tmdb.org";
 const ALLOWED_PATH_PREFIX = "/t/p/";
@@ -126,7 +124,6 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = request.nextUrl;
-
   const raw = searchParams.get("url");
 
   if (!raw) {
@@ -151,38 +148,28 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Security validation
   if (parsed.protocol !== "https:") {
-    return new NextResponse("Forbidden", {
-      status: 403,
-    });
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   if (parsed.hostname !== ALLOWED_HOSTNAME) {
-    return new NextResponse("Forbidden", {
-      status: 403,
-    });
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   if (!parsed.pathname.startsWith(ALLOWED_PATH_PREFIX)) {
-    return new NextResponse("Forbidden", {
-      status: 403,
-    });
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   if (parsed.pathname.includes("..") || parsed.pathname.includes("//")) {
-    return new NextResponse("Forbidden", {
-      status: 403,
-    });
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   const afterPrefix = parsed.pathname.slice(ALLOWED_PATH_PREFIX.length);
-
   const size = afterPrefix.split("/")[0];
 
   if (!ALLOWED_SIZES.has(size)) {
-    return new NextResponse("Forbidden", {
-      status: 403,
-    });
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   const cleanUrl = `https://${ALLOWED_HOSTNAME}${parsed.pathname}`;
@@ -190,8 +177,6 @@ export async function GET(request: NextRequest) {
   try {
     const upstream = await fetch(cleanUrl, {
       signal: AbortSignal.timeout(8000),
-      credentials: "omit",
-      referrerPolicy: "no-referrer",
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; WatchedThis-Proxy/1.0)",
       },
@@ -206,7 +191,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const contentType = upstream.headers.get("content-type") ?? "";
+    const contentType =
+      upstream.headers.get("content-type") || "image/jpeg";
 
     const baseType = contentType.split(";")[0].trim().toLowerCase();
 
@@ -219,74 +205,46 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const buffer = await upstream.arrayBuffer();
-
-    if (buffer.byteLength > 5 * 1024 * 1024) {
-      return new NextResponse("Image too large", {
-        status: 502,
-        headers: {
-          "Access-Control-Allow-Origin": getCorsOrigin(request),
-        },
-      });
-    }
-
-    const acceptsWebP =
-      request.headers.get("accept")?.includes("image/webp") ?? false;
-
-    const isSVG = baseType === "image/svg+xml";
-
-    let responseBuffer: ArrayBuffer;
-    let responseType: string;
-
-    if (acceptsWebP && !isSVG) {
-      const converted = await sharp(Buffer.from(buffer))
-        .webp({
-          quality: 82,
-          effort: 4,
-        })
-        .toBuffer();
-
-      responseBuffer = converted.buffer.slice(
-        converted.byteOffset,
-        converted.byteOffset + converted.byteLength,
-      ) as ArrayBuffer;
-
-      responseType = "image/webp";
-    } else {
-      responseBuffer = buffer;
-      responseType = baseType;
-    }
-
-    return new NextResponse(responseBuffer, {
+    return new NextResponse(upstream.body, {
       status: 200,
       headers: {
-        "Content-Type": responseType,
+        "Content-Type": baseType,
 
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control":
+          "public, max-age=31536000, immutable",
 
         "X-Content-Type-Options": "nosniff",
 
-        "Access-Control-Allow-Origin": getCorsOrigin(request),
+        "Access-Control-Allow-Origin":
+          getCorsOrigin(request),
 
-        Vary: "Origin, Accept",
+        "Vary": "Origin",
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.name : "";
+    const message =
+      error instanceof Error ? error.name : "";
 
-    if (message === "TimeoutError" || message === "AbortError") {
+    if (
+      message === "TimeoutError" ||
+      message === "AbortError"
+    ) {
       return new NextResponse("Upstream timed out", {
         status: 504,
         headers: {
-          "Access-Control-Allow-Origin": getCorsOrigin(request),
+          "Access-Control-Allow-Origin":
+            getCorsOrigin(request),
         },
       });
     }
+
+    console.error("Image proxy error:", error);
 
     return new NextResponse("Failed to fetch image", {
       status: 502,
       headers: {
-        "Access-Control-Allow-Origin": getCorsOrigin(request),
+        "Access-Control-Allow-Origin":
+          getCorsOrigin(request),
       },
     });
   }
