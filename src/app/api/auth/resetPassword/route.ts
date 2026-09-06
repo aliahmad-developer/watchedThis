@@ -4,7 +4,13 @@ import crypto from "crypto";
 import { Resend } from "resend";
 import { getPasswordResetTemplate } from "@/lib/emailTemplates";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResendClient(): Resend {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is not set");
+  }
+  return new Resend(apiKey);
+}
 
 function hashToken(token: string): string {
   return crypto
@@ -99,6 +105,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
     const resetLink = `${baseUrl}/reset-password?token=${rawToken}`;
 
+    const resend = getResendClient();
     const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM!,
       to: cleanEmail,

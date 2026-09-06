@@ -4,19 +4,36 @@ import { getEmailVerificationTemplate } from "@/lib/emailTemplates";
 import { Resend } from "resend";
 import * as crypto from "crypto";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const HMAC_SECRET = process.env.RANDOM_HMAC_SECRET!;
+function getResendClient(): Resend {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is not set");
+  }
+  return new Resend(apiKey);
+}
+
+function getHmacSecret(): string {
+  const secret = process.env.RANDOM_HMAC_SECRET;
+  if (!secret) {
+    throw new Error("RANDOM_HMAC_SECRET is not set");
+  }
+  return secret;
+}
+
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
 
 function signToken(id: string): string {
-  return crypto.createHmac("sha256", HMAC_SECRET).update(id).digest("hex");
+  return crypto.createHmac("sha256", getHmacSecret()).update(id).digest("hex");
 }
 
 function encrypt(text: string): string {
-  const key = crypto.scryptSync(HMAC_SECRET, "pendingSignup", 32);
+  const key = crypto.scryptSync(getHmacSecret(), "pendingSignup", 32);
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
-  const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(text, "utf8"),
+    cipher.final(),
+  ]);
   return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
 }
 
@@ -45,7 +62,10 @@ async function findUserByEmail(email: string) {
   let page = 1;
   const perPage = 1000;
   while (true) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
     if (error) throw error;
     const found = data.users.find((u) => u.email?.toLowerCase() === email);
     if (found) return found;
@@ -60,22 +80,29 @@ export async function POST(req: NextRequest) {
     const { email, password, username } = body;
 
     const emailErr = validateEmail(email);
-    if (emailErr) return NextResponse.json({ error: emailErr }, { status: 400 });
+    if (emailErr)
+      return NextResponse.json({ error: emailErr }, { status: 400 });
 
     const usernameErr = validateUsername(username);
-    if (usernameErr) return NextResponse.json({ error: usernameErr }, { status: 400 });
+    if (usernameErr)
+      return NextResponse.json({ error: usernameErr }, { status: 400 });
 
     const passwordErr = validatePassword(password);
-    if (passwordErr) return NextResponse.json({ error: passwordErr }, { status: 400 });
+    if (passwordErr)
+      return NextResponse.json({ error: passwordErr }, { status: 400 });
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanUsername = username.trim();
 
     const supabase = createAdminClient();
+    const resend = getResendClient();
 
     const existingUser = await findUserByEmail(cleanEmail);
     if (existingUser) {
-      return NextResponse.json({ error: "Account already exists." }, { status: 409 });
+      return NextResponse.json(
+        { error: "Account already exists." },
+        { status: 409 },
+      );
     }
 
     const { data: existingPending } = await supabase
@@ -104,14 +131,16 @@ export async function POST(req: NextRequest) {
     const sig = signToken(id);
     const passwordEncrypted = encrypt(password);
 
-    const { error: insertError } = await supabase.from("pending_signups").upsert({
-      id,
-      email: cleanEmail,
-      username: cleanUsername,
-      password_encrypted: passwordEncrypted,
-      expires_at: expiresAt,
-      created_at: Date.now(),
-    });
+    const { error: insertError } = await supabase
+      .from("pending_signups")
+      .upsert({
+        id,
+        email: cleanEmail,
+        username: cleanUsername,
+        password_encrypted: passwordEncrypted,
+        expires_at: expiresAt,
+        created_at: Date.now(),
+      });
     if (insertError) throw insertError;
 
     const confirmUrl = `${baseUrl}/api/auth/confirmSignUp?token=${id}.${sig}`;

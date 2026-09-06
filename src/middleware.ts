@@ -27,6 +27,8 @@ const BAD_BOTS =
 const SOCIAL_CRAWLERS =
   /facebookexternalhit|twitterbot|telegrambot|whatsapp|linkedinbot|slackbot|discordbot|applebot|googlebot|bingbot/i;
 
+const isProd = process.env.NODE_ENV === "production";
+
 const SECURITY_HEADERS: Record<string, string> = {
   "X-DNS-Prefetch-Control": "on",
   "X-Frame-Options": "SAMEORIGIN",
@@ -49,14 +51,12 @@ const SECURITY_HEADERS: Record<string, string> = {
 
     "img-src 'self' data: blob: https:",
 
-    // API / auth / Supabase / YouTube — swapped Firebase domains for Supabase
     "connect-src 'self'" +
       " https://accounts.google.com https://oauth2.googleapis.com" +
       " https://www.googleapis.com https://www.googletagmanager.com" +
       " https://region1.google-analytics.com https://www.google-analytics.com" +
       " https://*.supabase.co wss://*.supabase.co",
 
-    // frames — swapped firebaseapp.com for your Supabase project domain
     "frame-src 'self'" +
       " https://accounts.google.com https://www.google.com" +
       " https://www.googletagmanager.com" +
@@ -68,7 +68,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
-    "upgrade-insecure-requests",
+    ...(isProd ? ["upgrade-insecure-requests"] : []),
   ].join("; "),
 };
 
@@ -139,14 +139,16 @@ export default async function middleware(req: NextRequest) {
           return req.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) =>
+            req.cookies.set(name, value),
+          );
           response = applySecurityHeaders(NextResponse.next({ request: req }));
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   const {
