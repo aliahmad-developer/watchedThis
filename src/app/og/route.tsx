@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ImageResponse } from "@cf-wasm/og";
+import { ImageResponse, cache } from "@cf-wasm/og/workerd";
 import { imageSize } from "image-size";
 
 const W = 1200;
