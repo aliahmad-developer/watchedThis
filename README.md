@@ -36,7 +36,9 @@ Everything — trailers, cast, reviews, ratings — is pulled in real time. No s
 
 - Next.js + TypeScript
 - Tailwind CSS
-- Firebase (auth + database+media handling+ hosting)
+- Vercel
+- Supabase
+- Upstash/redis
 
 ---
 
