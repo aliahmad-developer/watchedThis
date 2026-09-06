@@ -57,15 +57,23 @@ const SECURITY_HEADERS: Record<string, string> = {
     "img-src 'self' data: blob: https:",
 
     "connect-src 'self'" +
-      " https://accounts.google.com https://oauth2.googleapis.com" +
-      " https://www.googleapis.com https://www.googletagmanager.com" +
-      " https://region1.google-analytics.com https://www.google-analytics.com" +
-      " https://*.supabase.co wss://*.supabase.co",
+      " https://accounts.google.com" +
+      " https://oauth2.googleapis.com" +
+      " https://www.googleapis.com" +
+      " https://www.googletagmanager.com" +
+      " https://region1.google-analytics.com" +
+      " https://www.google-analytics.com" +
+      " https://static.cloudflareinsights.com" +
+      " https://*.supabase.co" +
+      " wss://*.supabase.co",
 
     "frame-src 'self'" +
-      " https://accounts.google.com https://www.google.com" +
+      " https://accounts.google.com" +
+      " https://www.google.com" +
       " https://www.googletagmanager.com" +
-      " https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com",
+      " https://www.youtube.com" +
+      " https://www.youtube-nocookie.com" +
+      " https://youtube.com",
 
     "font-src 'self' https: data:",
     "media-src 'self' https:",
@@ -73,6 +81,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
+
     ...(isProd ? ["upgrade-insecure-requests"] : []),
   ].join("; "),
 };
