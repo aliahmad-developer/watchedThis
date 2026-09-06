@@ -3,7 +3,6 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@cf-wasm/og"],
   async headers() {
     return [
       {
@@ -12,19 +11,6 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=*, microphone=()",
-          },
-        ],
-      },
-      {
-        source: "/og/",
-        headers: [
-          {
-            key: "Content-Type",
-            value: "image/png",
-          },
-          {
-            key: "Cache-Control",
-            value: "public, max-age=604800, stale-while-revalidate=86400",
           },
         ],
       },
@@ -51,50 +37,14 @@ const nextConfig: NextConfig = {
     ];
   },
 
- images: {
-  dangerouslyAllowLocalIP: true,
+  images: {
+    unoptimized: true, // image-proxy route already handles resizing/caching; skip Next's optimizer entirely
 
-  formats: ["image/webp"],
-  minimumCacheTTL: 60 * 60 * 24 * 31,
-
-  deviceSizes: [640, 750, 828, 1080, 1200],
-  imageSizes: [64, 128, 256, 500],
-
-  qualities: [75],
-
-  remotePatterns: [
-    { protocol: "https", hostname: "lh3.googleusercontent.com" },
-
-    {
-      protocol: "https",
-      hostname: "firebasestorage.googleapis.com",
-    },
-
-    {
-      protocol: "https",
-      hostname: "fyp-movie-4d46d.firebasestorage.app",
-    },
-
-    {
-      protocol: "https",
-      hostname: "image.tmdb.org",
-      pathname: "/**",
-    },
-
-    {
-      protocol: "http",
-      hostname: "localhost",
-      port: "3000",
-      pathname: "/api/image-proxy/**",
-    },
-
-    {
-      protocol: "https",
-      hostname: "watchedthis.com",
-      pathname: "/api/image-proxy/**",
-    },
-  ],
-},
+    remotePatterns: [
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "image.tmdb.org", pathname: "/**" },
+    ],
+  },
 
   experimental: {
     optimizePackageImports: [

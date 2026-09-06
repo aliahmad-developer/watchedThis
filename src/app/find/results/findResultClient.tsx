@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { createSlug } from "../../components/utilities/createSlug";
+import {tmdbImage} from "@/lib/imageTmdb";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEarth,
@@ -49,13 +50,13 @@ const MOVIE_GENRES: Record<string, number> = {
   War: 10752,
   Western: 37,
 };
+
 const TV_GENRES: Record<string, number> = {
   "Action & Adventure": 10759,
   Animation: 16,
   Comedy: 35,
   Crime: 80,
   Documentary: 99,
-  Drama: 18,
   Family: 10751,
   Kids: 10762,
   Mystery: 9648,
@@ -63,6 +64,7 @@ const TV_GENRES: Record<string, number> = {
   "Sci-Fi & Fantasy": 10765,
   Western: 37,
 };
+
 const ALL_GENRES = { ...MOVIE_GENRES, ...TV_GENRES };
 
 // ── Ambient color helpers ─────────────────────────────────────────────────────
@@ -86,29 +88,34 @@ const buildAmbientColor = (
   isLightMode: boolean,
 ): AmbientColor => {
   const lum = calculateLuminance(r, g, b);
+
   if (isLightMode) {
     const f = lum < 0.5 ? 1.5 : 1.2;
+
     const cr = Math.min(Math.floor(r * f + 50), 235);
     const cg = Math.min(Math.floor(g * f + 50), 235);
     const cb = Math.min(Math.floor(b * f + 50), 235);
+
     return {
       solid: `rgb(${cr},${cg},${cb})`,
       rgb: `${cr},${cg},${cb}`,
       rawRgb: `${r},${g},${b}`,
       luminance: calculateLuminance(cr, cg, cb),
     };
-  } else {
-    const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
-    const cr = Math.max(Math.floor(r * f), 0);
-    const cg = Math.max(Math.floor(g * f), 0);
-    const cb = Math.max(Math.floor(b * f), 0);
-    return {
-      solid: `rgb(${cr},${cg},${cb})`,
-      rgb: `${cr},${cg},${cb}`,
-      rawRgb: `${r},${g},${b}`,
-      luminance: lum,
-    };
   }
+
+  const f = lum > 0.5 ? 0.2 : lum > 0.3 ? 0.3 : 0.45;
+
+  const cr = Math.max(Math.floor(r * f), 0);
+  const cg = Math.max(Math.floor(g * f), 0);
+  const cb = Math.max(Math.floor(b * f), 0);
+
+  return {
+    solid: `rgb(${cr},${cg},${cb})`,
+    rgb: `${cr},${cg},${cb}`,
+    rawRgb: `${r},${g},${b}`,
+    luminance: lum,
+  };
 };
 
 const getAmbientTextColor = (
@@ -117,75 +124,90 @@ const getAmbientTextColor = (
   processedLuminance: number,
 ) => {
   const [r, g, b] = rawRgb.split(",").map(Number);
+
   const useLightText = !isLightMode || processedLuminance < 0.45;
 
   if (!useLightText) {
     const dp = (v: number) => Math.max(Math.floor(v * 0.28), 0);
     const ds = (v: number) => Math.max(Math.floor(v * 0.48 + 18), 0);
+
     return {
       primary: `rgba(${dp(r)},${dp(g)},${dp(b)},0.92)`,
       secondary: `rgba(${ds(r)},${ds(g)},${ds(b)},0.80)`,
       muted: `rgba(${ds(r)},${ds(g)},${ds(b)},0.55)`,
     };
-  } else {
-    const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
-    const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85), 255);
-    return {
-      primary: `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
-      secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`,
-      muted: `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)`,
-    };
   }
+
+  const lp = (v: number) => Math.min(Math.floor(v * 2.0 + 140), 255);
+  const ls = (v: number) => Math.min(Math.floor(v * 1.8 + 85), 255);
+
+  return {
+    primary: `rgba(${lp(r)},${lp(g)},${lp(b)},0.95)`,
+    secondary: `rgba(${ls(r)},${ls(g)},${ls(b)},0.85)`,
+    muted: `rgba(${ls(r)},${ls(g)},${ls(b)},0.50)`,
+  };
 };
 
 const useThemeDetection = () => {
   const [isLightMode, setIsLightMode] = useState(false);
+
   const check = useCallback(() => {
     setIsLightMode(
       document.documentElement.classList.contains("light") ||
         window.matchMedia(COLOR_SCHEME_MEDIA_QUERY).matches,
     );
   }, []);
+
   useEffect(() => {
     check();
+
     const mq = window.matchMedia(COLOR_SCHEME_MEDIA_QUERY);
+
     mq.addEventListener("change", check);
+
     const obs = new MutationObserver(check);
+
     obs.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
     });
+
     return () => {
       mq.removeEventListener("change", check);
       obs.disconnect();
     };
   }, [check]);
+
   return isLightMode;
 };
 
-// ── Proxy URL helper ──────────────────────────────────────────────────────────
-
-function proxyUrl(tmdbPath: string, size: string): string {
-  const upstream = `https://image.tmdb.org/t/p/${size}${tmdbPath}`;
-  return `/api/image-proxy/?url=${encodeURIComponent(upstream)}`;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
-const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
+const useCardAmbient = (
+  imageUrl: string | null,
+  isLightMode: boolean,
+) => {
   const [ambient, setAmbient] = useState<AmbientColor | null>(null);
+
   const imgRef = useRef<HTMLImageElement>(null);
   const extractingRef = useRef(false);
 
   const extract = useCallback(async () => {
     if (!imgRef.current || extractingRef.current) return;
+
     const img = imgRef.current;
+
     if (img.naturalWidth === 0) return;
+
     extractingRef.current = true;
+
     try {
       const { default: ColorThief } = await import("color-thief-browser");
+
       const ct = new ColorThief();
+
       const [r, g, b] = ct.getColor(img);
+
       setAmbient(buildAmbientColor(r, g, b, isLightMode));
     } catch {
       setAmbient(null);
@@ -200,14 +222,22 @@ const useCardAmbient = (imageUrl: string | null, isLightMode: boolean) => {
 
   useEffect(() => {
     if (!imgRef.current) return;
+
     const img = imgRef.current;
-    const handle = () => setTimeout(extract, 80);
+
+    const handle = () => {
+      setTimeout(extract, 80);
+    };
+
     if (img.complete) {
       handle();
     } else {
       img.addEventListener("load", handle);
     }
-    return () => img.removeEventListener("load", handle);
+
+    return () => {
+      img.removeEventListener("load", handle);
+    };
   }, [extract, imageUrl]);
 
   return { imgRef, ambient };
@@ -222,6 +252,7 @@ export default function FindResultsPage() {
   const [results, setResults] = useState<MediaResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalResults, setTotalResults] = useState(0);
@@ -230,15 +261,24 @@ export default function FindResultsPage() {
     async (p: number, append = false) => {
       setLoading(true);
       setError(null);
+
       try {
         const params = new URLSearchParams(searchParams.toString());
+
         params.set("page", String(p));
+
         const res = await fetch(`/api/find?${params.toString()}`);
+
         const data = await res.json();
-        if (data.error) throw new Error(data.error);
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
         setResults((prev) =>
           append ? [...prev, ...data.results] : data.results,
         );
+
         setTotalPages(data.total_pages);
         setTotalResults(data.total_results);
       } catch {
@@ -251,37 +291,70 @@ export default function FindResultsPage() {
   );
 
   useEffect(() => {
+    setPage(1);
     fetchResults(1, false);
   }, [fetchResults]);
 
   const handleLoadMore = () => {
     const next = page + 1;
+
     setPage(next);
+
     fetchResults(next, true);
   };
 
   const handleBack = () => {
     const filterParams = new URLSearchParams(searchParams.toString());
+
     filterParams.delete("page");
+
     router.push(`/find?${filterParams.toString()}`);
   };
 
-  const mediaTypes = (searchParams.get("mediaType") || "movie,tv").split(",");
-  const isBoth = mediaTypes.length === 2;
-  const isTV = mediaTypes.includes("tv") && !mediaTypes.includes("movie");
-  const isMovie = mediaTypes.includes("movie") && !mediaTypes.includes("tv");
+  const mediaTypes = (
+    searchParams.get("mediaType") || "movie,tv"
+  ).split(",");
 
-  const keywords = searchParams.get("keywords")?.split(",") ?? [];
-  const excludeKeywords = searchParams.get("excludeKeywords")?.split(",") ?? [];
-  const genreIds = searchParams.get("genres")?.split(",").map(Number) ?? [];
+  const isBoth = mediaTypes.length === 2;
+
+  const isTV =
+    mediaTypes.includes("tv") &&
+    !mediaTypes.includes("movie");
+
+  const isMovie =
+    mediaTypes.includes("movie") &&
+    !mediaTypes.includes("tv");
+
+  const keywords =
+    searchParams.get("keywords")?.split(",") ?? [];
+
+  const excludeKeywords =
+    searchParams.get("excludeKeywords")?.split(",") ?? [];
+
+  const genreIds =
+    searchParams.get("genres")?.split(",").map(Number) ?? [];
+
   const excludeGenreIds =
     searchParams.get("excludeGenres")?.split(",").map(Number) ?? [];
+
   const genreNames = genreIds
-    .map((id) => Object.entries(ALL_GENRES).find(([, v]) => v === id)?.[0])
+    .map(
+      (id) =>
+        Object.entries(ALL_GENRES).find(
+          ([, v]) => v === id,
+        )?.[0],
+    )
     .filter(Boolean);
+
   const excludeGenreNames = excludeGenreIds
-    .map((id) => Object.entries(ALL_GENRES).find(([, v]) => v === id)?.[0])
+    .map(
+      (id) =>
+        Object.entries(ALL_GENRES).find(
+          ([, v]) => v === id,
+        )?.[0],
+    )
     .filter(Boolean);
+
   const minYear = searchParams.get("minYear");
   const maxYear = searchParams.get("maxYear");
   const minRating = searchParams.get("minRating");
@@ -290,9 +363,14 @@ export default function FindResultsPage() {
   const maxRuntime = searchParams.get("maxRuntime");
   const language = searchParams.get("language");
   const minVotes = searchParams.get("minVotes");
+
   const strict = searchParams.get("strict") === "true";
-  const tvStatus = searchParams.get("tvStatus")?.split(",") ?? [];
-  const networkIds = searchParams.get("networks")?.split(",").map(Number) ?? [];
+
+  const tvStatus =
+    searchParams.get("tvStatus")?.split(",") ?? [];
+
+  const networkIds =
+    searchParams.get("networks")?.split(",").map(Number) ?? [];
 
   const NETWORK_LABELS: Record<number, string> = {
     213: "Netflix",
@@ -310,6 +388,7 @@ export default function FindResultsPage() {
     4353: "Peacock",
     1436: "Paramount+",
   };
+
   const TV_STATUS_LABELS: Record<string, string> = {
     "0": "In Production",
     "1": "Returning",
@@ -321,10 +400,17 @@ export default function FindResultsPage() {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-5">
+
         {/* Header */}
+
         <div className="text-center py-2">
           <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold">
-            {isBoth ? "Movies & TV Shows" : isTV ? "TV Shows" : "Movies"}
+            {isBoth
+              ? "Movies & TV Shows"
+              : isTV
+                ? "TV Shows"
+                : "Movies"}
+
             {keywords.length > 0 && (
               <span className="text-light-accent dark:text-dark-accent">
                 {" "}
@@ -332,6 +418,7 @@ export default function FindResultsPage() {
               </span>
             )}
           </h1>
+
           {!loading && totalResults > 0 && (
             <p className="text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text mt-1">
               {totalResults.toLocaleString()} results found
@@ -340,6 +427,7 @@ export default function FindResultsPage() {
         </div>
 
         {/* Filter chips */}
+
         {(genreNames.length > 0 ||
           excludeGenreNames.length > 0 ||
           excludeKeywords.length > 0 ||
@@ -352,6 +440,7 @@ export default function FindResultsPage() {
           tvStatus.length > 0 ||
           networkIds.length > 0) && (
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
+
             {genreNames.map((name) => (
               <span
                 key={name}
@@ -360,6 +449,7 @@ export default function FindResultsPage() {
                 {name}
               </span>
             ))}
+
             {excludeGenreNames.map((name) => (
               <span
                 key={name}
@@ -368,6 +458,7 @@ export default function FindResultsPage() {
                 ✕ {name}
               </span>
             ))}
+
             {excludeKeywords.map((kw) => (
               <span
                 key={kw}
@@ -376,31 +467,39 @@ export default function FindResultsPage() {
                 ✕ {kw}
               </span>
             ))}
+
             {(minYear || maxYear) && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 {minYear} – {maxYear}
               </span>
             )}
+
             {(minRating || maxRating) && (
               <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
-                <FontAwesomeIcon icon={faStar} /> {minRating} – {maxRating}
+                <FontAwesomeIcon icon={faStar} />{" "}
+                {minRating} – {maxRating}
               </span>
             )}
+
             {(minRuntime || maxRuntime) && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 {minRuntime ?? 0}m – {maxRuntime ?? 240}m
               </span>
             )}
+
             {language && (
               <span className="inline text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
-                <FontAwesomeIcon icon={faEarth} /> {language.toUpperCase()}
+                <FontAwesomeIcon icon={faEarth} />{" "}
+                {language.toUpperCase()}
               </span>
             )}
+
             {minVotes && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary-text dark:text-dark-secondary-text">
                 ≥{Number(minVotes).toLocaleString()} votes
               </span>
             )}
+
             {networkIds.map(
               (id) =>
                 NETWORK_LABELS[id] && (
@@ -412,6 +511,7 @@ export default function FindResultsPage() {
                   </span>
                 ),
             )}
+
             {tvStatus.map(
               (s) =>
                 TV_STATUS_LABELS[s] && (
@@ -423,6 +523,7 @@ export default function FindResultsPage() {
                   </span>
                 ),
             )}
+
             {strict && (
               <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-accent dark:bg-dark-accent text-white">
                 Strict
@@ -432,13 +533,21 @@ export default function FindResultsPage() {
         )}
 
         {/* Results */}
+
         <div className="space-y-3 sm:space-y-4">
+
           {loading &&
             results.length === 0 &&
-            Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)}
+            Array.from({ length: 5 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+
           {error && (
             <div className="text-center py-16 space-y-3">
-              <p className="text-red-500 text-sm">{error}</p>
+              <p className="text-red-500 text-sm">
+                {error}
+              </p>
+
               <button
                 onClick={() => fetchResults(1, false)}
                 className="px-6 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm"
@@ -447,29 +556,41 @@ export default function FindResultsPage() {
               </button>
             </div>
           )}
-          {!loading && !error && results.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-              <FontAwesomeIcon
-                icon={faSearch}
-                className="h-10 sm:h-12 text-light-accent dark:text-dark-accent opacity-30"
-              />
-              <p className="text-sm sm:text-base font-semibold">
-                No results found
-              </p>
-              <p className="text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text">
-                Try adjusting your filters.
-              </p>
-              <button
-                onClick={handleBack}
-                className="mt-2 px-6 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-medium"
-              >
-                Back to filters
-              </button>
-            </div>
-          )}
+
+          {!loading &&
+            !error &&
+            results.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+
+                <FontAwesomeIcon
+                  icon={faSearch}
+                  className="h-10 sm:h-12 text-light-accent dark:text-dark-accent opacity-30"
+                />
+
+                <p className="text-sm sm:text-base font-semibold">
+                  No results found
+                </p>
+
+                <p className="text-xs sm:text-sm text-light-secondary-text dark:text-dark-secondary-text">
+                  Try adjusting your filters.
+                </p>
+
+                <button
+                  onClick={handleBack}
+                  className="mt-2 px-6 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-medium"
+                >
+                  Back to filters
+                </button>
+              </div>
+            )}
+
           {results.map((item) => (
-            <ResultCard key={`${item.id}-${item.media_type}`} item={item} />
+            <ResultCard
+              key={`${item.id}-${item.media_type}`}
+              item={item}
+            />
           ))}
+
           {loading &&
             results.length > 0 &&
             Array.from({ length: 2 }).map((_, i) => (
@@ -478,128 +599,210 @@ export default function FindResultsPage() {
         </div>
 
         {/* Pagination */}
-        {!loading && results.length > 0 && page < totalPages && (
-          <button
-            onClick={handleLoadMore}
-            className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors"
-          >
-            Load more
-          </button>
-        )}
-        {!loading && results.length > 0 && page >= totalPages && (
-          <p className="text-center text-[11px] sm:text-xs text-light-secondary-text dark:text-dark-secondary-text py-4">
-            All {totalResults.toLocaleString()} results loaded
-          </p>
-        )}
+
+        {!loading &&
+          results.length > 0 &&
+          page < totalPages && (
+            <button
+              onClick={handleLoadMore}
+              className="w-full py-2.5 sm:py-3 rounded-xl border border-light-border dark:border-dark-border text-xs sm:text-sm font-medium transition-colors"
+            >
+              Load more
+            </button>
+          )}
+
+        {!loading &&
+          results.length > 0 &&
+          page >= totalPages && (
+            <p className="text-center text-[11px] sm:text-xs text-light-secondary-text dark:text-dark-secondary-text py-4">
+              All {totalResults.toLocaleString()} results loaded
+            </p>
+          )}
       </div>
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 function ResultCard({ item }: { item: MediaResult }) {
   const isLightMode = useThemeDetection();
+
   const [copied, setCopied] = useState(false);
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const copyTimer =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const genreNames = item.genre_ids
     .slice(0, 4)
-    .map((id) => Object.entries(ALL_GENRES).find(([, v]) => v === id)?.[0])
+    .map(
+      (id) =>
+        Object.entries(ALL_GENRES).find(
+          ([, v]) => v === id,
+        )?.[0],
+    )
     .filter(Boolean) as string[];
 
+  /*
+   * DIRECT TMDB IMAGE URL
+   *
+   * No /api/image-proxy route is used anymore.
+   */
+
   const imageUrl = item.backdrop_path
-    ? proxyUrl(item.backdrop_path, "w1280")
+    ? tmdbImage(item.backdrop_path, "w1280")
     : item.poster_path
-      ? proxyUrl(item.poster_path, "w780")
+      ? tmdbImage(item.poster_path, "w780")
       : null;
 
-  const { imgRef, ambient } = useCardAmbient(imageUrl, isLightMode);
+  const { imgRef, ambient } =
+    useCardAmbient(imageUrl, isLightMode);
 
-  const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
+  const rating = item.vote_average
+    ? item.vote_average.toFixed(1)
+    : null;
 
-  const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
-  const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
-  const solidColor = ambient?.solid ?? fallbackSolid;
-  const rgbColor = ambient?.rgb ?? fallbackRgb;
-  const rawRgb = ambient?.rawRgb ?? fallbackRgb;
-  const processedLuminance = ambient?.luminance ?? (isLightMode ? 0.8 : 0.06);
+  const fallbackRgb = isLightMode
+    ? "210,210,210"
+    : "15,15,15";
+
+  const fallbackSolid = isLightMode
+    ? "rgb(210,210,210)"
+    : "rgb(15,15,15)";
+
+  const solidColor =
+    ambient?.solid ?? fallbackSolid;
+
+  const rgbColor =
+    ambient?.rgb ?? fallbackRgb;
+
+  const rawRgb =
+    ambient?.rawRgb ?? fallbackRgb;
+
+  const processedLuminance =
+    ambient?.luminance ??
+    (isLightMode ? 0.8 : 0.06);
+
   const textColor = getAmbientTextColor(
     isLightMode,
     rawRgb,
     processedLuminance,
   );
 
-  // Derive a text scheme for the copy icon color feedback
-  const useLightText = !isLightMode || processedLuminance < 0.45;
-  const textScheme = useLightText ? "dark" : "light";
+  const useLightText =
+    !isLightMode ||
+    processedLuminance < 0.45;
 
-  // Button styling derived from ambient color
-  const btnBg = useLightText ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.35)";
+  const textScheme =
+    useLightText ? "dark" : "light";
+
+  const btnBg = useLightText
+    ? "rgba(0,0,0,0.35)"
+    : "rgba(255,255,255,0.35)";
+
   const btnBorder = useLightText
     ? "rgba(255,255,255,0.15)"
     : "rgba(0,0,0,0.15)";
+
   const iconColor = useLightText
     ? "rgba(255,255,255,0.90)"
     : "rgba(0,0,0,0.75)";
 
-  const fullTint = `rgba(${rgbColor}, 0.45)`;
-  const layerBottom = `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
-  const layerTop = `linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)`;
-  const layerCenter = `radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)`;
+  const fullTint =
+    `rgba(${rgbColor}, 0.45)`;
 
- const handleCopy = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (copied) return;
+  const layerBottom =
+    `linear-gradient(to top, rgba(${rgbColor},1) 0%, rgba(${rgbColor},0.7) 12%, rgba(${rgbColor},0.3) 26%, rgba(${rgbColor},0) 42%)`;
 
-    const showCopiedToast = () => {
-      toast.success("Copied");
-    };
+  const layerTop =
+    "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%)";
 
-    const fallbackCopy = (text: string) => {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      textarea.style.left = "-9999px";
-      textarea.style.top = "-9999px";
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
+  const layerCenter =
+    "radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 70%)";
+
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (copied) return;
+
+      const showCopiedToast = () => {
+        toast.success("Copied");
+      };
+
+      const fallbackCopy = (text: string) => {
+        const textarea =
+          document.createElement("textarea");
+
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "-9999px";
+
+        document.body.appendChild(textarea);
+
+        textarea.focus();
+        textarea.select();
+
+        try {
+          document.execCommand("copy");
+        } finally {
+          document.body.removeChild(textarea);
+        }
+      };
+
       try {
-        document.execCommand("copy");
-      } finally {
-        document.body.removeChild(textarea);
-      }
-    };
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(
+            item.title,
+          );
+        } else {
+          fallbackCopy(item.title);
+        }
 
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(item.title);
-      } else {
-        fallbackCopy(item.title);
+        setCopied(true);
+
+        showCopiedToast();
+
+        copyTimer.current = setTimeout(
+          () => setCopied(false),
+          2000,
+        );
+      } catch {
+        toast.error("Failed to copy");
       }
-      setCopied(true);
-      showCopiedToast();
-      copyTimer.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  }, [item.title, copied]);
+    },
+    [item.title, copied],
+  );
 
   const handleShare = useCallback(
     async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      const url = `${window.location.origin}/${item.media_type}/${createSlug(item.title)}/${item.id}`;
-      const shareData = { title: item.title, url };
-      if (navigator.share && navigator.canShare?.(shareData)) {
+
+      const url =
+        `${window.location.origin}/${item.media_type}/${createSlug(item.title)}/${item.id}`;
+
+      const shareData = {
+        title: item.title,
+        url,
+      };
+
+      if (
+        navigator.share &&
+        navigator.canShare?.(shareData)
+      ) {
         try {
           await navigator.share(shareData);
         } catch {
-          // user dismissed — no-op
+          // User dismissed — no-op
         }
       } else {
-        await navigator.clipboard.writeText(url).catch(() => {});
+        await navigator.clipboard
+          .writeText(url)
+          .catch(() => {});
       }
     },
     [item],
@@ -607,7 +810,9 @@ function ResultCard({ item }: { item: MediaResult }) {
 
   useEffect(
     () => () => {
-      if (copyTimer.current) clearTimeout(copyTimer.current);
+      if (copyTimer.current) {
+        clearTimeout(copyTimer.current);
+      }
     },
     [],
   );
@@ -625,7 +830,8 @@ function ResultCard({ item }: { item: MediaResult }) {
     WebkitBackdropFilter: "blur(12px)",
     color: iconColor,
     cursor: "pointer",
-    transition: "transform 150ms ease, opacity 150ms ease",
+    transition:
+      "transform 150ms ease, opacity 150ms ease",
     flexShrink: 0,
   };
 
@@ -635,10 +841,12 @@ function ResultCard({ item }: { item: MediaResult }) {
       className="block group w-full rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-light-border dark:border-dark-border overflow-hidden"
       style={{
         backgroundColor: solidColor,
-        transition: "background-color 700ms ease-in-out",
+        transition:
+          "background-color 700ms ease-in-out",
       }}
     >
       <div className="relative w-full aspect-4/3 sm:aspect-16/6 lg:aspect-16/5 overflow-hidden">
+
         {imageUrl ? (
           <Image
             unoptimized
@@ -652,16 +860,34 @@ function ResultCard({ item }: { item: MediaResult }) {
         ) : (
           <div className="absolute inset-0 bg-linear-to-br from-gray-700 to-gray-900" />
         )}
+
         <div
           className="absolute inset-0 transition-all duration-700"
-          style={{ backgroundColor: fullTint }}
+          style={{
+            backgroundColor: fullTint,
+          }}
         />
+
         <div
           className="absolute inset-0 transition-all duration-700"
-          style={{ background: layerBottom }}
+          style={{
+            background: layerBottom,
+          }}
         />
-        <div className="absolute inset-0" style={{ background: layerTop }} />
-        <div className="absolute inset-0" style={{ background: layerCenter }} />
+
+        <div
+          className="absolute inset-0"
+          style={{
+            background: layerTop,
+          }}
+        />
+
+        <div
+          className="absolute inset-0"
+          style={{
+            background: layerCenter,
+          }}
+        />
 
         {rating && (
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-light-btn-bg dark:bg-dark-btn-bg backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
@@ -670,74 +896,120 @@ function ResultCard({ item }: { item: MediaResult }) {
         )}
 
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-8 lg:px-12 gap-1">
+
           <h3
             className="text-base sm:text-2xl lg:text-3xl font-bold text-center drop-shadow-lg line-clamp-2 transition-colors duration-700 leading-snug"
-            style={{ color: textColor.primary }}
+            style={{
+              color: textColor.primary,
+            }}
           >
             {item.title}
           </h3>
+
           <p
             className="text-[10px] sm:text-sm italic transition-colors duration-700"
-            style={{ color: textColor.muted }}
+            style={{
+              color: textColor.muted,
+            }}
           >
             Click for full details
           </p>
         </div>
-
-        {/* Share + Copy buttons — bottom-right of poster */}
       </div>
 
       {/* Bottom info bar */}
+
       <div
         className="px-3 sm:px-4 py-2 sm:py-3 space-y-1 transition-all duration-700"
-        style={{ backgroundColor: solidColor }}
+        style={{
+          backgroundColor: solidColor,
+        }}
       >
         <div className="flex items-center justify-between gap-2">
+
           {/* Left: genres + keywords */}
+
           <div className="flex flex-col gap-1 min-w-0">
+
             {genreNames.length > 0 && (
               <p
                 className="text-xs sm:text-sm leading-snug transition-colors duration-700 truncate"
-                style={{ color: textColor.secondary }}
+                style={{
+                  color: textColor.secondary,
+                }}
               >
                 {genreNames.join(", ")}
               </p>
             )}
-            {item.keywords && item.keywords.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                {item.keywords.slice(0, 4).map((kw) => (
-                  <span
-                    key={kw}
-                    className="font-mono text-[10px] sm:text-xs tracking-tight transition-colors duration-700"
-                    style={{ color: textColor.muted }}
-                  >
-                    #{kw.toLowerCase().replace(/\s+/g, "-")}
-                  </span>
-                ))}
-              </div>
-            )}
+
+            {item.keywords &&
+              item.keywords.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+
+                  {item.keywords
+                    .slice(0, 4)
+                    .map((kw) => (
+                      <span
+                        key={kw}
+                        className="font-mono text-[10px] sm:text-xs tracking-tight transition-colors duration-700"
+                        style={{
+                          color: textColor.muted,
+                        }}
+                      >
+                        #
+                        {kw
+                          .toLowerCase()
+                          .replace(/\s+/g, "-")}
+                      </span>
+                    ))}
+
+                </div>
+              )}
           </div>
 
           {/* Right: copy + share buttons */}
+
           <div className="flex items-center gap-2 shrink-0">
+
             <button
               onClick={handleCopy}
-              title={copied ? "Copied!" : `Copy title: ${item.title}`}
-              aria-label={copied ? "Copied!" : "Copy title"}
-              style={btnStyle}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseDown={(e) =>
-                (e.currentTarget.style.transform = "scale(0.92)")
+              title={
+                copied
+                  ? "Copied!"
+                  : `Copy title: ${item.title}`
               }
-              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              aria-label={
+                copied
+                  ? "Copied!"
+                  : "Copy title"
+              }
+              style={btnStyle}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.opacity =
+                  "0.75")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.opacity =
+                  "1")
+              }
+              onMouseDown={(e) =>
+                (e.currentTarget.style.transform =
+                  "scale(0.92)")
+              }
+              onMouseUp={(e) =>
+                (e.currentTarget.style.transform =
+                  "scale(1)")
+              }
             >
               <FontAwesomeIcon
-                icon={copied ? faCheck : faCopy}
+                icon={
+                  copied ? faCheck : faCopy
+                }
                 style={{
                   width: "0.875rem",
                   height: "0.875rem",
-                  transition: "opacity 200ms ease",
+                  transition:
+                    "opacity 200ms ease",
                   color: copied
                     ? textScheme === "light"
                       ? "rgba(134,239,172,0.95)"
@@ -752,18 +1024,32 @@ function ResultCard({ item }: { item: MediaResult }) {
               title="Share"
               aria-label="Share"
               style={btnStyle}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseDown={(e) =>
-                (e.currentTarget.style.transform = "scale(0.92)")
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.opacity =
+                  "0.75")
               }
-              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.opacity =
+                  "1")
+              }
+              onMouseDown={(e) =>
+                (e.currentTarget.style.transform =
+                  "scale(0.92)")
+              }
+              onMouseUp={(e) =>
+                (e.currentTarget.style.transform =
+                  "scale(1)")
+              }
             >
               <FontAwesomeIcon
                 icon={faShareNodes}
-                style={{ width: "0.875rem", height: "0.875rem" }}
+                style={{
+                  width: "0.875rem",
+                  height: "0.875rem",
+                }}
               />
             </button>
+
           </div>
         </div>
       </div>
@@ -771,18 +1057,26 @@ function ResultCard({ item }: { item: MediaResult }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 function CardSkeleton() {
   return (
     <div className="w-full rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse border border-light-border dark:border-dark-border">
+
       <div className="aspect-4/3 sm:aspect-16/6 lg:aspect-16/5 w-full" />
 
       <div className="px-3 sm:px-4 py-2 sm:py-3 space-y-2">
+
         <div className="h-3 sm:h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-2/5" />
 
         <div className="flex gap-2">
+
           <div className="h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded w-16" />
+
           <div className="h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded w-12" />
+
           <div className="h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded w-20" />
+
         </div>
       </div>
     </div>

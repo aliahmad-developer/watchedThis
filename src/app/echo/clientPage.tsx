@@ -121,13 +121,13 @@ const getAmbientText = (
 };
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-  "https://watchedthis.com";
+function tmdbImageUrl(tmdbPath: string, size: string): string {
+  return `https://image.tmdb.org/t/p/${size}${tmdbPath}`;
+}
 
 function proxyUrl(tmdbPath: string, size: string): string {
   const upstream = `https://image.tmdb.org/t/p/${size}${tmdbPath}`;
-  return `${APP_URL}/api/image-proxy/?url=${encodeURIComponent(upstream)}`;
+  return `/api/image-proxy/?url=${encodeURIComponent(upstream)}`;
 }
 
 function useTheme() {
@@ -298,12 +298,18 @@ function MediaCard({
   isLightMode: boolean;
 }) {
   const imageUrl = item.backdrop
+    ? tmdbImageUrl(item.backdrop, "w1280")
+    : item.poster
+      ? tmdbImageUrl(item.poster, "w780")
+      : null;
+
+  const colorUrl = item.backdrop
     ? proxyUrl(item.backdrop, "w1280")
     : item.poster
       ? proxyUrl(item.poster, "w780")
       : null;
 
-  const { imgRef, ambient } = useAmbient(imageUrl, isLightMode);
+  const { imgRef, ambient } = useAmbient(colorUrl, isLightMode);
 
   const fallbackRgb = isLightMode ? "210,210,210" : "15,15,15";
   const fallbackSolid = isLightMode ? "rgb(210,210,210)" : "rgb(15,15,15)";
@@ -332,36 +338,53 @@ function MediaCard({
       <div className="relative w-full overflow-hidden aspect-4/3 sm:aspect-16/6 lg:aspect-16/5">
         {imageUrl ? (
           <Image
-            ref={imgRef}
             src={imageUrl}
             alt={item.title}
             unoptimized
             fill
-            crossOrigin="anonymous"
             className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, 1280px"
           />
         ) : (
           <div className="absolute inset-0 bg-linear-to-br from-gray-700 to-gray-900" />
         )}
+
+        {/* Hidden same-origin image used ONLY by ColorThief */}
+        {colorUrl && (
+          <img
+            ref={imgRef}
+            src={colorUrl}
+            alt=""
+            crossOrigin="anonymous"
+            className="hidden"
+            aria-hidden="true"
+          />
+        )}
+
         <div
           className="absolute inset-0 transition-all duration-700"
           style={{ backgroundColor: fullTint }}
         />
+
         <div
           className="absolute inset-0 transition-all duration-700"
           style={{ background: layerBottom }}
         />
+
         <div className="absolute inset-0" style={{ background: layerTop }} />
+
         <div className="absolute inset-0" style={{ background: layerCenter }} />
+
         {rating && (
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/40 backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
             <FontAwesomeIcon icon={faStar} /> {rating}
           </div>
         )}
+
         <div className="absolute top-2 right-2 sm:top-3 sm:right-3 text-[10px] text-white sm:text-xs px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm">
           {item.type === "movie" ? "Film" : "Series"}
         </div>
+
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-8 lg:px-12 gap-1">
           <h3
             className="text-base sm:text-2xl lg:text-3xl font-bold text-center drop-shadow-lg line-clamp-2 transition-colors duration-700 leading-snug"
@@ -369,6 +392,7 @@ function MediaCard({
           >
             {item.title}
           </h3>
+
           <p
             className="text-[10px] sm:text-sm italic transition-colors duration-700"
             style={{ color: textColor.muted }}
@@ -377,6 +401,7 @@ function MediaCard({
           </p>
         </div>
       </div>
+
       <div
         className="px-3 sm:px-4 py-2 sm:py-3 transition-all duration-700"
         style={{ backgroundColor: solidColor }}
