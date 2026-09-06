@@ -28,8 +28,15 @@ const ALLOWED_CONTENT_TYPES = new Set([
 
 const ALLOWED_ORIGINS =
   process.env.NODE_ENV === "production"
-    ? ["https://watchedthis.com"]
-    : ["https://watchedthis.com", "http://localhost:3000"];
+    ? [
+        "https://watchedthis.com",
+        "https://www.watchedthis.com",
+      ]
+    : [
+        "https://watchedthis.com",
+        "https://www.watchedthis.com",
+        "http://localhost:3000",
+      ];
 
 function getCorsOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
