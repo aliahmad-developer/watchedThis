@@ -14,6 +14,35 @@
   "images": {
     "binding": "IMAGES",
   },
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BUCKET_CACHE_PURGE",
+        "class_name": "BucketCachePurge"
+      },
+      {
+        "name": "DO_QUEUE_HANDLER",
+        "class_name": "DOQueueHandler"
+      },
+      {
+        "name": "DO_SHARDED_TAG_CACHE",
+        "class_name": "DOShardedTagCache"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["BucketCachePurge", "DOQueueHandler", "DOShardedTagCache"]
+    }
+  ],
+
+  "routes": [
+    { "pattern": "watchedthis.com", "custom_domain": true },
+    { "pattern": "www.watchedthis.com", "custom_domain": true }
+  ],
+
   "observability": {
     "logs": {
       "enabled": true,
@@ -27,6 +56,7 @@
       "persist": true,
     },
   },
+
   "vars": {
     "EMAIL_FROM": "support@mail.watchedthis.com",
     "NEXT_PUBLIC_APP_URL": "https://watchedthis.com",
@@ -34,5 +64,7 @@
     "NEXT_PUBLIC_GOOGLE_CLIENT_ID": "267888282562-dhd8cd2t8qcsf1ga1c093338g7vt8vl5.apps.googleusercontent.com",
     "NEXT_PUBLIC_SUPABASE_URL": "https://ouhkvfyeqaxqbnclinfr.supabase.co",
     "TMDB_BASE_URL": "https://api.themoviedb.org/3",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91aGt2ZnllcWF4cWJuY2xpbmZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTA3OTgsImV4cCI6MjA5OTkyNjc5OH0.n0SmklaeBT8rJFpaJMz6aX8XYHdcwbpDtIBGG5PXE3o"
+
   },
 }
