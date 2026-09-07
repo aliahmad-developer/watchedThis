@@ -26,6 +26,8 @@ type ResolvedMedia =
   | { shouldRedirect: true; redirectTo: string }
   | { shouldRedirect: false; data: any; media_name_slug: string; id: string };
 
+class UpstreamFetchError extends Error {}
+
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 
 const fetchMediaById = (media_type: string, id: string) =>
@@ -34,7 +36,17 @@ const fetchMediaById = (media_type: string, id: string) =>
       const res = await fetch(`${APP_URL}/api/media/${media_type}/_/${id}`, {
         next: { revalidate: 3600 },
       });
-      if (!res.ok) return null;
+
+      if (res.status === 404) return null;
+
+      if (!res.ok) {
+        // Transient/upstream failure — throw so unstable_cache does NOT
+        // persist this as a cached negative result.
+        throw new UpstreamFetchError(
+          `fetchMediaById failed: ${res.status} ${res.statusText}`,
+        );
+      }
+
       return res.json();
     },
     [`media-by-id-${media_type}-${id}`],
@@ -51,13 +63,61 @@ const fetchMediaDetails = cache(
             next: { revalidate: 3600 },
           },
         );
-        if (!res.ok) return null;
+
+        if (res.status === 404) return null;
+
+        if (!res.ok) {
+          throw new UpstreamFetchError(
+            `fetchMediaDetails failed: ${res.status} ${res.statusText}`,
+          );
+        }
+
         return res.json();
       },
       [`media-details-${media_type}-${media_name_slug}-${id}`],
       { revalidate: 3600 },
     )(),
 );
+
+/*
+ * Safe wrappers: swallow UpstreamFetchError into a distinct "failed"
+ * result so callers can tell "not found" apart from "couldn't check
+ * right now" and respond accordingly (e.g. render an error state or
+ * let Next.js's error boundary retry, instead of a hard 404).
+ */
+type FetchOutcome<T> =
+  | { ok: true; data: T }
+  | { ok: false; notFound: true }
+  | { ok: false; notFound: false; error: unknown };
+
+async function safeFetchMediaById(
+  media_type: string,
+  id: string,
+): Promise<FetchOutcome<any>> {
+  try {
+    const data = await fetchMediaById(media_type, id);
+    if (!data) return { ok: false, notFound: true };
+    return { ok: true, data };
+  } catch (err) {
+    console.error("[media page] fetchMediaById error:", err);
+    return { ok: false, notFound: false, error: err };
+  }
+}
+
+async function safeFetchMediaDetails(
+  media_type: string,
+  media_name_slug: string,
+  id: string,
+): Promise<FetchOutcome<any>> {
+  try {
+    const data = await fetchMediaDetails(media_type, media_name_slug, id);
+    if (!data) return { ok: false, notFound: true };
+    return { ok: true, data };
+  } catch (err) {
+    console.error("[media page] fetchMediaDetails error:", err);
+    return { ok: false, notFound: false, error: err };
+  }
+}
 
 // ─── Structured Data ──────────────────────────────────────────────────────────
 
@@ -117,8 +177,17 @@ async function resolveParams(
 ): Promise<ResolvedMedia | null> {
   if (slug.length === 1 && /^\d+$/.test(slug[0])) {
     const id = slug[0];
-    const data = await fetchMediaById(media_type, id);
-    if (!data) return null;
+    const outcome = await safeFetchMediaById(media_type, id);
+
+    if (!outcome.ok) {
+      if (outcome.notFound) return null;
+      // Upstream failure, not a real 404 — propagate so the page can
+      // throw and hit Next's error boundary (retry-able) instead of
+      // a hard, cacheable notFound().
+      throw outcome.error;
+    }
+
+    const data = outcome.data;
     const correctSlug = createSlug(data.title || data.name);
     return {
       shouldRedirect: true,
@@ -130,9 +199,14 @@ async function resolveParams(
   const id = slug[1];
   if (!media_name_slug || !id) return null;
 
-  const data = await fetchMediaDetails(media_type, media_name_slug, id);
-  if (!data) return null;
+  const outcome = await safeFetchMediaDetails(media_type, media_name_slug, id);
 
+  if (!outcome.ok) {
+    if (outcome.notFound) return null;
+    throw outcome.error;
+  }
+
+  const data = outcome.data;
   const correctSlug = createSlug(data.title || data.name);
   if (correctSlug !== media_name_slug) {
     return {
@@ -160,8 +234,10 @@ export async function generateMetadata({
   if (!media_name_slug || !id)
     return { title: "Media Not Found | WatchedThis" };
 
-  const data = await fetchMediaDetails(media_type, media_name_slug, id);
-  if (!data) return { title: "Media Not Found | WatchedThis" };
+  const outcome = await safeFetchMediaDetails(media_type, media_name_slug, id);
+  if (!outcome.ok) return { title: "Media Not Found | WatchedThis" };
+
+  const data = outcome.data;
 
   const mediaTitle = data.title || data.name || "Media Details";
   const year = (data.release_date || data.first_air_date || "").substring(0, 4);
