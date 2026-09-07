@@ -76,52 +76,46 @@ const SECURITY_HEADERS: Record<string, string> = {
 
   "Content-Security-Policy": [
     "default-src 'self'",
-
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "https://accounts.google.com",
-    "https://apis.google.com",
-    "https://www.google.com",
-    "https://www.googletagmanager.com",
-    "https://tagmanager.google.com",
-    "https://www.youtube.com",
-    "https://s.ytimg.com",
-    "https://static.cloudflareinsights.com",
-
+    [
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "https://accounts.google.com",
+      "https://apis.google.com",
+      "https://www.google.com",
+      "https://www.googletagmanager.com",
+      "https://tagmanager.google.com",
+      "https://www.youtube.com",
+      "https://s.ytimg.com",
+      "https://static.cloudflareinsights.com",
+    ].join(" "),
     "style-src 'self' 'unsafe-inline' https:",
-
     "img-src 'self' data: blob: https:",
-
-    "connect-src 'self'",
-    "https://accounts.google.com",
-    "https://oauth2.googleapis.com",
-    "https://www.googleapis.com",
-    "https://www.googletagmanager.com",
-    "https://region1.google-analytics.com",
-    "https://www.google-analytics.com",
-    "https://static.cloudflareinsights.com",
-    "https://*.supabase.co",
-    "wss://*.supabase.co",
-
-    "frame-src 'self'",
-    "https://accounts.google.com",
-    "https://www.google.com",
-    "https://www.googletagmanager.com",
-    "https://www.youtube.com",
-    "https://www.youtube-nocookie.com",
-    "https://youtube.com",
-
+    [
+      "connect-src 'self'",
+      "https://accounts.google.com",
+      "https://oauth2.googleapis.com",
+      "https://www.googleapis.com",
+      "https://www.googletagmanager.com",
+      "https://region1.google-analytics.com",
+      "https://www.google-analytics.com",
+      "https://static.cloudflareinsights.com",
+      "https://*.supabase.co",
+      "wss://*.supabase.co",
+    ].join(" "),
+    [
+      "frame-src 'self'",
+      "https://accounts.google.com",
+      "https://www.google.com",
+      "https://www.googletagmanager.com",
+      "https://www.youtube.com",
+      "https://www.youtube-nocookie.com",
+      "https://youtube.com",
+    ].join(" "),
     "font-src 'self' https: data:",
-
     "media-src 'self' https:",
-
     "object-src 'none'",
-
     "frame-ancestors 'self'",
-
     "base-uri 'self'",
-
     "form-action 'self'",
-
     ...(isProd ? ["upgrade-insecure-requests"] : []),
   ].join("; "),
 };
