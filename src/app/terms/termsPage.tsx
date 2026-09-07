@@ -64,7 +64,7 @@ export default function TermsPage() {
           </Section>
 
           <Section icon={faShield} title="Your account and your data">
-            If you sign in, authentication is handled by Firebase. Your
+            If you sign in, authentication is handled by Supabase. Your
             watchlist, search history, and usage patterns are stored only to
             make recommendations useful. That data is never sold, never shared,
             and never used to target you with ads. That's not what this site is
@@ -72,7 +72,7 @@ export default function TermsPage() {
           </Section>
 
           <Section icon={faShield} title="Privacy">
-            WatchedThis doesn't collect more than it needs. Firebase and Google
+            WatchedThis doesn't collect more than it needs. Cloudflare and Google
             handle authentication on their end, so their respective privacy
             policies apply there. Beyond that, what you do on WatchedThis stays
             on WatchedThis, unless you tell your friends about it, which would

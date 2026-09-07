@@ -71,10 +71,10 @@ export default function PrivacyPolicyPage() {
               used solely to personalise your recommendations within WatchedThis.
             </Subsection>
             <Subsection title="Technical data">
-              Our hosting provider (Firebase) may collect standard server logs
+              Our hosting provider (Cloudflare) may collect standard server logs
               including your IP address, browser type, and page requests,
               retained for up to 30 days for security and performance
-              monitoring. Firebase Analytics may collect anonymised, aggregated
+              monitoring. CLoudflare Analytics may collect anonymised, aggregated
               usage metrics — no individual tracking, no cross-site cookies.
             </Subsection>
             <Subsection title="What we do not collect">
@@ -113,7 +113,7 @@ export default function PrivacyPolicyPage() {
               Authentication and database. Data is stored on Google's
               infrastructure.{" "}
               <ExternalLink href="https://firebase.google.com/support/privacy">
-                Firebase Privacy Policy
+                Cloudflare Privacy Policy
               </ExternalLink>
             </Subsection>
             <Subsection title="TMDB">
@@ -126,7 +126,7 @@ export default function PrivacyPolicyPage() {
             <Subsection title="Hosting">
               Hosting and edge infrastructure.{" "}
               <ExternalLink href="https://developers.google.com/terms/">
-                Firebase Privacy Policy
+                Cloudflare Privacy Policy
               </ExternalLink>
             </Subsection>
           </Section>

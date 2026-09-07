@@ -28,6 +28,7 @@
     },
   },
   "vars": {
+    "EMAIL_FROM": "support@mail.watchedthis.com",
     "NEXT_PUBLIC_APP_URL": "https://watchedthis.com",
     "NEXT_PUBLIC_BASE_URL": "https://watchedthis.com",
     "NEXT_PUBLIC_GOOGLE_CLIENT_ID": "267888282562-dhd8cd2t8qcsf1ga1c093338g7vt8vl5.apps.googleusercontent.com",
