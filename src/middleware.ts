@@ -255,10 +255,33 @@ export default async function middleware(req: NextRequest) {
   }
 
   /* =======================================================
-     INITIAL RESPONSE
+     FAST PATH: API / RSC REQUESTS
+     =======================================================
+     Checked BEFORE the Supabase session-refresh block.
+
+     Rationale: server components in this app make internal
+     fetch() calls back into /api/* routes (e.g. the media
+     detail pages fetching /api/media/[type]/[slug]/[id]).
+     Those internal calls do not need a Supabase session
+     refresh -- if a route handler needs the user, it reads
+     the session itself. Skipping this here avoids an extra
+     network round trip per internal call, which matters on
+     Cloudflare Workers where every outbound fetch (including
+     to Supabase) counts against subrequest limits and adds
+     latency to server-rendered pages that fan out to their
+     own API routes.
      ======================================================= */
 
-  // Supabase may replace this response if it refreshes cookies.
+  if (isApi || isRSC) {
+    return applySecurityHeaders(NextResponse.next({ request: req }));
+  }
+
+  /* =======================================================
+     INITIAL RESPONSE
+     ========================================================
+     Supabase may replace this response if it refreshes cookies.
+     ======================================================= */
+
   let response = applySecurityHeaders(
     NextResponse.next({
       request: req,
@@ -344,14 +367,6 @@ export default async function middleware(req: NextRequest) {
     } catch (err) {
       console.warn("[middleware] Supabase auth failed:", err);
     }
-  }
-
-  /* =======================================================
-     API / RSC REQUESTS
-     ======================================================= */
-
-  if (isApi || isRSC) {
-    return response;
   }
 
   /* =======================================================

@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import { unstable_cache } from "next/cache";
 import MoreLikeThis from "@/app/components/randomMedia/moreLike/shelf";
 import { createSlug } from "@/app/components/utilities/createSlug";
 import CastScroll from "@/app/components/mediaCard/castScroll";
@@ -26,57 +25,71 @@ type ResolvedMedia =
   | { shouldRedirect: true; redirectTo: string }
   | { shouldRedirect: false; data: any; media_name_slug: string; id: string };
 
+/*
+ * Distinguishes "the media genuinely doesn't exist" (404, should be
+ * cached and shown as notFound) from "the upstream call failed"
+ * (network error, timeout, 5xx — should NOT be cached, should be
+ * retried on the next request).
+ *
+ * Previously both cases collapsed to `return null`, and because that
+ * null lived inside unstable_cache() with revalidate: 3600, a single
+ * transient failure (e.g. a cold start or brief 503 from the internal
+ * /api/media route) would get cached as "not found" for a full hour,
+ * making every request in that window 404 even though the data was
+ * actually fine.
+ */
 class UpstreamFetchError extends Error {}
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
+//
+// NOTE: unstable_cache() is NOT used here. It relies on Next's filesystem-
+// based data cache, which does not exist on the Cloudflare Workers/Pages
+// runtime. Calling it there throws or misbehaves during the Server
+// Component render (this was the root cause of the "Minified React error
+// #441" seen only in production, never on localhost's Node runtime).
+//
+// Caching is instead handled purely via fetch()'s `next: { revalidate }`
+// option, which the Cloudflare Next.js adapters translate to Cloudflare's
+// own cache API. `react`'s cache() is kept to dedupe calls within a single
+// render pass only.
 
-const fetchMediaById = (media_type: string, id: string) =>
-  unstable_cache(
-    async () => {
-      const res = await fetch(`${APP_URL}/api/media/${media_type}/_/${id}`, {
-        next: { revalidate: 3600 },
-      });
+const fetchMediaById = async (media_type: string, id: string) => {
+  const res = await fetch(`${APP_URL}/api/media/${media_type}/_/${id}`, {
+    next: { revalidate: 3600 },
+  });
 
-      if (res.status === 404) return null;
+  if (res.status === 404) return null;
 
-      if (!res.ok) {
-        // Transient/upstream failure — throw so unstable_cache does NOT
-        // persist this as a cached negative result.
-        throw new UpstreamFetchError(
-          `fetchMediaById failed: ${res.status} ${res.statusText}`,
-        );
-      }
+  if (!res.ok) {
+    // Transient/upstream failure — throw rather than returning null so we
+    // never mistake "the API failed right now" for "this doesn't exist".
+    throw new UpstreamFetchError(
+      `fetchMediaById failed: ${res.status} ${res.statusText}`,
+    );
+  }
 
-      return res.json();
-    },
-    [`media-by-id-${media_type}-${id}`],
-    { revalidate: 3600 },
-  )();
+  return res.json();
+};
 
 const fetchMediaDetails = cache(
-  (media_type: string, media_name_slug: string, id: string) =>
-    unstable_cache(
-      async () => {
-        const res = await fetch(
-          `${APP_URL}/api/media/${media_type}/${media_name_slug}/${id}`,
-          {
-            next: { revalidate: 3600 },
-          },
-        );
-
-        if (res.status === 404) return null;
-
-        if (!res.ok) {
-          throw new UpstreamFetchError(
-            `fetchMediaDetails failed: ${res.status} ${res.statusText}`,
-          );
-        }
-
-        return res.json();
+  async (media_type: string, media_name_slug: string, id: string) => {
+    const res = await fetch(
+      `${APP_URL}/api/media/${media_type}/${media_name_slug}/${id}`,
+      {
+        next: { revalidate: 3600 },
       },
-      [`media-details-${media_type}-${media_name_slug}-${id}`],
-      { revalidate: 3600 },
-    )(),
+    );
+
+    if (res.status === 404) return null;
+
+    if (!res.ok) {
+      throw new UpstreamFetchError(
+        `fetchMediaDetails failed: ${res.status} ${res.statusText}`,
+      );
+    }
+
+    return res.json();
+  },
 );
 
 /*
