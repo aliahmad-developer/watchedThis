@@ -89,7 +89,6 @@ function MediaPoster({
             className={`object-cover object-center select-none transition-opacity duration-300 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
-            priority={priority}
             fetchPriority={priority ? "high" : "auto"}
             sizes="(max-width: 640px) 128px, (max-width: 768px) 192px, (max-width: 1024px) 224px, 260px"
             placeholder="blur"

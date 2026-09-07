@@ -181,14 +181,19 @@ export default async function middleware(req: NextRequest) {
 
       const SUPABASE_TIMEOUT_MS = 5000;
 
+      let timeoutId: ReturnType<typeof setTimeout>;
+
       const result = await Promise.race([
-        supabase.auth.getUser().then((r) => ({ user: r.data.user })),
-        new Promise<{ user: null }>((resolve) =>
-          setTimeout(() => {
+        supabase.auth.getUser().then((r) => {
+          clearTimeout(timeoutId);
+          return { user: r.data.user };
+        }),
+        new Promise<{ user: null }>((resolve) => {
+          timeoutId = setTimeout(() => {
             console.warn("[middleware] supabase.auth.getUser() timed out");
             resolve({ user: null });
-          }, SUPABASE_TIMEOUT_MS),
-        ),
+          }, SUPABASE_TIMEOUT_MS);
+        }),
       ]);
       user = result.user;
     } catch (err) {
