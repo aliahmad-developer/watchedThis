@@ -1,4 +1,5 @@
 import SimilarMediaShelf from "./moreLikethis";
+import { fetchSimilarMedia } from "@/lib/similarMedia";
 
 interface Props {
   searchParams: {
@@ -9,23 +10,17 @@ interface Props {
 
 async function fetchSimilar(id: string, type: string) {
   try {
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ??
-      "https://watchedthis.com";
-
-    const res = await fetch(
-      `${appUrl}/api/echo?id=${id}&type=${type}&page=1`,
-      {
-        next: {
-          revalidate: 3600,
-        },
-      }
-    );
-
-    if (!res.ok) return [];
-
-    const data = await res.json();
-
+    // Calls the shared TMDB logic directly, in-process, instead of doing
+    // fetch(`${appUrl}/api/echo?...`) back to this app's own domain.
+    //
+    // That self-fetch pattern is why this shelf silently stopped
+    // rendering on Cloudflare: Cloudflare Workers restrict/fail same-zone
+    // fetch() calls (a Worker calling its own public hostname) as a loop
+    // prevention measure. The try/catch here swallowed the failure and
+    // returned [], so the shelf just disappeared with no visible error —
+    // it worked on localhost because there's no "zone" restriction on a
+    // local dev server.
+    const data = await fetchSimilarMedia(id, type as "movie" | "tv", 1);
     return (data.similar ?? []).slice(0, 12);
   } catch {
     return [];
