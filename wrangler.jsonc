@@ -27,4 +27,12 @@
       "persist": true,
     },
   },
+    "vars": {
+    "CRON_SECRET": "593901045e006bb555b9bee05717691f",
+    "NEXT_PUBLIC_APP_URL": "https://watchedthis.com",
+    "NEXT_PUBLIC_BASE_URL": "https://watchedthis.com",
+    "NEXT_PUBLIC_GOOGLE_CLIENT_ID": "267888282562-dhd8cd2t8qcsf1ga1c093338g7vt8vl5.apps.googleusercontent.com",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://ouhkvfyeqaxqbnclinfr.supabase.co",
+    "TMDB_BASE_URL": "https://api.themoviedb.org/3"
+  }
 }
