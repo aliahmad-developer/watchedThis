@@ -6,8 +6,11 @@ import DetailsPage from "@/app/components/randomMedia/detailsPage";
 import DetailsClientShell from "./clientShell";
 import type { Metadata } from "next";
 import { tmdbImage } from "@/lib/imageTmdb";
-import { cache } from "react";
+import { cache as reactCache } from "react";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
+import { fetchMediaById as fetchMediaFromTmdb } from "@/lib/mediaDetails";
+import { TmdbError } from "@/lib/tmdbRequest";
+import { cache as serverCache, TTL } from "@/lib/cache";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -25,112 +28,47 @@ type ResolvedMedia =
   | { shouldRedirect: true; redirectTo: string }
   | { shouldRedirect: false; data: any; media_name_slug: string; id: string };
 
-/*
- * Distinguishes "the media genuinely doesn't exist" (404, should be
- * cached and shown as notFound) from "the upstream call failed"
- * (network error, timeout, 5xx — should NOT be cached, should be
- * retried on the next request).
- *
- * Previously both cases collapsed to `return null`, and because that
- * null lived inside unstable_cache() with revalidate: 3600, a single
- * transient failure (e.g. a cold start or brief 503 from the internal
- * /api/media route) would get cached as "not found" for a full hour,
- * making every request in that window 404 even though the data was
- * actually fine.
- */
-class UpstreamFetchError extends Error {}
-
-// ─── Fetchers ─────────────────────────────────────────────────────────────────
+// ─── Media data loader ──────────────────────────────────────────────────────
 //
-// NOTE: unstable_cache() is NOT used here. It relies on Next's filesystem-
-// based data cache, which does not exist on the Cloudflare Workers/Pages
-// runtime. Calling it there throws or misbehaves during the Server
-// Component render (this was the root cause of the "Minified React error
-// #441" seen only in production, never on localhost's Node runtime).
+// This calls fetchMediaById from @/lib/mediaDetails directly, in-process —
+// the same function the /api/media route uses — instead of the page doing
+// an HTTP fetch() back to its own domain.
 //
-// Caching is instead handled purely via fetch()'s `next: { revalidate }`
-// option, which the Cloudflare Next.js adapters translate to Cloudflare's
-// own cache API. `react`'s cache() is kept to dedupe calls within a single
-// render pass only.
+// That self-fetch pattern is what caused the intermittent 404/503/500s and
+// the React #441 error on Cloudflare: Cloudflare Workers restrict or fail
+// same-zone fetch() calls (a Worker fetching its own public hostname) as a
+// loop-prevention measure. It worked on localhost because there is no
+// "zone" restriction on a local Node dev server, which is why the bug was
+// invisible there.
+//
+// The `serverCache` here uses the SAME cache key format as the API route,
+// so a page render and a client-side call to /api/media share one cached
+// TMDB response instead of duplicating the upstream call.
+//
+// A real "not found" (TMDB 404) resolves to `null`. Any other failure
+// (network error, TMDB 5xx, rate limit) re-throws, so the page's error
+// boundary handles it instead of it being silently treated as "not found".
+const getMediaData = reactCache(
+  async (
+    media_type: string,
+    id: string,
+  ): Promise<Record<string, unknown> | null> => {
+    const cacheKey = `media:${media_type}:${id}`;
+    const cached = serverCache.get<Record<string, unknown>>(cacheKey, TTL.DAY);
+    if (cached) return cached;
 
-const fetchMediaById = async (media_type: string, id: string) => {
-  const res = await fetch(`${APP_URL}/api/media/${media_type}/_/${id}`, {
-    next: { revalidate: 3600 },
-  });
-
-  if (res.status === 404) return null;
-
-  if (!res.ok) {
-    // Transient/upstream failure — throw rather than returning null so we
-    // never mistake "the API failed right now" for "this doesn't exist".
-    throw new UpstreamFetchError(
-      `fetchMediaById failed: ${res.status} ${res.statusText}`,
-    );
-  }
-
-  return res.json();
-};
-
-const fetchMediaDetails = cache(
-  async (media_type: string, media_name_slug: string, id: string) => {
-    const res = await fetch(
-      `${APP_URL}/api/media/${media_type}/${media_name_slug}/${id}`,
-      {
-        next: { revalidate: 3600 },
-      },
-    );
-
-    if (res.status === 404) return null;
-
-    if (!res.ok) {
-      throw new UpstreamFetchError(
-        `fetchMediaDetails failed: ${res.status} ${res.statusText}`,
-      );
+    try {
+      const payload = await fetchMediaFromTmdb(media_type, Number(id));
+      serverCache.set(cacheKey, payload);
+      return payload as unknown as Record<string, unknown>;
+    } catch (error) {
+      if (error instanceof TmdbError && error.status === 404) {
+        return null;
+      }
+      throw error;
     }
-
-    return res.json();
   },
 );
-
-/*
- * Safe wrappers: swallow UpstreamFetchError into a distinct "failed"
- * result so callers can tell "not found" apart from "couldn't check
- * right now" and respond accordingly (e.g. render an error state or
- * let Next.js's error boundary retry, instead of a hard 404).
- */
-type FetchOutcome<T> =
-  | { ok: true; data: T }
-  | { ok: false; notFound: true }
-  | { ok: false; notFound: false; error: unknown };
-
-async function safeFetchMediaById(
-  media_type: string,
-  id: string,
-): Promise<FetchOutcome<any>> {
-  try {
-    const data = await fetchMediaById(media_type, id);
-    if (!data) return { ok: false, notFound: true };
-    return { ok: true, data };
-  } catch (err) {
-    console.error("[media page] fetchMediaById error:", err);
-    return { ok: false, notFound: false, error: err };
-  }
-}
-
-async function safeFetchMediaDetails(
-  media_type: string,
-  media_name_slug: string,
-  id: string,
-): Promise<FetchOutcome<any>> {
-  try {
-    const data = await fetchMediaDetails(media_type, media_name_slug, id);
-    if (!data) return { ok: false, notFound: true };
-    return { ok: true, data };
-  } catch (err) {
-    console.error("[media page] fetchMediaDetails error:", err);
-    return { ok: false, notFound: false, error: err };
-  }
-}
 
 // ─── Structured Data ──────────────────────────────────────────────────────────
 
@@ -190,18 +128,12 @@ async function resolveParams(
 ): Promise<ResolvedMedia | null> {
   if (slug.length === 1 && /^\d+$/.test(slug[0])) {
     const id = slug[0];
-    const outcome = await safeFetchMediaById(media_type, id);
+    const data = await getMediaData(media_type, id);
+    if (!data) return null;
 
-    if (!outcome.ok) {
-      if (outcome.notFound) return null;
-      // Upstream failure, not a real 404 — propagate so the page can
-      // throw and hit Next's error boundary (retry-able) instead of
-      // a hard, cacheable notFound().
-      throw outcome.error;
-    }
-
-    const data = outcome.data;
-    const correctSlug = createSlug(data.title || data.name);
+    const correctSlug = createSlug(
+      (data.title as string) || (data.name as string),
+    );
     return {
       shouldRedirect: true,
       redirectTo: `/${media_type}/${correctSlug}/${id}`,
@@ -212,15 +144,12 @@ async function resolveParams(
   const id = slug[1];
   if (!media_name_slug || !id) return null;
 
-  const outcome = await safeFetchMediaDetails(media_type, media_name_slug, id);
+  const data = await getMediaData(media_type, id);
+  if (!data) return null;
 
-  if (!outcome.ok) {
-    if (outcome.notFound) return null;
-    throw outcome.error;
-  }
-
-  const data = outcome.data;
-  const correctSlug = createSlug(data.title || data.name);
+  const correctSlug = createSlug(
+    (data.title as string) || (data.name as string),
+  );
   if (correctSlug !== media_name_slug) {
     return {
       shouldRedirect: true,
@@ -247,19 +176,23 @@ export async function generateMetadata({
   if (!media_name_slug || !id)
     return { title: "Media Not Found | WatchedThis" };
 
-  const outcome = await safeFetchMediaDetails(media_type, media_name_slug, id);
-  if (!outcome.ok) return { title: "Media Not Found | WatchedThis" };
+  const data = await getMediaData(media_type, id);
+  if (!data) return { title: "Media Not Found | WatchedThis" };
 
-  const data = outcome.data;
-
-  const mediaTitle = data.title || data.name || "Media Details";
-  const year = (data.release_date || data.first_air_date || "").substring(0, 4);
-  const genreList = data.genres?.map((g: any) => g.name).join(", ") || "";
+  const mediaTitle =
+    (data.title as string) || (data.name as string) || "Media Details";
+  const year = (
+    (data.release_date as string) ||
+    (data.first_air_date as string) ||
+    ""
+  ).substring(0, 4);
+  const genreList =
+    (data.genres as any[])?.map((g: any) => g.name).join(", ") || "";
   const mediaTypeLabel = media_type === "movie" ? "movie" : "TV series";
 
   // Enhanced description with keywords for better CTR and ranking signals
   const baseDescription = data.overview
-    ? data.overview.substring(0, 120)
+    ? (data.overview as string).substring(0, 120)
     : `Discover ${mediaTitle}, a popular ${mediaTypeLabel}`;
 
   const description =

@@ -1,3 +1,20 @@
+/**
+ * Thrown when TMDB responds with a non-OK status. Carries the original
+ * HTTP status so callers (API routes, page data-loaders) can distinguish
+ * a genuine 404 ("this title doesn't exist") from a transient upstream
+ * failure (5xx, network error, rate limit) instead of collapsing both
+ * into a generic error.
+ */
+export class TmdbError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "TmdbError";
+    this.status = status;
+  }
+}
+
 export function getTmdbBaseUrl() {
   return process.env.TMDB_BASE_URL || "https://api.themoviedb.org/3";
 }
@@ -30,7 +47,10 @@ export async function tmdbFetch<T>(
   });
 
   if (!res.ok) {
-    throw new Error(`TMDB responded with ${res.status} for ${url}`);
+    throw new TmdbError(
+      res.status,
+      `TMDB responded with ${res.status} for ${url}`,
+    );
   }
 
   return (await res.json()) as T;

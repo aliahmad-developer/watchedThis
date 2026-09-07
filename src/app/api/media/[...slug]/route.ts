@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMediaById } from "@/lib/mediaDetails";
+import { TmdbError } from "@/lib/tmdbRequest";
 import { cache, TTL } from "@/lib/cache";
 
 export async function GET(
@@ -51,6 +52,18 @@ export async function GET(
       headers: { "X-Cache": "MISS" },
     });
   } catch (error) {
+    // Forward TMDB's real status (404 = genuinely not found) instead of
+    // collapsing every failure into a 500. Callers (the page) rely on
+    // this distinction to avoid treating a transient TMDB outage as a
+    // permanent "not found".
+    if (error instanceof TmdbError) {
+      console.error(`TMDB API request failed (${error.status}):`, error);
+      return NextResponse.json(
+        { error: "Failed to fetch media data from TMDB" },
+        { status: error.status === 404 ? 404 : 502 },
+      );
+    }
+
     console.error("TMDB API request failed:", error);
     return NextResponse.json(
       { error: "Failed to fetch media data from TMDB" },
@@ -58,4 +71,3 @@ export async function GET(
     );
   }
 }
-
