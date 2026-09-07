@@ -113,7 +113,7 @@ function MediaPoster({
         className="absolute top-3 left-3 bg-transparent px-3 py-1 rounded-md text-xs font-bold tracking-wide shadow-md backdrop-blur-sm z-10 border transition-colors duration-700"
         style={
           hasPoster
-            ? { color: ambientText.primary, borderColor: ambientText.secondary }
+            ? {color: ambientText.primary, borderColor: ambientText.secondary }
             : undefined
         }
       >
