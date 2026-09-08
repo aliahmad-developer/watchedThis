@@ -17,7 +17,9 @@ const LAST_UPDATED = "March, 2026";
 const CONTACT_EMAIL = "privacy@WatchedThis.app";
 
 function scrollToSection(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  document
+    .getElementById(id)
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 export default function PrivacyPolicyPage() {
@@ -29,7 +31,7 @@ export default function PrivacyPolicyPage() {
           <p className="text-xs font-semibold tracking-widest uppercase text-light-accent dark:text-dark-accent">
             Legal
           </p>
-<div className="text-4xl sm:text-5xl font-bold text-light-header dark:text-white mb-4 leading-tight">
+          <div className="text-4xl sm:text-5xl font-bold text-light-header dark:text-white mb-4 leading-tight">
             Privacy Policy
           </div>
           <p className="text-light-secondary-text dark:text-dark-secondary-text text-sm">
@@ -48,8 +50,8 @@ export default function PrivacyPolicyPage() {
         <div className="space-y-5">
           <Section icon={faUser} title="1. Who we are">
             <p>
-              WatchedThis is a media discovery app that helps you find movies and
-              TV shows. We are not affiliated with any streaming service or
+              WatchedThis is a media discovery app that helps you find movies
+              and TV shows. We are not affiliated with any streaming service or
               studio. If you have questions, email us at{" "}
               <ExternalLink href={`mailto:${CONTACT_EMAIL}`}>
                 {CONTACT_EMAIL}
@@ -63,19 +65,26 @@ export default function PrivacyPolicyPage() {
               When you create an account we collect your email address. If you
               sign in via Google or Apple OAuth we receive your name, email
               address, and profile picture from that provider. We do not receive
-              or store your passwords.
+              or store your passwords — authentication is handled by Supabase.
             </Subsection>
             <Subsection title="Usage data">
               We log the searches you run, the titles you click, and any items
               you add to your watchlist. This is tied to your account and is
-              used solely to personalise your recommendations within WatchedThis.
+              used solely to personalise your recommendations within
+              WatchedThis.
+            </Subsection>
+            <Subsection title="Media and images">
+              If you upload a profile picture or other image, it is stored and
+              delivered via Cloudinary. Uploaded images may be linked to your
+              account.
             </Subsection>
             <Subsection title="Technical data">
               Our hosting provider (Cloudflare) may collect standard server logs
               including your IP address, browser type, and page requests,
               retained for up to 30 days for security and performance
-              monitoring. CLoudflare Analytics may collect anonymised, aggregated
-              usage metrics — no individual tracking, no cross-site cookies.
+              monitoring. Cloudflare Analytics may collect anonymised,
+              aggregated usage metrics — no individual tracking, no cross-site
+              cookies.
             </Subsection>
             <Subsection title="What we do not collect">
               No payment information, precise location data, contacts, or device
@@ -94,7 +103,7 @@ export default function PrivacyPolicyPage() {
 
           <Section icon={faCookie} title="4. Cookies and local storage">
             <p>
-              WatchedThis uses a Firebase session cookie, a first-party,
+              WatchedThis uses a Supabase session cookie, a first-party,
               HTTP-only cookie to keep you signed in, containing no PII beyond a
               session token, expiring on sign-out or after 30 days of
               inactivity. We also cache the daily media selection in
@@ -109,11 +118,18 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           <Section icon={faHandshake} title="5. Third-party services">
-            <Subsection title="Firebase (Google)">
-              Authentication and database. Data is stored on Google's
-              infrastructure.{" "}
-              <ExternalLink href="https://firebase.google.com/support/privacy">
-                Cloudflare Privacy Policy
+            <Subsection title="Supabase">
+              Authentication and database. Your account data, watch history, and
+              watchlists are stored on Supabase's infrastructure.{" "}
+              <ExternalLink href="https://supabase.com/privacy">
+                Supabase Privacy Policy
+              </ExternalLink>
+            </Subsection>
+            <Subsection title="Cloudinary">
+              Image and media hosting. Profile pictures and other uploaded
+              images are stored and delivered via Cloudinary.{" "}
+              <ExternalLink href="https://cloudinary.com/privacy">
+                Cloudinary Privacy Policy
               </ExternalLink>
             </Subsection>
             <Subsection title="TMDB">
@@ -123,9 +139,9 @@ export default function PrivacyPolicyPage() {
                 TMDB Privacy Policy
               </ExternalLink>
             </Subsection>
-            <Subsection title="Hosting">
+            <Subsection title="Cloudflare">
               Hosting and edge infrastructure.{" "}
-              <ExternalLink href="https://developers.google.com/terms/">
+              <ExternalLink href="https://www.cloudflare.com/privacypolicy/">
                 Cloudflare Privacy Policy
               </ExternalLink>
             </Subsection>
@@ -133,9 +149,10 @@ export default function PrivacyPolicyPage() {
 
           <Section icon={faCalendar} title="6. Data retention">
             We keep your account data for as long as your account is active. If
-            you delete your account, your personal data is deleted within 30
-            days. Anonymised usage aggregates may be retained indefinitely as
-            they cannot be linked back to you.
+            you delete your account, your personal data — including any images
+            stored on Cloudinary — is deleted within 30 days. Anonymised usage
+            aggregates may be retained indefinitely as they cannot be linked
+            back to you.
           </Section>
 
           <Section icon={faShield} title="7. Your rights">
@@ -155,9 +172,9 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           <Section icon={faChild} title="8. Age Restrictions">
-            WatchedThis is not directed at children under 13. We do not knowingly
-            collect data from anyone under 13. If you believe a child has
-            created an account, contact us and we will delete it promptly.
+            WatchedThis is not directed at children under 13. We do not
+            knowingly collect data from anyone under 13. If you believe a child
+            has created an account, contact us and we will delete it promptly.
           </Section>
 
           <Section icon={faRotate} title="9. Changes to this policy">
@@ -174,7 +191,8 @@ export default function PrivacyPolicyPage() {
 
         {/* Footer note */}
         <p className="text-center text-light-secondary-text dark:text-dark-secondary-text text-xs mt-8 pb-4">
-          Your data is yours. We're just borrowing it to make the app useful to you.
+          Your data is yours. We're just borrowing it to make the app useful to
+          you.
           <br /> Now stop reading legal pages and go watch something.
         </p>
       </div>
