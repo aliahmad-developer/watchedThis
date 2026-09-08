@@ -3,6 +3,7 @@ import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { fetchProductionCompanyData } from "@/lib/productionCompany";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -119,30 +120,50 @@ function ProductionsSchema() {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+//
+// Calls fetchProductionCompanyData directly, in-process, instead of
+// fetch()-ing `${APP_URL}/api/production/${id}` back to this app's own
+// domain. That self-fetch pattern is subject to Cloudflare's same-zone
+// fetch restrictions, which fail unpredictably in production while
+// working fine on localhost.
+//
+// Also passes { includeCompany: false, enrichDetails: false }: this page
+// only shows 5 poster thumbnails per studio and never displays runtime,
+// vote average, or company metadata, so there's no reason to pay for
+// them. Without these flags, this page would fire roughly
+// 23 studios x 2 media types x (1 discover + 1 company + up to 20
+// per-item detail calls) = 900+ outbound subrequests for a single page
+// load. Cloudflare Workers cap outbound subrequests per request (50 on
+// the Free plan; a real ceiling even on paid plans), so that fan-out was
+// very likely failing or getting throttled in production regardless of
+// the self-fetch issue. With both flags off, this drops to one discover
+// call per studio per media type (~46 total).
 
 export default async function ProductionListPage() {
   const productionSections = await Promise.all(
     PRODUCTIONS.map(async ({ id, name }) => {
       const [moviesRes, tvRes] = await Promise.allSettled([
-        fetch(`${APP_URL}/api/production/${id}?mediaType=movie&page=1`, {
-          next: { revalidate: 3600 },
+        fetchProductionCompanyData(String(id), "movie", "1", {
+          includeCompany: false,
+          enrichDetails: false,
         }),
-        fetch(`${APP_URL}/api/production/${id}?mediaType=tv&page=1`, {
-          next: { revalidate: 3600 },
+        fetchProductionCompanyData(String(id), "tv", "1", {
+          includeCompany: false,
+          enrichDetails: false,
         }),
       ]);
 
       const movies =
-        moviesRes.status === "fulfilled" && moviesRes.value.ok
-          ? ((await moviesRes.value.json()).results ?? []).map((m: any) => ({
+        moviesRes.status === "fulfilled"
+          ? (moviesRes.value.results ?? []).map((m: any) => ({
               ...m,
               media_type: "movie",
             }))
           : [];
 
       const tv =
-        tvRes.status === "fulfilled" && tvRes.value.ok
-          ? ((await tvRes.value.json()).results ?? []).map((m: any) => ({
+        tvRes.status === "fulfilled"
+          ? (tvRes.value.results ?? []).map((m: any) => ({
               ...m,
               media_type: "tv",
             }))

@@ -3,6 +3,8 @@ import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { fetchGenreMedia } from "@/lib/genreMedia";
+
 export const metadata: Metadata = {
   title: "Genres | WatchedThis",
   description: "Browse movies and TV shows by genre on WatchedThis.",
@@ -101,48 +103,58 @@ function toSlug(name: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+//
+// Calls fetchGenreMedia directly, in-process, instead of fetch()-ing
+// `${baseUrl}/api/genre/${id}` back to this app's own domain. That
+// self-fetch pattern is subject to Cloudflare's same-zone fetch
+// restrictions, which fail unpredictably in production while working
+// fine on localhost.
+//
+// Also passes { enrichDetails: false }: this page only shows 5 poster
+// thumbnails per genre and never displays runtime, vote count, or
+// overview. Without this flag, ~25 genre sections x up to 2 media types
+// x up to 20 per-item detail calls could mean 1,000+ outbound
+// subrequests for a single page load -- Cloudflare Workers cap this per
+// request (50 on the Free plan; a real ceiling even on paid plans), so
+// this fan-out was very likely failing or getting throttled in
+// production regardless of the self-fetch issue.
+
 export default async function GenreListPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
   const sections = buildSections();
 
   const genreSections = await Promise.all(
     sections.map(async ({ name, movieId, tvId, slug }) => {
       const fetches = await Promise.allSettled([
         movieId
-          ? fetch(`${baseUrl}/api/genre/${movieId}?media_type=movie&page=1`, {
-              next: { revalidate: 3600 },
+          ? fetchGenreMedia("movie", [movieId], 1, false, {
+              enrichDetails: false,
             })
           : Promise.resolve(null),
         tvId
-          ? fetch(`${baseUrl}/api/genre/${tvId}?media_type=tv&page=1`, {
-              next: { revalidate: 3600 },
-            })
+          ? fetchGenreMedia("tv", [tvId], 1, false, { enrichDetails: false })
           : Promise.resolve(null),
       ]);
 
       const [moviesRes, tvRes] = fetches;
 
       const movies =
-        moviesRes.status === "fulfilled" &&
-        moviesRes.value &&
-        moviesRes.value.ok
-          ? ((await moviesRes.value.json()).results ?? []).map((m: any) => ({
+        moviesRes.status === "fulfilled" && moviesRes.value
+          ? (moviesRes.value.results ?? []).map((m: any) => ({
               ...m,
               media_type: "movie",
             }))
           : [];
 
       const tv =
-        tvRes.status === "fulfilled" && tvRes.value && tvRes.value.ok
-          ? ((await tvRes.value.json()).results ?? []).map((m: any) => ({
+        tvRes.status === "fulfilled" && tvRes.value
+          ? (tvRes.value.results ?? []).map((m: any) => ({
               ...m,
               media_type: "tv",
             }))
           : [];
 
       // Interleave movie + tv, cap at exactly 5
-      // Build balanced movie/tv list
-      // Build balanced movie/tv list
       const interleaved: any[] = [];
 
       const m = movies.filter((x: any) => x?.poster_path);

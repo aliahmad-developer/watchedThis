@@ -3,6 +3,7 @@ import Link from "next/link";
 import MediaCard from "@/app/components/mediaCard/mediaCard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { fetchTmdbCached } from "@/lib/TmdbCatched";
 
 export const metadata: Metadata = {
   title: "Popular Actors | WatchedThis",
@@ -20,24 +21,15 @@ export const metadata: Metadata = {
 // ─────────────────────────────────────────────────────────────
 // Fetch helpers
 // ─────────────────────────────────────────────────────────────
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL ?? "https://watchedthis.com";
-
-async function getJSON<T>(url: string): Promise<T | null> {
-  try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
+//
+// Calls fetchTmdbCached directly, in-process, instead of
+// fetch(`${BASE_URL}/api/tmdb?path=...`) back to this app's own domain.
+// That self-fetch pattern is subject to Cloudflare's same-zone fetch
+// restrictions, which fail unpredictably in production while working
+// fine on localhost.
 
 async function fetchTopActors() {
-  const data = await getJSON<{ results: any[] }>(
-    `${BASE_URL}/api/tmdb?path=/person/popular`
-  );
+  const data = await fetchTmdbCached<{ results: any[] }>("/person/popular");
 
   return (data?.results ?? [])
     .filter((p) => p?.profile_path)
@@ -45,8 +37,8 @@ async function fetchTopActors() {
 }
 
 async function fetchActorMovies(personId: number) {
-  const data = await getJSON<{ cast: any[] }>(
-    `${BASE_URL}/api/tmdb?path=/person/${personId}/movie_credits`
+  const data = await fetchTmdbCached<{ cast: any[] }>(
+    `/person/${personId}/movie_credits`,
   );
 
   return (data?.cast ?? [])

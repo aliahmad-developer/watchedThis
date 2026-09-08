@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { tmdbFetch } from "@/lib/tmdbRequest";
-import { cache, TTL } from "@/lib/cache";
+import { fetchTmdbCached } from "@/lib/TmdbCatched";
 
 const ALLOWED_PATHS = [
   "/movie/",
@@ -25,12 +24,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Path not allowed" }, { status: 403 });
   }
 
-  const cacheKey = `tmdb:${path}:${params}`;
-  const cached = cache.get<unknown>(cacheKey, TTL.MEDIUM);
-  if (cached) {
-    return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } });
-  }
-
   let extraParams: Record<string, string> = {};
   if (params) {
     try {
@@ -43,26 +36,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const qs = new URLSearchParams(extraParams).toString();
-  const fullPath = qs ? `${path}?${qs}` : path;
+  const data = await fetchTmdbCached(path, extraParams);
 
-  try {
-    const data = await tmdbFetch<unknown>(fullPath);
-    const isValidResponse =
-      data &&
-      typeof data === "object" &&
-      !("error" in data) &&
-      !("message" in data);
-    if (isValidResponse) {
-      cache.set(cacheKey, data, true);
-    }
-    return NextResponse.json(data, { headers: { "X-Cache": "MISS" } });
-  } catch (error) {
-    console.error(`[/api/tmdb] path=${path}`, error);
-    cache.invalidate(cacheKey);
+  if (data === null) {
     return NextResponse.json(
-      { message: "Error fetching from TMDB", error: String(error) },
+      { message: "Error fetching from TMDB" },
       { status: 502 },
     );
   }
+
+  return NextResponse.json(data);
 }

@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Breadcrumbs from "@/breadCrumb/seo/Breadcrumbs";
 import ProductionPageClient from "./pageClient";
+import { fetchProductionCompanyData } from "@/lib/productionCompany";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -9,17 +10,19 @@ const APP_URL = (
 ).replace(/\/$/, "");
 
 // ─── Fetcher ──────────────────────────────────────────────────────────────────
+//
+// Calls the shared fetchProductionCompanyData directly, in-process, instead
+// of fetch(`${APP_URL}/api/production/${id}...`) back to this app's own
+// domain. That self-fetch pattern is subject to Cloudflare's same-zone
+// fetch restrictions (a Worker fetching its own public hostname), which
+// fail unpredictably in production while working fine on localhost.
 
 const fetchCompany = async (id: string) => {
-  const res = await fetch(
-    `${APP_URL}/api/production/${id}?mediaType=movie&page=1`,
-    {
-      next: { revalidate: 3600 },
-    },
-  );
-
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    return await fetchProductionCompanyData(id, "movie", "1");
+  } catch {
+    return null;
+  }
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
