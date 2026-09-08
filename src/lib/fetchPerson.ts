@@ -1,32 +1,27 @@
-import { unstable_cache } from "next/cache";
 import type { PersonData } from "../app/person/[slug]/[id]/types";
+import { tmdbFetch, TmdbError } from "@/lib/tmdbRequest";
+import { cache, TTL } from "@/lib/cache";
 
-const _fetchPerson = async (id: string): Promise<PersonData | null> => {
+/**
+ * NOTE: previously wrapped in unstable_cache(). That relies on Next's
+ * filesystem-based data cache, which does not exist on the Cloudflare
+ * Workers runtime -- it works locally (Node dev server) and silently
+ * breaks/no-ops in production, the same issue that caused the media
+ * detail page bugs. Caching here now uses the same in-memory
+ * ServerCache (@/lib/cache) the rest of the app already relies on.
+ */
+async function _fetchPerson(id: string): Promise<PersonData | null> {
+  const cacheKey = `person-full:${id}`;
+  const cached = cache.get<PersonData>(cacheKey, TTL.DAY);
+  if (cached) return cached;
+
   try {
-    // Use API key (same as your /api/person route) so only one env var is needed
-    const apiKey = process.env.TMDB_API_KEY;
-    if (!apiKey) {
-      console.error("[fetchPerson] TMDB_API_KEY is not set");
-      return null;
-    }
-
-    const res = await fetch(
-      `https://api.themoviedb.org/3/person/${id}?api_key=${apiKey}&append_to_response=combined_credits,images&language=en-US`,
-      {
-        signal: AbortSignal.timeout(25000),
-      },
+    const data = await tmdbFetch<any>(
+      `/person/${id}?append_to_response=combined_credits,images&language=en-US`,
+      { next: { revalidate: 3600 } },
     );
 
-    if (!res.ok) {
-      console.error(
-        `[fetchPerson] TMDB returned ${res.status} for person ${id}`,
-      );
-      return null;
-    }
-
-    const data = await res.json();
-
-    return {
+    const result: PersonData = {
       details: {
         id: data.id,
         name: data.name,
@@ -48,11 +43,27 @@ const _fetchPerson = async (id: string): Promise<PersonData | null> => {
         ? { profiles: data.images.profiles?.slice(0, 10) ?? [] }
         : null,
     };
+
+    cache.set(cacheKey, result);
+    return result;
   } catch (err) {
-    console.error("[fetchPerson] fetch threw:", err);
+    // A genuine 404 (person doesn't exist) resolves to null, same as
+    // before. Anything else (network error, TMDB 5xx, rate limit) is
+    // logged but still resolves to null here -- callers of fetchPerson
+    // currently treat null as "not found" with no separate error state,
+    // so this preserves existing behavior. If you want to show a
+    // distinct "couldn't load, try again" state instead of a hard
+    // "not found" for transient failures, this is the place to
+    // re-throw instead of swallowing.
+    if (err instanceof TmdbError) {
+      console.error(
+        `[fetchPerson] TMDB returned ${err.status} for person ${id}`,
+      );
+    } else {
+      console.error("[fetchPerson] fetch threw:", err);
+    }
     return null;
   }
-};
-export const fetchPerson = unstable_cache(_fetchPerson, ["fetch-person"], {
-  revalidate: 3600,
-});
+}
+
+export const fetchPerson = _fetchPerson;
