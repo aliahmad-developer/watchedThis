@@ -128,12 +128,12 @@ export const logout = async () => {
   }
 };
 
-// ─── OAuth (Google / Apple) — redirect flow ────────────────────────────────
+// ─── OAuth (Google) — redirect flow ────────────────────────────────
 // Supabase's default OAuth is a full-page redirect, not a popup. This function
 // now navigates away from the page — it does NOT return a user synchronously.
 // Your authContext picks up the session automatically via onAuthStateChange
 // once the user lands back on your site after the provider redirect.
-async function oauthSignIn(provider: "google" | "apple") {
+async function oauthSignIn(provider: "google") {
   try {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -163,10 +163,6 @@ async function oauthSignIn(provider: "google" | "apple") {
 
 export async function signInWithGoogle() {
   return oauthSignIn("google");
-}
-
-export async function signInWithApple() {
-  return oauthSignIn("apple");
 }
 
 export async function checkRedirectResult() {

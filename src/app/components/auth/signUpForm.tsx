@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { signup, signInWithGoogle, signInWithApple } from "./auth";
+import { signup, signInWithGoogle } from "./auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEye,
@@ -8,7 +8,7 @@ import {
   faCheckCircle,
   faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { faGoogle, faApple } from "@fortawesome/free-brands-svg-icons";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import type { User } from "@supabase/supabase-js";
 import VerifyEmailModal from "./verifyEmailModal";
 import { useId } from "react";
@@ -66,9 +66,7 @@ export default function SignupForm({
   const [message, setMessage] = useState("");
   const [accountExists, setAccountExists] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(
-    null,
-  );
+  const [oauthLoading, setOauthLoading] = useState<"google" | null>(null);
   const [unverifiedResent, setUnverifiedResent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -151,19 +149,16 @@ export default function SignupForm({
     }
   };
 
-  const handleOAuth = async (provider: "google" | "apple") => {
+  const handleGoogleOAuth = async () => {
     if (!acceptedTerms) {
       triggerTermsError();
       return;
     }
-    setOauthLoading(provider);
+    setOauthLoading("google");
     setMessage("");
     setAccountExists(false);
     try {
-      const result =
-        provider === "google"
-          ? await signInWithGoogle()
-          : await signInWithApple();
+      const result = await signInWithGoogle();
 
       // Supabase OAuth uses a full-page redirect.
       // If successful, the browser navigates away, so we return early.
@@ -204,34 +199,26 @@ export default function SignupForm({
 
         {/* OAuth Buttons */}
         <div className="flex gap-2">
-          {(["google", "apple"] as const).map((provider) => (
-            <button
-              key={provider}
-              type="button"
-              onClick={() => handleOAuth(provider)}
-              disabled={anyLoading}
-              className="flex items-center justify-center gap-1.5 flex-1 h-8 px-2 rounded-md border
-                         border-light-border dark:border-dark-border
-                         bg-light-bg dark:bg-dark-bg
-                         text-light-body-text dark:text-dark-body-text
-                         hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text
-                         dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         text-xs font-medium transition-colors"
-            >
-              {oauthLoading === provider ? (
-                <Spinner />
-              ) : (
-                <FontAwesomeIcon
-                  icon={provider === "google" ? faGoogle : faApple}
-                  size="sm"
-                />
-              )}
-              <span className="m-0">
-                {provider === "google" ? "Google" : "Apple"}
-              </span>
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={handleGoogleOAuth}
+            disabled={anyLoading}
+            className="flex items-center justify-center gap-1.5 flex-1 h-8 px-2 rounded-md border
+                       border-light-border dark:border-dark-border
+                       bg-light-bg dark:bg-dark-bg
+                       text-light-body-text dark:text-dark-body-text
+                       hover:bg-light-btn-hover-bg hover:text-light-btn-hover-text
+                       dark:hover:bg-dark-btn-hover-bg dark:hover:text-dark-btn-hover-text
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       text-xs font-medium transition-colors"
+          >
+            {oauthLoading === "google" ? (
+              <Spinner />
+            ) : (
+              <FontAwesomeIcon icon={faGoogle} size="sm" />
+            )}
+            <span className="m-0">Google</span>
+          </button>
         </div>
 
         {/* Divider */}

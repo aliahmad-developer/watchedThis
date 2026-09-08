@@ -63,7 +63,7 @@ export default function PrivacyPolicyPage() {
           <Section icon={faDatabase} title="2. Data we collect">
             <Subsection title="Account data">
               When you create an account we collect your email address. If you
-              sign in via Google or Apple OAuth we receive your name, email
+              sign in via Google OAuth we receive your name, email
               address, and profile picture from that provider. We do not receive
               or store your passwords — authentication is handled by Supabase.
             </Subsection>
