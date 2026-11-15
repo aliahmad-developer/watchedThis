@@ -45,7 +45,7 @@ const BAD_BOTS =
   /crawler|spider|scraper|go-http|libwww|python-requests|curl|wget|java\/|ruby|perl|php|bot(?!tle)/i;
 
 const SOCIAL_CRAWLERS =
-  /facebookexternalhit|twitterbot|telegrambot|whatsapp|linkedinbot|slackbot|discordbot|applebot|googlebot|bingbot/i;
+  /facebookexternalhit|meta-externalagent|meta-externalfetcher|twitterbot|telegrambot|whatsapp|linkedinbot|slackbot|discordbot|applebot|googlebot|bingbot/i;
 
 /* =========================================================
    ENVIRONMENT

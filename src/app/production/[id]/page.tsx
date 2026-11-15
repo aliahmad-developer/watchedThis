@@ -27,10 +27,8 @@ const fetchCompany = async (id: string) => {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildProxyUrl(path: string, size = "w500") {
-  return `${APP_URL}/api/image-proxy/?url=${encodeURIComponent(
-    `https://image.tmdb.org/t/p/${size}${path}`,
-  )}`;
+function buildTmdbImageUrl(path: string, size = "w500") {
+  return `https://image.tmdb.org/t/p/${size}${path}`;
 }
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
@@ -59,7 +57,7 @@ export async function generateMetadata({
 
   // Logo images are typically square or landscape. w500 is a safe size.
   const ogImage = data.company.logo_path
-    ? buildProxyUrl(data.company.logo_path, "w500")
+    ? buildTmdbImageUrl(data.company.logo_path, "w500")
     : undefined;
 
   return {
@@ -123,7 +121,7 @@ function ProductionSchema({
     name,
     url: `${APP_URL}/production/${id}`,
     ...(logo && {
-      logo: buildProxyUrl(logo, "w500"),
+      logo: buildTmdbImageUrl(logo, "w500"),
     }),
   };
 

@@ -8,6 +8,7 @@
   "cf:build": "opennextjs-cloudflare build",
   "start": "next start",
   "lint": "next lint",
+  "test:rc1": "playwright test --config playwright.rc1.config.ts",
   "postinstall": "echo 'skipping'"
 },
   "dependencies": {
