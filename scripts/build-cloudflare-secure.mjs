@@ -415,11 +415,18 @@ function buildEnvironments(variables) {
   }
 
   const publicNames = new Set(Object.keys(variables));
-  const sensitiveNames = new Set(
-    Object.keys(buildEnvironment).filter(
-      (name) => !publicNames.has(name) && (loadedKeys.has(name) || isSensitiveName(name)),
-    ),
-  );
+  const sensitiveNames = new Set([
+    ...[...loadedKeys].filter((name) => !publicNames.has(name)),
+    ...requiredBuildSecrets,
+  ]);
+
+  // The build only receives project credentials. Unrelated host/CI tokens are
+  // neither needed for prerendering nor allowed to enter the build process.
+  for (const name of Object.keys(buildEnvironment)) {
+    if (!publicNames.has(name) && !sensitiveNames.has(name) && isSensitiveName(name)) {
+      delete buildEnvironment[name];
+    }
+  }
   const sensitiveEntries = [...sensitiveNames]
     .map((name) => [name, buildEnvironment[name]])
     .filter(([, value]) => typeof value === "string" && value.length >= 4);
