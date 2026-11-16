@@ -408,6 +408,7 @@ function buildEnvironments(variables) {
     NEXT_PRIVATE_STANDALONE: "true",
     NEXT_PRIVATE_OUTPUT_TRACE_ROOT: projectRoot,
   };
+  delete buildEnvironment.__NEXT_PROCESSED_ENV;
   resetEnv();
 
   for (const name of requiredBuildSecrets) {
