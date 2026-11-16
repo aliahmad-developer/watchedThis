@@ -39,8 +39,20 @@
   ],
 
   "routes": [
-    { "pattern": "watchedthis.com", "custom_domain": true },
-    { "pattern": "www.watchedthis.com", "custom_domain": true }
+    {
+      "pattern": "www.watchedthis.com",
+      "zone_name": "watchedthis.com",
+      "custom_domain": true,
+      "enabled": true,
+      "previews_enabled": false
+    },
+    {
+      "pattern": "watchedthis.com",
+      "zone_name": "watchedthis.com",
+      "custom_domain": true,
+      "enabled": true,
+      "previews_enabled": false
+    }
   ],
 
   "observability": {
