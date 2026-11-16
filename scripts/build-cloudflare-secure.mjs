@@ -187,8 +187,28 @@ function capture(command, args, env = process.env) {
 }
 
 function packageBinary(packageName, binaryName) {
-  const packageJsonPath = require.resolve(`${packageName}/package.json`);
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  let packageDirectory = dirname(require.resolve(packageName));
+  let packageJsonPath;
+  let packageJson;
+
+  while (true) {
+    const candidate = join(packageDirectory, "package.json");
+    if (existsSync(candidate)) {
+      const metadata = JSON.parse(readFileSync(candidate, "utf8"));
+      if (metadata.name === packageName) {
+        packageJsonPath = candidate;
+        packageJson = metadata;
+        break;
+      }
+    }
+
+    const parent = dirname(packageDirectory);
+    if (parent === packageDirectory) {
+      throw new Error(`Unable to locate package metadata: ${packageName}`);
+    }
+    packageDirectory = parent;
+  }
+
   const relativeBinary =
     typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.[binaryName];
   if (!relativeBinary) throw new Error(`Required package binary is missing: ${binaryName}`);
