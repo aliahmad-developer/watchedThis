@@ -416,6 +416,10 @@ function buildEnvironments(variables) {
   }
 
   const publicNames = new Set(Object.keys(variables));
+  const nextBuildControls = new Set([
+    "NEXT_PRIVATE_STANDALONE",
+    "NEXT_PRIVATE_OUTPUT_TRACE_ROOT",
+  ]);
   const sensitiveNames = new Set([
     ...[...loadedKeys].filter((name) => !publicNames.has(name)),
     ...requiredBuildSecrets,
@@ -424,7 +428,12 @@ function buildEnvironments(variables) {
   // The build only receives project credentials. Unrelated host/CI tokens are
   // neither needed for prerendering nor allowed to enter the build process.
   for (const name of Object.keys(buildEnvironment)) {
-    if (!publicNames.has(name) && !sensitiveNames.has(name) && isSensitiveName(name)) {
+    if (
+      !publicNames.has(name) &&
+      !sensitiveNames.has(name) &&
+      !nextBuildControls.has(name) &&
+      isSensitiveName(name)
+    ) {
       delete buildEnvironment[name];
     }
   }
