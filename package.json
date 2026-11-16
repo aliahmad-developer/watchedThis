@@ -5,7 +5,7 @@
   "scripts": {
   "dev": "next dev",
   "build": "next build",
-  "cf:build": "opennextjs-cloudflare build",
+  "cf:build": "node scripts/build-cloudflare-secure.mjs",
   "start": "next start",
   "lint": "next lint",
   "test:rc1": "playwright test --config playwright.rc1.config.ts",
