@@ -459,7 +459,11 @@ function main() {
   rmSync(openNextDirectory, { recursive: true, force: true });
 
   try {
-    run(process.execPath, [packageBinary("next", "next"), "build"], {
+    const npmEntryPoint = environments.buildEnvironment.npm_execpath;
+    if (!npmEntryPoint || !existsSync(npmEntryPoint)) {
+      throw new Error("Run the secure build through npm so npm_execpath is available.");
+    }
+    run(process.execPath, [npmEntryPoint, "run", "build"], {
       env: environments.buildEnvironment,
       label: "Next.js standalone build",
       failOn: buildFailureMarkers,
